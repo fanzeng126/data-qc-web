@@ -69,7 +69,7 @@ import { ArrowDownBold, Edit, RefreshRight } from '@element-plus/icons-vue'
 import { ChatMessageApi, ChatMessageVO } from '@/api/ai/chat/message'
 import { ChatConversationVO } from '@/api/ai/chat/conversation'
 import { useUserStore } from '@/store/modules/user'
-import userAvatarDefaultImg from '@/assets/imgs/avatar.gif'
+import userAvatarDefaultImg from '@/assets/imgs/logo.webp'
 import roleAvatarDefaultImg from '@/assets/ai/gpt.svg'
 
 const message = useMessage() // 消息弹窗
@@ -181,9 +181,10 @@ onMounted(async () => {
 // 中间
 .chat-list {
   display: flex;
-  flex-direction: column;
-  overflow-y: hidden;
   padding: 0 20px;
+  overflow-y: hidden;
+  flex-direction: column;
+
   .message-item {
     margin-top: 50px;
   }
@@ -201,28 +202,28 @@ onMounted(async () => {
 
   .message {
     display: flex;
-    flex-direction: column;
-    text-align: left;
     margin: 0 15px;
+    text-align: left;
+    flex-direction: column;
 
     .time {
-      text-align: left;
       line-height: 30px;
+      text-align: left;
     }
 
     .left-text-container {
       position: relative;
       display: flex;
+      padding: 10px 10px 5px;
+      background-color: rgb(228 228 228 / 80%);
+      border-radius: 10px;
+      box-shadow: 0 0 0 1px rgb(228 228 228 / 80%);
       flex-direction: column;
       overflow-wrap: break-word;
-      background-color: rgba(228, 228, 228, 0.8);
-      box-shadow: 0 0 0 1px rgba(228, 228, 228, 0.8);
-      border-radius: 10px;
-      padding: 10px 10px 5px 10px;
 
       .left-text {
-        color: #393939;
         font-size: 0.95rem;
+        color: #393939;
       }
     }
 
@@ -231,16 +232,16 @@ onMounted(async () => {
       flex-direction: row-reverse;
 
       .right-text {
+        display: inline;
+        width: auto;
+        padding: 10px;
         font-size: 0.95rem;
         color: #fff;
-        display: inline;
-        background-color: #267fff;
-        box-shadow: 0 0 0 1px #267fff;
-        border-radius: 10px;
-        padding: 10px;
-        width: auto;
-        overflow-wrap: break-word;
         white-space: pre-wrap;
+        background-color: #267fff;
+        border-radius: 10px;
+        box-shadow: 0 0 0 1px #267fff;
+        overflow-wrap: break-word;
       }
     }
 
@@ -277,8 +278,8 @@ onMounted(async () => {
 // 回到底部
 .to-bottom {
   position: absolute;
-  z-index: 1000;
-  bottom: 0;
   right: 50%;
+  bottom: 0;
+  z-index: 1000;
 }
 </style>
