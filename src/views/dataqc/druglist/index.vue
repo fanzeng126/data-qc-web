@@ -234,8 +234,8 @@ import { checkPermi } from '@/utils/permission'
 import { dateFormatter } from '@/utils/formatTime'
 import download from '@/utils/download'
 import * as DrugListApi from '@/api/dataqc/drugList'
-import DrugListForm from './DrugListForm.vue'
-import DrugListImportForm from './DrugListImportForm.vue'
+import DrugListForm from './DrugListFormAndImport.vue'
+import DrugListImportForm from './DrugListFormAndImport.vue'
 
 defineOptions({ name: 'DataqcDrugList' })
 

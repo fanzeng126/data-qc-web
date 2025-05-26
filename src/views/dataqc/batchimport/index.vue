@@ -1,6 +1,4 @@
 <template>
-  <doc-alert title="批量导入功能" url="https://doc.iocoder.cn/batch-import/" />
-
   <ContentWrap>
     <!-- 搜索区域 -->
     <el-form
@@ -226,14 +224,13 @@
 </template>
 
 <script lang="ts" setup>
-import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
 import { checkPermi } from '@/utils/permission'
 import { dateFormatter } from '@/utils/formatTime'
 import download from '@/utils/download'
 import * as BatchImportApi from '@/api/dataqc/batchImport'
 import BatchImportUploadForm from './BatchImportUploadForm.vue'
-import BatchImportDetailDialog from './BatchImportDetailDialog.vue'
-import BatchImportProgressDialog from './BatchImportProgressDialog.vue'
+import BatchImportDetailDialog from './BatchImportDetailAndProgress.vue'
+import BatchImportProgressDialog from './BatchImportDetailAndProgress.vue'
 
 defineOptions({ name: 'DataqcBatchImport' })
 

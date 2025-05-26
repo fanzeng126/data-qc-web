@@ -89,3 +89,10 @@ export const getDrugUseRanking = (startDate: string, endDate: string) => {
     params: { startDate, endDate }
   })
 }
+// 获取基药使用分析
+export const getBaseDrugAnalysis = (startDate: string, endDate: string) => {
+  return request.get({
+    url: '/dataqc/drug-use/base-drug-analysis',
+    params: { startDate, endDate }
+  })
+}

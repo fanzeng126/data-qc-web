@@ -141,7 +141,7 @@
         <el-card class="overview-card">
           <div class="overview-content">
             <div class="overview-icon drug-icon">
-              <Icon icon="ep:medicine-box" />
+              <Icon icon="fa-solid:notes-medical" />
             </div>
             <div class="overview-info">
               <div class="overview-value">{{ overviewData.drugCount || 0 }}</div>
