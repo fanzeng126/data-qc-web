@@ -676,13 +676,13 @@ const relatedArticles = computed(() => {
 })
 
 const recentArticles = computed(() => {
-  return articles.value
+  return [...articles.value]  // ✅ 先创建数组副本
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 3)
 })
 
 const popularArticles = computed(() => {
-  return articles.value
+  return [...articles.value]  // ✅ 先创建数组副本
     .sort((a, b) => b.views - a.views)
     .slice(0, 5)
 })

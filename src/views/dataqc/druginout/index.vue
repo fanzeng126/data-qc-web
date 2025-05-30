@@ -1,6 +1,4 @@
 <template>
-  <doc-alert title="药品出入库管理" url="https://doc.iocoder.cn/drug-inout/" />
-
   <ContentWrap>
     <!-- 搜索区域 -->
     <el-form

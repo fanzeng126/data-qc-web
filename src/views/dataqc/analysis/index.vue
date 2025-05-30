@@ -5,7 +5,7 @@
       <div class="header-left">
         <h1 class="page-title">
           <Icon icon="ep:data-analysis" class="title-icon" />
-          统计分析中心
+          药品统计分析中心
         </h1>
         <p class="page-subtitle">数据驱动决策，智能分析助力精准管理</p>
       </div>

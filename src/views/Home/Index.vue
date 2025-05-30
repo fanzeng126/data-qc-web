@@ -5,9 +5,9 @@
       <div class="page-title">数据概览</div>
       <div class="page-actions">
         <div class="date-picker">
-          <el-select 
-            v-model="selectedPeriodType" 
-            placeholder="时间类型" 
+          <el-select
+            v-model="selectedPeriodType"
+            placeholder="时间类型"
             size="default"
             style="width: 80px;"
             @change="handlePeriodTypeChange"
@@ -16,16 +16,16 @@
             <el-option label="月" value="month"/>
             <el-option label="日" value="day"/>
           </el-select>
-          <el-select 
-            v-model="selectedPeriodValue" 
+          <el-select
+            v-model="selectedPeriodValue"
             :placeholder="getValuePlaceholder()"
-            size="default" 
+            size="default"
             style="width: 140px; margin-left: 8px;"
           >
-            <el-option 
-              v-for="option in currentPeriodOptions" 
+            <el-option
+              v-for="option in currentPeriodOptions"
               :key="option.value"
-              :label="option.label" 
+              :label="option.label"
               :value="option.value"
             />
           </el-select>
@@ -59,8 +59,8 @@
           <div class="chart-header">
             <div class="card-title">质控问题趋势</div>
             <div class="chart-actions">
-              <el-button 
-                v-for="period in chartPeriods" 
+              <el-button
+                v-for="period in chartPeriods"
                 :key="period.value"
                 :type="selectedChartPeriod === period.value ? 'primary' : 'default'"
                 size="small"
@@ -121,7 +121,7 @@
             <el-table-column prop="issueType" label="问题类型"  />
             <el-table-column prop="severity" label="严重程度" >
               <template #default="scope">
-                <el-tag 
+                <el-tag
                   :type="getSeverityType(scope.row.severity)"
                   size="small"
                 >
@@ -132,7 +132,7 @@
             <el-table-column prop="discoveryTime" label="发现时间"  />
             <el-table-column prop="status" label="状态" >
               <template #default="scope">
-                <el-tag 
+                <el-tag
                   :type="getStatusType(scope.row.status)"
                   size="small"
                 >
@@ -145,11 +145,11 @@
                 <el-button type="primary" size="small" link @click="handleView(scope.row)">
                   查看
                 </el-button>
-                <el-button 
+                <el-button
                   v-if="scope.row.status !== '已处理'"
-                  type="primary" 
-                  size="small" 
-                  link 
+                  type="primary"
+                  size="small"
+                  link
                   @click="handleProcess(scope.row)"
                 >
                   处理
@@ -159,7 +159,7 @@
           </el-table>
         </el-skeleton>
       </div>
-      
+
       <!-- 分页 -->
       <div class="pagination-container">
         <el-pagination
@@ -542,7 +542,7 @@ const getStatusType = (status: string) => {
 const handleView = (row: any) => {
   // console.log('查看问题:', row)
   // 跳转到问题详情页
-  router.push({ path: '/data/issues' });
+  router.push({ path: '/data' });
 }
 
 const handleProcess = (row: any) => {
@@ -565,7 +565,7 @@ onMounted(() => {
   // 初始化时间选择默认值
   selectedPeriodType.value = 'day'
   selectedPeriodValue.value = 'today'
-  
+
   // 模拟数据加载
   setTimeout(() => {
     loading.value = false
@@ -592,13 +592,13 @@ watch(selectedPeriodValue, () => {
   .dashboard-cards {
     grid-template-columns: 1fr;
   }
-  
+
   .page-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
   }
-  
+
   .page-actions {
     width: 100%;
     justify-content: flex-end;

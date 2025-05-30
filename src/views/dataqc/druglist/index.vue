@@ -1,6 +1,4 @@
 <template>
-  <doc-alert title="药品目录管理" url="https://doc.iocoder.cn/drug-management/" />
-
   <ContentWrap>
     <!-- 搜索区域 -->
     <el-form
