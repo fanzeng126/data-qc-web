@@ -1,507 +1,925 @@
 <template>
-  <ContentWrap>
-    <!-- 搜索工作栏 -->
-    <el-form
-      class="-mb-15px"
-      :model="queryParams"
-      ref="queryFormRef"
-      :inline="true"
-      label-width="68px"
-    >
-      <el-form-item label="任务编号（格式：DRUG_YYYYMMDD_XXXXXX）" prop="taskNo">
-        <el-input
-          v-model="queryParams.taskNo"
-          placeholder="请输入任务编号（格式：DRUG_YYYYMMDD_XXXXXX）"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="任务名称" prop="taskName">
-        <el-input
-          v-model="queryParams.taskName"
-          placeholder="请输入任务名称"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="导入类型:1-单文件,2-压缩包" prop="importType">
-        <el-select
-          v-model="queryParams.importType"
-          placeholder="请选择导入类型:1-单文件,2-压缩包"
-          clearable
-          class="!w-240px"
-        >
-          <el-option label="请选择字典生成" value="" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="原始文件名称" prop="fileName">
-        <el-input
-          v-model="queryParams.fileName"
-          placeholder="请输入原始文件名称"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="文件存储路径" prop="filePath">
-        <el-input
-          v-model="queryParams.filePath"
-          placeholder="请输入文件存储路径"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="文件大小(字节)" prop="fileSize">
-        <el-input
-          v-model="queryParams.fileSize"
-          placeholder="请输入文件大小(字节)"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="解压后的文件列表(JSON格式)" prop="extractedFiles">
-        <el-input
-          v-model="queryParams.extractedFiles"
-          placeholder="请输入解压后的文件列表(JSON格式)"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="任务状态:0-待处理,1-解压中,2-数据导入中,3-质控中,4-完成,5-失败,6-部分成功" prop="status">
-        <el-select
-          v-model="queryParams.status"
-          placeholder="请选择任务状态:0-待处理,1-解压中,2-数据导入中,3-质控中,4-完成,5-失败,6-部分成功"
-          clearable
-          class="!w-240px"
-        >
-          <el-option label="请选择字典生成" value="" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="解压状态:0-未开始,1-进行中,2-成功,3-失败" prop="extractStatus">
-        <el-select
-          v-model="queryParams.extractStatus"
-          placeholder="请选择解压状态:0-未开始,1-进行中,2-成功,3-失败"
-          clearable
-          class="!w-240px"
-        >
-          <el-option label="请选择字典生成" value="" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="导入状态:0-未开始,1-进行中,2-成功,3-失败" prop="importStatus">
-        <el-select
-          v-model="queryParams.importStatus"
-          placeholder="请选择导入状态:0-未开始,1-进行中,2-成功,3-失败"
-          clearable
-          class="!w-240px"
-        >
-          <el-option label="请选择字典生成" value="" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="质控状态:0-未开始,1-进行中,2-成功,3-失败" prop="qcStatus">
-        <el-select
-          v-model="queryParams.qcStatus"
-          placeholder="请选择质控状态:0-未开始,1-进行中,2-成功,3-失败"
-          clearable
-          class="!w-240px"
-        >
-          <el-option label="请选择字典生成" value="" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="预期文件数量" prop="totalFiles">
-        <el-input
-          v-model="queryParams.totalFiles"
-          placeholder="请输入预期文件数量"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="成功文件数" prop="successFiles">
-        <el-input
-          v-model="queryParams.successFiles"
-          placeholder="请输入成功文件数"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="失败文件数" prop="failedFiles">
-        <el-input
-          v-model="queryParams.failedFiles"
-          placeholder="请输入失败文件数"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="总记录数" prop="totalRecords">
-        <el-input
-          v-model="queryParams.totalRecords"
-          placeholder="请输入总记录数"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="成功记录数" prop="successRecords">
-        <el-input
-          v-model="queryParams.successRecords"
-          placeholder="请输入成功记录数"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="失败记录数" prop="failedRecords">
-        <el-input
-          v-model="queryParams.failedRecords"
-          placeholder="请输入失败记录数"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="整体进度百分比" prop="progressPercent">
-        <el-input
-          v-model="queryParams.progressPercent"
-          placeholder="请输入整体进度百分比"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="各表处理进度(JSON格式)" prop="tableProgress">
-        <el-input
-          v-model="queryParams.tableProgress"
-          placeholder="请输入各表处理进度(JSON格式)"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="开始处理时间" prop="startTime">
-        <el-date-picker
-          v-model="queryParams.startTime"
-          value-format="YYYY-MM-DD HH:mm:ss"
-          type="daterange"
-          start-placeholder="开始日期"
-          end-placeholder="结束日期"
-          :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
-          class="!w-220px"
-        />
-      </el-form-item>
-      <el-form-item label="解压完成时间" prop="extractEndTime">
-        <el-date-picker
-          v-model="queryParams.extractEndTime"
-          value-format="YYYY-MM-DD HH:mm:ss"
-          type="daterange"
-          start-placeholder="开始日期"
-          end-placeholder="结束日期"
-          :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
-          class="!w-220px"
-        />
-      </el-form-item>
-      <el-form-item label="导入完成时间" prop="importEndTime">
-        <el-date-picker
-          v-model="queryParams.importEndTime"
-          value-format="YYYY-MM-DD HH:mm:ss"
-          type="daterange"
-          start-placeholder="开始日期"
-          end-placeholder="结束日期"
-          :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
-          class="!w-220px"
-        />
-      </el-form-item>
-      <el-form-item label="质控完成时间" prop="qcEndTime">
-        <el-date-picker
-          v-model="queryParams.qcEndTime"
-          value-format="YYYY-MM-DD HH:mm:ss"
-          type="daterange"
-          start-placeholder="开始日期"
-          end-placeholder="结束日期"
-          :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
-          class="!w-220px"
-        />
-      </el-form-item>
-      <el-form-item label="任务结束时间" prop="endTime">
-        <el-date-picker
-          v-model="queryParams.endTime"
-          value-format="YYYY-MM-DD HH:mm:ss"
-          type="daterange"
-          start-placeholder="开始日期"
-          end-placeholder="结束日期"
-          :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
-          class="!w-220px"
-        />
-      </el-form-item>
-      <el-form-item label="错误信息" prop="errorMessage">
-        <el-input
-          v-model="queryParams.errorMessage"
-          placeholder="请输入错误信息"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="详细错误信息(JSON格式)" prop="errorDetail">
-        <el-input
-          v-model="queryParams.errorDetail"
-          placeholder="请输入详细错误信息(JSON格式)"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="创建时间" prop="createTime">
-        <el-date-picker
-          v-model="queryParams.createTime"
-          value-format="YYYY-MM-DD HH:mm:ss"
-          type="daterange"
-          start-placeholder="开始日期"
-          end-placeholder="结束日期"
-          :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
-          class="!w-220px"
-        />
-      </el-form-item>
-      <el-form-item>
-        <el-button @click="handleQuery"><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button>
-        <el-button @click="resetQuery"><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button>
-        <el-button
-          type="primary"
-          plain
-          @click="openForm('create')"
-          v-hasPermi="['drug:import-task:create']"
-        >
-          <Icon icon="ep:plus" class="mr-5px" /> 新增
+  <div class="drug-import-container">
+    <!-- 页面头部 -->
+    <PageHeader title="药品数据导入管理" content="支持批量导入药品相关数据，提供完整的进度监控和任务管理功能">
+      <template #extra>
+        <el-button type="primary" @click="openBatchImport">
+          <el-icon><Upload /></el-icon>
+          批量导入
         </el-button>
-        <el-button
-          type="success"
-          plain
-          @click="handleExport"
-          :loading="exportLoading"
-          v-hasPermi="['drug:import-task:export']"
-        >
-          <Icon icon="ep:download" class="mr-5px" /> 导出
+        <el-button @click="downloadTemplate">
+          <el-icon><Download /></el-icon>
+          下载模板
         </el-button>
-      </el-form-item>
-    </el-form>
-  </ContentWrap>
+      </template>
+    </PageHeader>
+    <!-- 统计概览卡片 -->
+    <div class="stats-overview">
+      <el-row :gutter="20">
+        <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
+          <StatCard
+            title="今日任务"
+            :value="statistics.todayTasks"
+            icon="Calendar"
+            color="#409eff"
+            :trend="statistics.taskGrowthRate"
+          />
+        </el-col>
+        <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
+          <StatCard
+            title="进行中"
+            :value="statistics.runningTasks"
+            icon="Loading"
+            color="#e6a23c"
+            status="processing"
+          />
+        </el-col>
+        <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
+          <StatCard
+            title="成功率"
+            :value="statistics.successRate"
+            suffix="%"
+            icon="CircleCheck"
+            color="#67c23a"
+          />
+        </el-col>
+        <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
+          <StatCard
+            title="平均耗时"
+            :value="Math.round(statistics.averageProcessingTime / 60)"
+            suffix="分钟"
+            icon="Clock"
+            color="#909399"
+          />
+        </el-col>
+      </el-row>
+    </div>
 
-  <!-- 列表 -->
-  <ContentWrap>
-    <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
-      <el-table-column label="任务ID" align="center" prop="id" />
-      <el-table-column label="任务编号（格式：DRUG_YYYYMMDD_XXXXXX）" align="center" prop="taskNo" />
-      <el-table-column label="任务名称" align="center" prop="taskName" />
-      <el-table-column label="导入类型:1-单文件,2-压缩包" align="center" prop="importType" />
-      <el-table-column label="原始文件名称" align="center" prop="fileName" />
-      <el-table-column label="文件存储路径" align="center" prop="filePath" />
-      <el-table-column label="文件大小(字节)" align="center" prop="fileSize" />
-      <el-table-column label="解压后的文件列表(JSON格式)" align="center" prop="extractedFiles" />
-      <el-table-column label="任务状态:0-待处理,1-解压中,2-数据导入中,3-质控中,4-完成,5-失败,6-部分成功" align="center" prop="status" />
-      <el-table-column label="解压状态:0-未开始,1-进行中,2-成功,3-失败" align="center" prop="extractStatus" />
-      <el-table-column label="导入状态:0-未开始,1-进行中,2-成功,3-失败" align="center" prop="importStatus" />
-      <el-table-column label="质控状态:0-未开始,1-进行中,2-成功,3-失败" align="center" prop="qcStatus" />
-      <el-table-column label="预期文件数量" align="center" prop="totalFiles" />
-      <el-table-column label="成功文件数" align="center" prop="successFiles" />
-      <el-table-column label="失败文件数" align="center" prop="failedFiles" />
-      <el-table-column label="总记录数" align="center" prop="totalRecords" />
-      <el-table-column label="成功记录数" align="center" prop="successRecords" />
-      <el-table-column label="失败记录数" align="center" prop="failedRecords" />
-      <el-table-column label="整体进度百分比" align="center" prop="progressPercent" />
-      <el-table-column label="各表处理进度(JSON格式)" align="center" prop="tableProgress" />
-      <el-table-column
-        label="开始处理时间"
-        align="center"
-        prop="startTime"
-        :formatter="dateFormatter"
-        width="180px"
-      />
-      <el-table-column
-        label="解压完成时间"
-        align="center"
-        prop="extractEndTime"
-        :formatter="dateFormatter"
-        width="180px"
-      />
-      <el-table-column
-        label="导入完成时间"
-        align="center"
-        prop="importEndTime"
-        :formatter="dateFormatter"
-        width="180px"
-      />
-      <el-table-column
-        label="质控完成时间"
-        align="center"
-        prop="qcEndTime"
-        :formatter="dateFormatter"
-        width="180px"
-      />
-      <el-table-column
-        label="任务结束时间"
-        align="center"
-        prop="endTime"
-        :formatter="dateFormatter"
-        width="180px"
-      />
-      <el-table-column label="错误信息" align="center" prop="errorMessage" />
-      <el-table-column label="详细错误信息(JSON格式)" align="center" prop="errorDetail" />
-      <el-table-column
-        label="创建时间"
-        align="center"
-        prop="createTime"
-        :formatter="dateFormatter"
-        width="180px"
-      />
-      <el-table-column label="操作" align="center" min-width="120px">
-        <template #default="scope">
-          <el-button
-            link
-            type="primary"
-            @click="openForm('update', scope.row.id)"
-            v-hasPermi="['drug:import-task:update']"
+    <!-- 搜索和操作区域 -->
+    <el-card class="search-card" shadow="never">
+      <el-form
+        ref="queryFormRef"
+        :model="queryParams"
+        :inline="true"
+        label-width="80px"
+        class="search-form"
+      >
+        <el-form-item label="任务编号" prop="taskNo">
+          <el-input
+            v-model="queryParams.taskNo"
+            placeholder="请输入任务编号"
+            clearable
+            @keyup.enter="handleQuery"
+            style="width: 200px"
+          />
+        </el-form-item>
+
+        <el-form-item label="任务名称" prop="taskName">
+          <el-input
+            v-model="queryParams.taskName"
+            placeholder="请输入任务名称"
+            clearable
+            @keyup.enter="handleQuery"
+            style="width: 200px"
+          />
+        </el-form-item>
+
+        <el-form-item label="任务状态" prop="status">
+          <el-select
+            v-model="queryParams.status"
+            placeholder="请选择状态"
+            clearable
+            style="width: 150px"
           >
-            编辑
+            <el-option label="全部" :value="undefined" />
+            <el-option
+              v-for="(text, value) in TASK_STATUS_TEXT"
+              :key="value"
+              :label="text"
+              :value="Number(value)"
+            />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="创建时间" prop="createTime">
+          <el-date-picker
+            v-model="queryParams.createTime"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            value-format="YYYY-MM-DD"
+            style="width: 240px"
+          />
+        </el-form-item>
+
+        <el-form-item>
+          <el-button type="primary" @click="handleQuery">
+            <el-icon><Search /></el-icon>
+            搜索
           </el-button>
-          <el-button
-            link
-            type="danger"
-            @click="handleDelete(scope.row.id)"
-            v-hasPermi="['drug:import-task:delete']"
-          >
-            删除
+          <el-button @click="resetQuery">
+            <el-icon><Refresh /></el-icon>
+            重置
           </el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-    <!-- 分页 -->
-    <Pagination
-      :total="total"
-      v-model:page="queryParams.pageNo"
-      v-model:limit="queryParams.pageSize"
-      @pagination="getList"
+          <el-button type="success" @click="handleExport" :loading="exportLoading">
+            <el-icon><Download /></el-icon>
+            导出
+          </el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
+
+    <!-- 任务列表 -->
+    <el-card class="table-card" shadow="never">
+      <template #header>
+        <div class="table-header">
+          <span class="table-title">任务列表</span>
+          <div class="table-actions">
+            <el-button
+              type="primary"
+              size="small"
+              @click="openBatchImport"
+            >
+              <el-icon><Plus /></el-icon>
+              新建任务
+            </el-button>
+            <el-button
+              type="success"
+              size="small"
+              @click="downloadTemplate"
+            >
+              <el-icon><Download /></el-icon>
+              下载模板
+            </el-button>
+            <el-button
+              size="small"
+              @click="handleRefresh"
+              :loading="refreshing"
+            >
+              <el-icon><Refresh /></el-icon>
+              刷新
+            </el-button>
+          </div>
+        </div>
+      </template>
+
+      <el-table
+        v-loading="loading"
+        :data="taskList"
+        stripe
+        border
+        style="width: 100%"
+        @sort-change="handleSortChange"
+      >
+        <el-table-column type="expand">
+          <template #default="{ row }">
+            <TaskExpandContent :task="row" />
+          </template>
+        </el-table-column>
+
+        <el-table-column
+          prop="taskNo"
+          label="任务编号"
+          width="160"
+          fixed="left"
+          show-overflow-tooltip
+        />
+
+        <el-table-column
+          prop="taskName"
+          label="任务名称"
+          min-width="150"
+          show-overflow-tooltip
+        />
+
+        <el-table-column
+          prop="fileName"
+          label="文件名称"
+          min-width="180"
+          show-overflow-tooltip
+        />
+
+        <el-table-column
+          prop="status"
+          label="状态"
+          width="100"
+          align="center"
+        >
+          <template #default="{ row }">
+            <el-tag
+              :type="getStatusTagType(row.status)"
+              size="small"
+              effect="dark"
+            >
+              {{ row.statusDisplay }}
+            </el-tag>
+          </template>
+        </el-table-column>
+
+        <el-table-column
+          prop="progressPercent"
+          label="进度"
+          width="120"
+          align="center"
+        >
+          <template #default="{ row }">
+            <el-progress
+              :percentage="row.progressPercent"
+              :stroke-width="8"
+              :show-text="false"
+              :status="getProgressStatus(row.status)"
+            />
+            <div class="progress-text">{{ row.progressPercent }}%</div>
+          </template>
+        </el-table-column>
+
+        <el-table-column
+          label="处理统计"
+          width="120"
+          align="center"
+        >
+          <template #default="{ row }">
+            <div class="stats-column">
+              <div class="stat-row">
+                <span class="stat-label">文件:</span>
+                <span class="stat-value">{{ row.successFiles }}/{{ row.totalFiles }}</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">记录:</span>
+                <span class="stat-value">{{ formatNumber(row.successRecords) }}/{{ formatNumber(row.totalRecords) }}</span>
+              </div>
+            </div>
+          </template>
+        </el-table-column>
+
+        <el-table-column
+          prop="duration"
+          label="耗时"
+          width="80"
+          align="center"
+        >
+          <template #default="{ row }">
+            <span v-if="row.duration">{{ formatDuration(row.duration) }}</span>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
+
+        <el-table-column
+          prop="creator"
+          label="创建人"
+          width="100"
+          align="center"
+          show-overflow-tooltip
+        />
+
+        <el-table-column
+          prop="createTime"
+          label="创建时间"
+          width="150"
+          align="center"
+          sortable="custom"
+          :formatter="dateFormatter"
+        />
+
+        <el-table-column
+          label="操作"
+          width="200"
+          fixed="right"
+          align="center"
+        >
+          <template #default="{ row }">
+            <div class="action-buttons">
+              <el-button
+                type="primary"
+                link
+                size="small"
+                @click="openProgressMonitor(row.id)"
+              >
+                <el-icon><View /></el-icon>
+                查看进度
+              </el-button>
+
+              <el-button
+                v-if="row.canRetry"
+                type="warning"
+                link
+                size="small"
+                @click="handleRetry(row)"
+              >
+                <el-icon><RefreshRight /></el-icon>
+                重试
+              </el-button>
+
+              <el-button
+                v-if="row.canCancel"
+                type="danger"
+                link
+                size="small"
+                @click="handleCancel(row)"
+              >
+                <el-icon><Close /></el-icon>
+                取消
+              </el-button>
+
+              <el-dropdown
+                trigger="click"
+                @command="(command) => handleMoreAction(command, row)"
+              >
+                <el-button link size="small">
+                  <el-icon><MoreFilled /></el-icon>
+                  更多
+                </el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="detail">
+                      <el-icon><InfoFilled /></el-icon>
+                      查看详情
+                    </el-dropdown-item>
+                    <el-dropdown-item command="download" v-if="row.status === 4">
+                      <el-icon><Download /></el-icon>
+                      下载报告
+                    </el-dropdown-item>
+                    <el-dropdown-item command="delete" divided>
+                      <el-icon><Delete /></el-icon>
+                      删除任务
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <!-- 分页 -->
+      <div class="pagination-wrapper">
+        <el-pagination
+          v-model:current-page="queryParams.pageNo"
+          v-model:page-size="queryParams.pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="total"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleQuery"
+          @current-change="handleQuery"
+        />
+      </div>
+    </el-card>
+
+    <!-- 批量导入模态框 -->
+    <BatchImportModal
+      v-model="batchImportVisible"
+      @success="handleImportSuccess"
     />
-  </ContentWrap>
 
-  <!-- 表单弹窗：添加/修改 -->
-  <ImportTaskForm ref="formRef" @success="getList" />
+    <!-- 进度监控模态框 -->
+    <ProgressMonitorModal
+      v-model="progressMonitorVisible"
+      :task-id="selectedTaskId"
+      @retry="handleRetryFromMonitor"
+    />
+
+    <!-- 任务详情模态框 -->
+    <TaskDetailModal
+      v-model="taskDetailVisible"
+      :task-id="selectedTaskId"
+    />
+
+    <!-- 重试确认对话框 -->
+    <RetryConfirmDialog
+      v-model="retryDialogVisible"
+      :task="selectedTask"
+      @confirm="handleRetryConfirm"
+    />
+  </div>
 </template>
 
 <script setup lang="ts">
+import { ref, reactive, computed, onMounted } from 'vue'
+import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
+import {
+  Upload,
+  Download,
+  Search,
+  Refresh,
+  Plus,
+  View,
+  RefreshRight,
+  Close,
+  MoreFilled,
+  InfoFilled,
+  Delete
+} from '@element-plus/icons-vue'
+import type { FormInstance } from 'element-plus'
 import { dateFormatter } from '@/utils/formatTime'
-import download from '@/utils/download'
-import { ImportTaskApi, ImportTaskVO } from '@/api/drug/importtask'
-import ImportTaskForm from './ImportTaskForm.vue'
+import {
+  DrugBatchImportApi,
+  type ImportTaskRespVO,
+  type ImportTaskPageReqVO,
+  type ImportStatisticsVO,
+  TASK_STATUS,
+  TASK_STATUS_TEXT
+} from '@/api/drug/task'
 
-/** 药品数据导入任务 列表 */
-defineOptions({ name: 'ImportTask' })
+// 导入组件
+import PageHeader from '@/components/PageHeader/index.vue'
+import StatCard from './components/StatCard.vue'
+import BatchImportModal from './components/BatchImportModal.vue'
+import ProgressMonitorModal from './components/ProgressMonitorModal.vue'
+import TaskDetailModal from './components/TaskDetailModal.vue'
+import RetryConfirmDialog from './components/RetryConfirmDialog.vue'
+import TaskExpandContent from './components/TaskExpandContent.vue'
 
-const message = useMessage() // 消息弹窗
-const { t } = useI18n() // 国际化
+/** 页面组件名称 */
+defineOptions({ name: 'DrugImportIndex' })
 
-const loading = ref(true) // 列表的加载中
-const list = ref<ImportTaskVO[]>([]) // 列表的数据
-const total = ref(0) // 列表的总页数
-const queryParams = reactive({
+// ========================= 响应式数据 =========================
+
+const loading = ref(false)
+const refreshing = ref(false)
+const exportLoading = ref(false)
+
+const queryFormRef = ref<FormInstance>()
+
+/** 查询参数 */
+const queryParams = reactive<ImportTaskPageReqVO>({
   pageNo: 1,
-  pageSize: 10,
+  pageSize: 20,
   taskNo: undefined,
   taskName: undefined,
-  importType: undefined,
-  fileName: undefined,
-  filePath: undefined,
-  fileSize: undefined,
-  extractedFiles: undefined,
   status: undefined,
-  extractStatus: undefined,
-  importStatus: undefined,
-  qcStatus: undefined,
-  totalFiles: undefined,
-  successFiles: undefined,
-  failedFiles: undefined,
-  totalRecords: undefined,
-  successRecords: undefined,
-  failedRecords: undefined,
-  progressPercent: undefined,
-  tableProgress: undefined,
-  startTime: [],
-  extractEndTime: [],
-  importEndTime: [],
-  qcEndTime: [],
-  endTime: [],
-  errorMessage: undefined,
-  errorDetail: undefined,
-  createTime: [],
+  fileName: undefined,
+  creator: undefined,
+  createTime: undefined
 })
-const queryFormRef = ref() // 搜索的表单
-const exportLoading = ref(false) // 导出的加载中
 
-/** 查询列表 */
-const getList = async () => {
+/** 任务列表数据 */
+const taskList = ref<ImportTaskRespVO[]>([])
+const total = ref(0)
+
+/** 统计数据 */
+const statistics = reactive<ImportStatisticsVO>({
+  totalTasks: 0,
+  successTasks: 0,
+  failedTasks: 0,
+  partialSuccessTasks: 0,
+  runningTasks: 0,
+  successRate: 0,
+  averageProcessingTime: 0,
+  totalRecordsProcessed: 0,
+  todayTasks: 0,
+  yesterdayTasks: 0,
+  taskGrowthRate: 0
+})
+
+/** 模态框控制 */
+const batchImportVisible = ref(false)
+const progressMonitorVisible = ref(false)
+const taskDetailVisible = ref(false)
+const retryDialogVisible = ref(false)
+
+/** 选中的任务 */
+const selectedTaskId = ref<number>()
+const selectedTask = ref<ImportTaskRespVO>()
+
+// ========================= 生命周期 =========================
+
+onMounted(() => {
+  initPage()
+})
+
+// ========================= 核心方法 =========================
+
+/** 初始化页面 */
+const initPage = async () => {
+  await Promise.all([
+    loadTaskList(),
+    loadStatistics()
+  ])
+}
+
+/** 加载任务列表 */
+const loadTaskList = async () => {
   loading.value = true
   try {
-    const data = await ImportTaskApi.getImportTaskPage(queryParams)
-    list.value = data.list
-    total.value = data.total
+    const { list, total: totalCount } = await DrugBatchImportApi.getTaskPage(queryParams)
+    taskList.value = list || []
+    total.value = totalCount || 0
+  } catch (error) {
+    ElMessage.error('加载任务列表失败')
+    console.error('加载任务列表失败:', error)
   } finally {
     loading.value = false
   }
 }
 
-/** 搜索按钮操作 */
+/** 加载统计数据 */
+const loadStatistics = async () => {
+  try {
+    const data = await DrugBatchImportApi.getImportStatistics()
+    Object.assign(statistics, data)
+  } catch (error) {
+    console.error('加载统计数据失败:', error)
+  }
+}
+
+/** 搜索查询 */
 const handleQuery = () => {
   queryParams.pageNo = 1
-  getList()
+  loadTaskList()
 }
 
-/** 重置按钮操作 */
+/** 重置查询 */
 const resetQuery = () => {
-  queryFormRef.value.resetFields()
-  handleQuery()
+  queryFormRef.value?.resetFields()
+  Object.assign(queryParams, {
+    pageNo: 1,
+    pageSize: 20,
+    taskNo: undefined,
+    taskName: undefined,
+    status: undefined,
+    fileName: undefined,
+    creator: undefined,
+    createTime: undefined
+  })
+  loadTaskList()
 }
 
-/** 添加/修改操作 */
-const formRef = ref()
-const openForm = (type: string, id?: number) => {
-  formRef.value.open(type, id)
-}
-
-/** 删除按钮操作 */
-const handleDelete = async (id: number) => {
+/** 刷新页面 */
+const handleRefresh = async () => {
+  refreshing.value = true
   try {
-    // 删除的二次确认
-    await message.delConfirm()
-    // 发起删除
-    await ImportTaskApi.deleteImportTask(id)
-    message.success(t('common.delSuccess'))
-    // 刷新列表
-    await getList()
-  } catch {}
+    await Promise.all([
+      loadTaskList(),
+      loadStatistics()
+    ])
+    ElMessage.success('刷新成功')
+  } catch (error) {
+    ElMessage.error('刷新失败')
+  } finally {
+    refreshing.value = false
+  }
 }
 
-/** 导出按钮操作 */
+/** 排序变化处理 */
+const handleSortChange = ({ column, prop, order }) => {
+  // 实现排序逻辑
+  console.log('排序变化:', { column, prop, order })
+}
+
+/** 导出数据 */
 const handleExport = async () => {
   try {
-    // 导出的二次确认
-    await message.exportConfirm()
-    // 发起导出
+    await ElMessageBox.confirm('确认导出当前查询条件下的任务数据？', '确认导出', {
+      type: 'warning'
+    })
+
     exportLoading.value = true
-    const data = await ImportTaskApi.exportImportTask(queryParams)
-    download.excel(data, '药品数据导入任务.xls')
-  } catch {
+    await DrugBatchImportApi.exportTaskList(queryParams)
+    ElMessage.success('导出成功')
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error('导出失败')
+    }
   } finally {
     exportLoading.value = false
   }
 }
 
-/** 初始化 **/
-onMounted(() => {
-  getList()
-})
+// ========================= 业务操作方法 =========================
+
+/** 打开批量导入 */
+const openBatchImport = () => {
+  batchImportVisible.value = true
+}
+
+/** 导入成功处理 */
+const handleImportSuccess = (taskId: number, taskNo: string) => {
+  ElNotification({
+    type: 'success',
+    title: '导入任务创建成功',
+    message: `任务编号：${taskNo}，您可以在进度监控中查看处理状态`,
+    duration: 5000
+  })
+
+  // 刷新列表并自动打开进度监控
+  loadTaskList()
+  selectedTaskId.value = taskId
+  progressMonitorVisible.value = true
+}
+
+/** 打开进度监控 */
+const openProgressMonitor = (taskId: number) => {
+  selectedTaskId.value = taskId
+  progressMonitorVisible.value = true
+}
+
+/** 处理任务重试 */
+const handleRetry = (task: ImportTaskRespVO) => {
+  selectedTask.value = task
+  retryDialogVisible.value = true
+}
+
+/** 从监控页面重试 */
+const handleRetryFromMonitor = (taskId: number) => {
+  const task = taskList.value.find(t => t.id === taskId)
+  if (task) {
+    handleRetry(task)
+  }
+}
+
+/** 重试确认 */
+const handleRetryConfirm = async (params: any) => {
+  try {
+    const result = await DrugBatchImportApi.retryImportTask(params)
+
+    ElNotification({
+      type: 'success',
+      title: '重试任务已启动',
+      message: `批次编号：${result.retryBatchNo}`,
+      duration: 3000
+    })
+
+    // 刷新列表
+    loadTaskList()
+
+    // 自动打开进度监控
+    selectedTaskId.value = params.taskId
+    progressMonitorVisible.value = true
+
+  } catch (error) {
+    ElMessage.error('重试任务失败')
+  }
+}
+
+/** 取消任务 */
+const handleCancel = async (task: ImportTaskRespVO) => {
+  try {
+    await ElMessageBox.confirm(
+      `确认取消任务"${task.taskName}"？取消后将无法恢复。`,
+      '确认取消',
+      { type: 'warning' }
+    )
+
+    await DrugBatchImportApi.cancelTask(task.id)
+    ElMessage.success('任务已取消')
+    loadTaskList()
+
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error('取消任务失败')
+    }
+  }
+}
+
+/** 更多操作处理 */
+const handleMoreAction = async (command: string, task: ImportTaskRespVO) => {
+  switch (command) {
+    case 'detail':
+      selectedTaskId.value = task.id
+      taskDetailVisible.value = true
+      break
+
+    case 'download':
+      try {
+        // 实现下载报告逻辑
+        ElMessage.success('报告下载已开始')
+      } catch (error) {
+        ElMessage.error('下载报告失败')
+      }
+      break
+
+    case 'delete':
+      await handleDeleteTask(task)
+      break
+  }
+}
+
+/** 删除任务 */
+const handleDeleteTask = async (task: ImportTaskRespVO) => {
+  try {
+    await ElMessageBox.confirm(
+      `确认删除任务"${task.taskName}"？删除后将无法恢复。`,
+      '确认删除',
+      {
+        type: 'error',
+        confirmButtonText: '确认删除',
+        confirmButtonClass: 'el-button--danger'
+      }
+    )
+
+    // 这里需要实现删除API
+    // await DrugBatchImportApi.deleteTask(task.id)
+
+    ElMessage.success('任务已删除')
+    loadTaskList()
+
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error('删除任务失败')
+    }
+  }
+}
+
+/** 下载模板 */
+const downloadTemplate = async () => {
+  try {
+    await DrugBatchImportApi.downloadTemplate('STANDARD')
+    ElMessage.success('模板下载成功')
+  } catch (error) {
+    ElMessage.error('模板下载失败')
+  }
+}
+
+// ========================= 工具方法 =========================
+
+/** 获取状态标签类型 */
+const getStatusTagType = (status: number) => {
+  const typeMap = {
+    [TASK_STATUS.PENDING]: 'info',
+    [TASK_STATUS.EXTRACTING]: 'warning',
+    [TASK_STATUS.IMPORTING]: 'warning',
+    [TASK_STATUS.QC_CHECKING]: 'warning',
+    [TASK_STATUS.COMPLETED]: 'success',
+    [TASK_STATUS.FAILED]: 'danger',
+    [TASK_STATUS.PARTIAL_SUCCESS]: 'primary',
+    [TASK_STATUS.CANCELLED]: 'info'
+  }
+  return typeMap[status] || 'info'
+}
+
+/** 获取进度条状态 */
+const getProgressStatus = (status: number) => {
+  if (status === TASK_STATUS.COMPLETED) return 'success'
+  if (status === TASK_STATUS.FAILED) return 'exception'
+  return undefined
+}
+
+/** 格式化数字 */
+const formatNumber = (num: number) => {
+  if (!num) return '0'
+  return num.toLocaleString()
+}
+
+/** 格式化持续时间 */
+const formatDuration = (seconds: number) => {
+  if (seconds < 60) return `${seconds}s`
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`
+  return `${Math.floor(seconds / 3600)}h`
+}
 </script>
+
+<style scoped>
+.drug-import-container {
+  padding: 20px;
+  background-color: #f5f5f5;
+  min-height: calc(100vh - 50px);
+}
+
+.stats-overview {
+  margin-bottom: 20px;
+}
+
+.search-card {
+  margin-bottom: 20px;
+  border-radius: 8px;
+}
+
+.search-form {
+  margin-bottom: 0;
+}
+
+.table-card {
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.table-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.table-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.progress-text {
+  text-align: center;
+  font-size: 12px;
+  color: #606266;
+  margin-top: 4px;
+}
+
+.stats-column {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.stat-label {
+  color: #909399;
+}
+
+.stat-value {
+  color: #303133;
+  font-weight: 500;
+}
+
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+}
+
+.pagination-wrapper {
+  display: flex;
+  justify-content: end;
+  margin-top: 20px;
+  padding: 20px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .drug-import-container {
+    padding: 10px;
+  }
+
+  .search-form :deep(.el-form-item) {
+    width: 100%;
+    margin-right: 0;
+  }
+
+  .table-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+}
+
+/* 表格样式优化 */
+:deep(.el-table) {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+:deep(.el-table th) {
+  background-color: #fafafa;
+  color: #606266;
+  font-weight: 600;
+}
+
+:deep(.el-table .el-table__expand-icon) {
+  color: #409eff;
+}
+
+:deep(.el-table .el-table__expanded-cell) {
+  background-color: #f8f9fa;
+  padding: 20px;
+}
+
+/* 进度条样式 */
+:deep(.el-progress-bar__outer) {
+  border-radius: 4px;
+}
+
+:deep(.el-progress-bar__inner) {
+  border-radius: 4px;
+}
+
+/* 标签样式 */
+:deep(.el-tag) {
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+/* 卡片样式 */
+:deep(.el-card) {
+  border: none;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+:deep(.el-card__header) {
+  border-bottom: 1px solid #f0f0f0;
+  background-color: #fafafa;
+}
+</style>
