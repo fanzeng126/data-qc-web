@@ -62,13 +62,7 @@
                   <div class="file-name">{{ uploadForm.file.name }}</div>
                   <div class="file-size">{{ formatFileSize(uploadForm.file.size) }}</div>
                 </div>
-                <el-button
-                  type="danger"
-                  size="small"
-                  circle
-                  @click="removeFile"
-                  class="remove-btn"
-                >
+                <el-button type="danger" size="small" circle @click="removeFile" class="remove-btn">
                   <el-icon><Close /></el-icon>
                 </el-button>
               </div>
@@ -78,12 +72,7 @@
       </el-form>
 
       <!-- 导入说明 -->
-      <el-alert
-        title="导入文件要求"
-        type="info"
-        :closable="false"
-        class="mt-4"
-      >
+      <el-alert title="导入文件要求" type="info" :closable="false" class="mt-4">
         <template #default>
           <div class="import-requirements">
             <p><strong>压缩包应包含以下5个Excel文件：</strong></p>
@@ -117,28 +106,51 @@
             <template #extra>
               <div v-if="validationResult.valid" class="validation-success">
                 <el-descriptions :column="2" border>
-                  <el-descriptions-item label="文件名称">{{ validationResult.fileName }}</el-descriptions-item>
-                  <el-descriptions-item label="文件大小">{{ formatFileSize(validationResult.fileSize) }}</el-descriptions-item>
-                  <el-descriptions-item label="预期文件数">{{ validationResult.expectedFileCount }}</el-descriptions-item>
-                  <el-descriptions-item label="实际文件数">{{ validationResult.actualFileCount }}</el-descriptions-item>
+                  <el-descriptions-item label="文件名称">{{
+                    validationResult.fileName
+                  }}</el-descriptions-item>
+                  <el-descriptions-item label="文件大小">{{
+                    formatFileSize(validationResult.fileSize)
+                  }}</el-descriptions-item>
+                  <el-descriptions-item label="预期文件数">{{
+                    validationResult.expectedFileCount
+                  }}</el-descriptions-item>
+                  <el-descriptions-item label="实际文件数">{{
+                    validationResult.actualFileCount
+                  }}</el-descriptions-item>
                 </el-descriptions>
               </div>
               <div v-else class="validation-error">
                 <div v-if="validationResult.missingFiles?.length" class="error-section">
                   <h4>缺失文件：</h4>
-                  <el-tag v-for="file in validationResult.missingFiles" :key="file" type="danger" class="mr-2">
+                  <el-tag
+                    v-for="file in validationResult.missingFiles"
+                    :key="file"
+                    type="danger"
+                    class="mr-2"
+                  >
                     {{ file }}
                   </el-tag>
                 </div>
                 <div v-if="validationResult.extraFiles?.length" class="error-section">
                   <h4>多余文件：</h4>
-                  <el-tag v-for="file in validationResult.extraFiles" :key="file" type="warning" class="mr-2">
+                  <el-tag
+                    v-for="file in validationResult.extraFiles"
+                    :key="file"
+                    type="warning"
+                    class="mr-2"
+                  >
                     {{ file }}
                   </el-tag>
                 </div>
                 <div v-if="validationResult.invalidFiles?.length" class="error-section">
                   <h4>无效文件：</h4>
-                  <el-tag v-for="file in validationResult.invalidFiles" :key="file" type="info" class="mr-2">
+                  <el-tag
+                    v-for="file in validationResult.invalidFiles"
+                    :key="file"
+                    type="info"
+                    class="mr-2"
+                  >
                     {{ file }}
                   </el-tag>
                 </div>
@@ -155,17 +167,16 @@
         <el-descriptions title="任务信息确认" :column="1" border>
           <el-descriptions-item label="任务名称">{{ uploadForm.taskName }}</el-descriptions-item>
           <el-descriptions-item label="文件名称">{{ uploadForm.file?.name }}</el-descriptions-item>
-          <el-descriptions-item label="文件大小">{{ formatFileSize(uploadForm.file?.size || 0) }}</el-descriptions-item>
+          <el-descriptions-item label="文件大小">{{
+            formatFileSize(uploadForm.file?.size || 0)
+          }}</el-descriptions-item>
           <el-descriptions-item label="预计处理时间">约 5-15 分钟</el-descriptions-item>
-          <el-descriptions-item label="创建时间">{{ new Date().toLocaleString() }}</el-descriptions-item>
+          <el-descriptions-item label="创建时间">{{
+            new Date().toLocaleString()
+          }}</el-descriptions-item>
         </el-descriptions>
 
-        <el-alert
-          title="导入说明"
-          type="warning"
-          :closable="false"
-          class="mt-4"
-        >
+        <el-alert title="导入说明" type="warning" :closable="false" class="mt-4">
           <template #default>
             <ul>
               <li>导入过程将按照：机构信息 → 药品目录 → 入库/出库/使用 的顺序进行</li>
@@ -182,11 +193,7 @@
     <template #footer>
       <div class="dialog-footer">
         <el-button @click="handleClose" :disabled="importing">取消</el-button>
-        <el-button
-          v-if="currentStep > 0"
-          @click="prevStep"
-          :disabled="importing || validating"
-        >
+        <el-button v-if="currentStep > 0" @click="prevStep" :disabled="importing || validating">
           上一步
         </el-button>
         <el-button
@@ -216,7 +223,11 @@ import { ref, reactive, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { UploadFilled, Document, Close, Download } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules, UploadInstance } from 'element-plus'
-import { DrugBatchImportApi, type ImportTaskCreateParams, type FileValidationResult } from '@/api/drug/task'
+import {
+  DrugBatchImportApi,
+  type ImportTaskCreateParams,
+  type FileValidationResult
+} from '@/api/drug/task'
 
 /** 组件名称定义 */
 defineOptions({ name: 'BatchImportModal' })
@@ -233,7 +244,7 @@ const props = withDefaults(defineProps<Props>(), {
 /** 组件事件 */
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  'success': [taskId: number, taskNo: string]
+  success: [taskId: number, taskNo: string]
 }>()
 
 // ========================= 响应式数据 =========================
@@ -284,12 +295,15 @@ const canNextStep = computed(() => {
 
 // ========================= 监听器 =========================
 
-watch(() => props.modelValue, (val) => {
-  dialogVisible.value = val
-  if (val) {
-    resetForm()
+watch(
+  () => props.modelValue,
+  (val) => {
+    dialogVisible.value = val
+    if (val) {
+      resetForm()
+    }
   }
-})
+)
 
 watch(dialogVisible, (val) => {
   emit('update:modelValue', val)
@@ -403,7 +417,6 @@ const startImport = async () => {
 
     // 关闭对话框
     handleClose()
-
   } catch (error: any) {
     if (error !== 'cancel') {
       ElMessage.error('创建导入任务失败：' + (error.message || '未知错误'))

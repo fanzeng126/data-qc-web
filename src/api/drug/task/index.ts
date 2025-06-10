@@ -82,7 +82,6 @@ export interface ImportTaskDetailVO {
   id: number
   taskNo: string
   taskName: string
-  importType: number
   fileName: string
   filePath: string
   fileSize: number
@@ -209,20 +208,44 @@ export interface ImportStatisticsVO {
   taskGrowthRate: number
 }
 
+/** 任务日志VO - 与后端保持一致 */
+export interface TaskLogVO {
+  taskId: number
+  logs: string
+  logLevel: string
+  totalLines: number
+  lastUpdateTime: number
+  logFileSize: number
+  hasMoreLogs: boolean
+}
+
+/** 日志查询参数 */
+export interface TaskLogQueryParams {
+  logLevel?: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR' | 'ALL'
+  fromLine?: number
+  maxLines?: number
+  keyword?: string
+  startTime?: string
+  endTime?: string
+}
+
 // ========================= API方法 =========================
 
 /** 药品数据批量导入API */
 export const DrugBatchImportApi = {
-
   /**
    * 创建批量导入任务
    * @param file 压缩包文件
    * @param params 任务参数
    */
-  createImportTask: async (file: File, params: ImportTaskCreateParams): Promise<ImportTaskCreateResult> => {
+  createImportTask: async (
+    file: File,
+    params: { description: string | undefined; taskName: string; dataSource: string }
+  ): Promise<ImportTaskCreateResult> => {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('taskName', params.taskName)
+    formData.append('dataSource', params.dataSource)
     if (params.description) {
       formData.append('description', params.description)
     }
@@ -310,21 +333,13 @@ export const DrugBatchImportApi = {
    * @param startDate 开始日期
    * @param endDate 结束日期
    */
-  getImportStatistics: async (startDate?: string, endDate?: string): Promise<ImportStatisticsVO> => {
+  getImportStatistics: async (
+    startDate?: string,
+    endDate?: string
+  ): Promise<ImportStatisticsVO> => {
     return await request.get({
       url: '/drug/batch-import/statistics',
       params: { startDate, endDate }
-    })
-  },
-
-  /**
-   * 下载导入模板
-   * @param templateType 模板类型
-   */
-  downloadTemplate: async (templateType: string = 'STANDARD') => {
-    return await request.download({
-      url: '/drug/batch-import/download-template',
-      params: { templateType }
     })
   },
 
@@ -337,6 +352,27 @@ export const DrugBatchImportApi = {
       url: '/drug/batch-import/export-tasks',
       params
     })
+  },
+  /**
+   * 获取任务执行日志
+   * @param taskId 任务ID
+   * @param logLevel 日志级别，默认INFO
+   * @param queryParams 可选的查询参数
+   */
+  getTaskLogs: async (
+    taskId: number,
+    logLevel: string = 'INFO',
+    queryParams?: TaskLogQueryParams
+  ): Promise<TaskLogVO> => {
+    const params = {
+      logLevel,
+      ...queryParams
+    }
+
+    return await request.get({
+      url: `/drug/batch-import/task-logs/${taskId}`,
+      params
+    })
   }
 }
 
@@ -344,14 +380,14 @@ export const DrugBatchImportApi = {
 
 /** 任务状态枚举 */
 export const TASK_STATUS = {
-  PENDING: 0,       // 待处理
-  EXTRACTING: 1,    // 解压中
-  IMPORTING: 2,     // 导入中
-  QC_CHECKING: 3,   // 质控中
-  COMPLETED: 4,     // 完成
-  FAILED: 5,        // 失败
+  PENDING: 0, // 待处理
+  EXTRACTING: 1, // 解压中
+  IMPORTING: 2, // 导入中
+  QC_CHECKING: 3, // 质控中
+  COMPLETED: 4, // 完成
+  FAILED: 5, // 失败
   PARTIAL_SUCCESS: 6, // 部分成功
-  CANCELLED: 7      // 已取消
+  CANCELLED: 7 // 已取消
 } as const
 
 /** 任务状态显示文本 */
@@ -364,29 +400,4 @@ export const TASK_STATUS_TEXT = {
   [TASK_STATUS.FAILED]: '失败',
   [TASK_STATUS.PARTIAL_SUCCESS]: '部分成功',
   [TASK_STATUS.CANCELLED]: '已取消'
-} as const
-
-/** 重试类型枚举 */
-export const RETRY_TYPE = {
-  ALL: 'ALL',           // 全部重试
-  FAILED: 'FAILED',     // 仅失败部分重试
-  FILE_TYPE: 'FILE_TYPE' // 指定文件类型重试
-} as const
-
-/** 表类型枚举 */
-export const TABLE_TYPE = {
-  HOSPITAL_INFO: 1,   // 机构信息
-  DRUG_CATALOG: 2,    // 药品目录
-  DRUG_INBOUND: 3,    // 入库情况
-  DRUG_OUTBOUND: 4,   // 出库情况
-  DRUG_USAGE: 5       // 使用情况
-} as const
-
-/** 表类型显示文本 */
-export const TABLE_TYPE_TEXT = {
-  [TABLE_TYPE.HOSPITAL_INFO]: '机构信息',
-  [TABLE_TYPE.DRUG_CATALOG]: '药品目录',
-  [TABLE_TYPE.DRUG_INBOUND]: '药品入库',
-  [TABLE_TYPE.DRUG_OUTBOUND]: '药品出库',
-  [TABLE_TYPE.DRUG_USAGE]: '药品使用'
 } as const

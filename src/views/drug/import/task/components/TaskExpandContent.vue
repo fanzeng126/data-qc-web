@@ -18,12 +18,6 @@
           <span class="info-value">{{ formatFileSize(task.fileSize || 0) }}</span>
         </div>
         <div class="info-item">
-          <span class="info-label">导入类型:</span>
-          <span class="info-value">
-            {{ task.importType === 1 ? '单文件导入' : '压缩包导入' }}
-          </span>
-        </div>
-        <div class="info-item">
           <span class="info-label">创建时间:</span>
           <span class="info-value">{{ formatTime(task.createTime) }}</span>
         </div>
@@ -39,10 +33,7 @@
       <div class="progress-details">
         <!-- 阶段进度指示器 -->
         <div class="stage-indicators">
-          <div
-            class="stage-item"
-            :class="getStageClass('extract', task)"
-          >
+          <div class="stage-item" :class="getStageClass('extract', task)">
             <div class="stage-icon">
               <el-icon><Box /></el-icon>
             </div>
@@ -57,10 +48,7 @@
 
           <div class="stage-connector"></div>
 
-          <div
-            class="stage-item"
-            :class="getStageClass('import', task)"
-          >
+          <div class="stage-item" :class="getStageClass('import', task)">
             <div class="stage-icon">
               <el-icon><Upload /></el-icon>
             </div>
@@ -75,10 +63,7 @@
 
           <div class="stage-connector"></div>
 
-          <div
-            class="stage-item"
-            :class="getStageClass('qc', task)"
-          >
+          <div class="stage-item" :class="getStageClass('qc', task)">
             <div class="stage-icon">
               <el-icon><CircleCheck /></el-icon>
             </div>
@@ -152,7 +137,13 @@
                 :percentage="getRecordSuccessRate(task)"
                 :stroke-width="4"
                 :show-text="false"
-                :status="getRecordSuccessRate(task) >= 95 ? 'success' : getRecordSuccessRate(task) >= 80 ? undefined : 'exception'"
+                :status="
+                  getRecordSuccessRate(task) >= 95
+                    ? 'success'
+                    : getRecordSuccessRate(task) >= 80
+                      ? undefined
+                      : 'exception'
+                "
               />
             </div>
           </div>
@@ -248,7 +239,6 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
 import {
   InfoFilled,
   TrendCharts,
@@ -267,6 +257,7 @@ import {
   Download
 } from '@element-plus/icons-vue'
 import type { ImportTaskRespVO } from '@/api/drug/task'
+import { DICT_TYPE, getDictLabel } from '@/utils/dict'
 import { TASK_STATUS } from '@/api/drug/task'
 
 /** 组件名称定义 */
@@ -313,14 +304,13 @@ const getStageStatus = (stage: string, task: ImportTaskRespVO) => {
   }
 
   const status = statusMap[stage] || 0
-  const textMap = {
-    0: '未开始',
-    1: '进行中',
-    2: '已完成',
-    3: '失败'
+  const dictType = {
+    extract: DICT_TYPE.DRUG_EXTRACT_STATUS,
+    import: DICT_TYPE.DRUG_IMPORT_STATUS,
+    qc: DICT_TYPE.DRUG_QC_STATUS
   }
 
-  return textMap[status] || '未知'
+  return getDictLabel(dictType[stage], status.toString())
 }
 
 /** 获取阶段样式类 */
@@ -399,7 +389,7 @@ const getQualityScore = (task: ImportTaskRespVO) => {
   const fileRate = getFileSuccessRate(task)
 
   // 综合文件成功率和记录成功率计算质量分
-  const score = Math.round((recordRate * 0.7 + fileRate * 0.3))
+  const score = Math.round(recordRate * 0.7 + fileRate * 0.3)
   return Math.min(100, Math.max(0, score))
 }
 
@@ -648,8 +638,13 @@ const getSuggestions = (task: ImportTaskRespVO) => {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 .overall-progress {

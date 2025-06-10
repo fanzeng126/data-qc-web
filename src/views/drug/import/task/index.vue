@@ -1,7 +1,10 @@
 <template>
   <div class="drug-import-container">
     <!-- 页面头部 -->
-    <PageHeader title="药品数据导入管理" content="支持批量导入药品相关数据，提供完整的进度监控和任务管理功能">
+    <PageHeader
+      title="药品数据导入管理"
+      content="支持批量导入药品相关数据，提供完整的进度监控和任务管理功能"
+    >
       <template #extra>
         <el-button type="primary" @click="openBatchImport">
           <el-icon><Upload /></el-icon>
@@ -13,6 +16,7 @@
         </el-button>
       </template>
     </PageHeader>
+
     <!-- 统计概览卡片 -->
     <div class="stats-overview">
       <el-row :gutter="20">
@@ -46,8 +50,8 @@
         <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
           <StatCard
             title="平均耗时"
-            :value="Math.round(statistics.averageProcessingTime / 60)"
-            suffix="分钟"
+            :value="formatAverageProcessingTime(statistics.averageProcessingTime).value"
+            :suffix="formatAverageProcessingTime(statistics.averageProcessingTime).unit"
             icon="Clock"
             color="#909399"
           />
@@ -91,12 +95,12 @@
             clearable
             style="width: 150px"
           >
-            <el-option label="全部" :value="undefined" />
+            <el-option label="全部" value="" />
             <el-option
-              v-for="(text, value) in TASK_STATUS_TEXT"
-              :key="value"
-              :label="text"
-              :value="Number(value)"
+              v-for="dict in getIntDictOptions(DICT_TYPE.DRUG_TASK_STATUS)"
+              :key="dict.value"
+              :label="dict.label"
+              :value="dict.value"
             />
           </el-select>
         </el-form-item>
@@ -136,27 +140,11 @@
         <div class="table-header">
           <span class="table-title">任务列表</span>
           <div class="table-actions">
-            <el-button
-              type="primary"
-              size="small"
-              @click="openBatchImport"
-            >
+            <el-button type="primary" size="small" @click="openBatchImport">
               <el-icon><Plus /></el-icon>
               新建任务
             </el-button>
-            <el-button
-              type="success"
-              size="small"
-              @click="downloadTemplate"
-            >
-              <el-icon><Download /></el-icon>
-              下载模板
-            </el-button>
-            <el-button
-              size="small"
-              @click="handleRefresh"
-              :loading="refreshing"
-            >
+            <el-button size="small" @click="handleRefresh" :loading="refreshing">
               <el-icon><Refresh /></el-icon>
               刷新
             </el-button>
@@ -186,46 +174,26 @@
           show-overflow-tooltip
         />
 
-        <el-table-column
-          prop="taskName"
-          label="任务名称"
-          min-width="150"
-          show-overflow-tooltip
-        />
+        <el-table-column prop="taskName" label="任务名称" min-width="150" show-overflow-tooltip />
 
-        <el-table-column
-          prop="fileName"
-          label="文件名称"
-          min-width="180"
-          show-overflow-tooltip
-        />
+        <el-table-column prop="fileName" label="文件名称" min-width="180" show-overflow-tooltip />
 
-        <el-table-column
-          prop="status"
-          label="状态"
-          width="100"
-          align="center"
-        >
+        <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
             <el-tag
-              :type="getStatusTagType(row.status)"
+              :type="getDictColorType(DICT_TYPE.DRUG_TASK_STATUS, row.status)"
               size="small"
               effect="dark"
             >
-              {{ row.statusDisplay }}
+              {{ getDictLabel(DICT_TYPE.DRUG_TASK_STATUS, row.status) }}
             </el-tag>
           </template>
         </el-table-column>
 
-        <el-table-column
-          prop="progressPercent"
-          label="进度"
-          width="120"
-          align="center"
-        >
+        <el-table-column prop="progressPercent" label="进度" width="120" align="center">
           <template #default="{ row }">
             <el-progress
-              :percentage="row.progressPercent"
+              :percentage="row.progressPercent || 0"
               :stroke-width="8"
               :show-text="false"
               :status="getProgressStatus(row.status)"
@@ -234,11 +202,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column
-          label="处理统计"
-          width="120"
-          align="center"
-        >
+        <el-table-column label="处理统计" width="120" align="center">
           <template #default="{ row }">
             <div class="stats-column">
               <div class="stat-row">
@@ -247,21 +211,17 @@
               </div>
               <div class="stat-row">
                 <span class="stat-label">记录:</span>
-                <span class="stat-value">{{ formatNumber(row.successRecords) }}/{{ formatNumber(row.totalRecords) }}</span>
+                <span class="stat-value"
+                  >{{ formatNumber(row.successRecords) }}/{{ formatNumber(row.totalRecords) }}</span
+                >
               </div>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column
-          prop="duration"
-          label="耗时"
-          width="80"
-          align="center"
-        >
+        <el-table-column prop="duration" label="耗时" width="80" align="center">
           <template #default="{ row }">
-            <span v-if="row.duration">{{ formatDuration(row.duration) }}</span>
-            <span v-else>-</span>
+            <span>{{ getDuration(row) || '-' }}</span>
           </template>
         </el-table-column>
 
@@ -282,23 +242,15 @@
           :formatter="dateFormatter"
         />
 
-        <el-table-column
-          label="操作"
-          width="200"
-          fixed="right"
-          align="center"
-        >
+        <el-table-column label="操作" width="200" fixed="right" align="center">
           <template #default="{ row }">
             <div class="action-buttons">
-              <el-button
-                type="primary"
-                link
-                size="small"
-                @click="openProgressMonitor(row.id)"
-              >
-                <el-icon><View /></el-icon>
-                查看进度
-              </el-button>
+              <router-link :to="'/drug-import/monitor/' + row.id">
+                <el-button type="primary" link size="small">
+                  <el-icon><View /></el-icon>
+                  查看进度
+                </el-button>
+              </router-link>
 
               <el-button
                 v-if="row.canRetry"
@@ -322,10 +274,7 @@
                 取消
               </el-button>
 
-              <el-dropdown
-                trigger="click"
-                @command="(command) => handleMoreAction(command, row)"
-              >
+              <el-dropdown trigger="click" @command="(command) => handleMoreAction(command, row)">
                 <el-button link size="small">
                   <el-icon><MoreFilled /></el-icon>
                   更多
@@ -336,7 +285,7 @@
                       <el-icon><InfoFilled /></el-icon>
                       查看详情
                     </el-dropdown-item>
-                    <el-dropdown-item command="download" v-if="row.status === 4">
+                    <el-dropdown-item command="download" v-if="isTaskCompleted(row.status)">
                       <el-icon><Download /></el-icon>
                       下载报告
                     </el-dropdown-item>
@@ -367,10 +316,7 @@
     </el-card>
 
     <!-- 批量导入模态框 -->
-    <BatchImportModal
-      v-model="batchImportVisible"
-      @success="handleImportSuccess"
-    />
+    <BatchImportModal v-model="batchImportVisible" @success="handleImportSuccess" />
 
     <!-- 进度监控模态框 -->
     <ProgressMonitorModal
@@ -380,10 +326,7 @@
     />
 
     <!-- 任务详情模态框 -->
-    <TaskDetailModal
-      v-model="taskDetailVisible"
-      :task-id="selectedTaskId"
-    />
+    <TaskDetailModal v-model="taskDetailVisible" :task-id="selectedTaskId" />
 
     <!-- 重试确认对话框 -->
     <RetryConfirmDialog
@@ -395,7 +338,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
 import {
   Upload,
@@ -416,10 +359,9 @@ import {
   DrugBatchImportApi,
   type ImportTaskRespVO,
   type ImportTaskPageReqVO,
-  type ImportStatisticsVO,
-  TASK_STATUS,
-  TASK_STATUS_TEXT
+  type ImportStatisticsVO
 } from '@/api/drug/task'
+import { DICT_TYPE, getDictLabel, getDictColorType, getIntDictOptions } from '@/utils/dict'
 
 // 导入组件
 import PageHeader from '@/components/PageHeader/index.vue'
@@ -438,7 +380,7 @@ defineOptions({ name: 'DrugImportIndex' })
 const loading = ref(false)
 const refreshing = ref(false)
 const exportLoading = ref(false)
-
+const router = useRouter() // 路由
 const queryFormRef = ref<FormInstance>()
 
 /** 查询参数 */
@@ -492,10 +434,7 @@ onMounted(() => {
 
 /** 初始化页面 */
 const initPage = async () => {
-  await Promise.all([
-    loadTaskList(),
-    loadStatistics()
-  ])
+  await Promise.all([loadTaskList(), loadStatistics()])
 }
 
 /** 加载任务列表 */
@@ -549,10 +488,7 @@ const resetQuery = () => {
 const handleRefresh = async () => {
   refreshing.value = true
   try {
-    await Promise.all([
-      loadTaskList(),
-      loadStatistics()
-    ])
+    await Promise.all([loadTaskList(), loadStatistics()])
     ElMessage.success('刷新成功')
   } catch (error) {
     ElMessage.error('刷新失败')
@@ -590,7 +526,9 @@ const handleExport = async () => {
 
 /** 打开批量导入 */
 const openBatchImport = () => {
-  batchImportVisible.value = true
+  router.push({
+    name: 'DrugImportBatch'
+  })
 }
 
 /** 导入成功处理 */
@@ -608,12 +546,6 @@ const handleImportSuccess = (taskId: number, taskNo: string) => {
   progressMonitorVisible.value = true
 }
 
-/** 打开进度监控 */
-const openProgressMonitor = (taskId: number) => {
-  selectedTaskId.value = taskId
-  progressMonitorVisible.value = true
-}
-
 /** 处理任务重试 */
 const handleRetry = (task: ImportTaskRespVO) => {
   selectedTask.value = task
@@ -622,7 +554,7 @@ const handleRetry = (task: ImportTaskRespVO) => {
 
 /** 从监控页面重试 */
 const handleRetryFromMonitor = (taskId: number) => {
-  const task = taskList.value.find(t => t.id === taskId)
+  const task = taskList.value.find((t) => t.id === taskId)
   if (task) {
     handleRetry(task)
   }
@@ -646,7 +578,6 @@ const handleRetryConfirm = async (params: any) => {
     // 自动打开进度监控
     selectedTaskId.value = params.taskId
     progressMonitorVisible.value = true
-
   } catch (error) {
     ElMessage.error('重试任务失败')
   }
@@ -655,16 +586,13 @@ const handleRetryConfirm = async (params: any) => {
 /** 取消任务 */
 const handleCancel = async (task: ImportTaskRespVO) => {
   try {
-    await ElMessageBox.confirm(
-      `确认取消任务"${task.taskName}"？取消后将无法恢复。`,
-      '确认取消',
-      { type: 'warning' }
-    )
+    await ElMessageBox.confirm(`确认取消任务"${task.taskName}"？取消后将无法恢复。`, '确认取消', {
+      type: 'warning'
+    })
 
     await DrugBatchImportApi.cancelTask(task.id)
     ElMessage.success('任务已取消')
     loadTaskList()
-
   } catch (error: any) {
     if (error !== 'cancel') {
       ElMessage.error('取消任务失败')
@@ -676,8 +604,7 @@ const handleCancel = async (task: ImportTaskRespVO) => {
 const handleMoreAction = async (command: string, task: ImportTaskRespVO) => {
   switch (command) {
     case 'detail':
-      selectedTaskId.value = task.id
-      taskDetailVisible.value = true
+      await router.push('/drug-import/detail/' + task.id)
       break
 
     case 'download':
@@ -698,22 +625,17 @@ const handleMoreAction = async (command: string, task: ImportTaskRespVO) => {
 /** 删除任务 */
 const handleDeleteTask = async (task: ImportTaskRespVO) => {
   try {
-    await ElMessageBox.confirm(
-      `确认删除任务"${task.taskName}"？删除后将无法恢复。`,
-      '确认删除',
-      {
-        type: 'error',
-        confirmButtonText: '确认删除',
-        confirmButtonClass: 'el-button--danger'
-      }
-    )
+    await ElMessageBox.confirm(`确认删除任务"${task.taskName}"？删除后将无法恢复。`, '确认删除', {
+      type: 'error',
+      confirmButtonText: '确认删除',
+      confirmButtonClass: 'el-button--danger'
+    })
 
     // 这里需要实现删除API
     // await DrugBatchImportApi.deleteTask(task.id)
 
     ElMessage.success('任务已删除')
     loadTaskList()
-
   } catch (error: any) {
     if (error !== 'cancel') {
       ElMessage.error('删除任务失败')
@@ -722,37 +644,69 @@ const handleDeleteTask = async (task: ImportTaskRespVO) => {
 }
 
 /** 下载模板 */
-const downloadTemplate = async () => {
-  try {
-    await DrugBatchImportApi.downloadTemplate('STANDARD')
-    ElMessage.success('模板下载成功')
-  } catch (error) {
-    ElMessage.error('模板下载失败')
-  }
+const downloadTemplate = () => {
+  const downloadUrl = 'http://cdn.fangliyun.com/drug-data-guard-suite/药品数据导入模板_2024.zip'
+
+  // 创建隐藏的 a 标签进行下载
+  const link = document.createElement('a')
+  link.href = downloadUrl
+  link.download = '药品数据导入模板_2024.zip' // 指定下载文件名
+  link.style.display = 'none'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+
+  ElMessage.success('模板下载成功')
 }
 
 // ========================= 工具方法 =========================
-
-/** 获取状态标签类型 */
-const getStatusTagType = (status: number) => {
-  const typeMap = {
-    [TASK_STATUS.PENDING]: 'info',
-    [TASK_STATUS.EXTRACTING]: 'warning',
-    [TASK_STATUS.IMPORTING]: 'warning',
-    [TASK_STATUS.QC_CHECKING]: 'warning',
-    [TASK_STATUS.COMPLETED]: 'success',
-    [TASK_STATUS.FAILED]: 'danger',
-    [TASK_STATUS.PARTIAL_SUCCESS]: 'primary',
-    [TASK_STATUS.CANCELLED]: 'info'
+/** 格式化平均处理时间 - 智能选择合适的单位 */
+const formatAverageProcessingTime = (seconds: number) => {
+  if (!seconds || seconds === 0) {
+    return { value: 0, unit: '秒' }
   }
-  return typeMap[status] || 'info'
-}
 
+  // 小于60秒，显示秒
+  if (seconds < 60) {
+    return { value: Math.round(seconds), unit: '秒' }
+  }
+
+  // 小于3600秒（1小时），显示分钟
+  if (seconds < 3600) {
+    const minutes = seconds / 60
+    return { value: Math.round(minutes * 10) / 10, unit: '分钟' } // 保留1位小数
+  }
+
+  // 大于等于1小时，显示小时
+  const hours = seconds / 3600
+  return { value: Math.round(hours * 10) / 10, unit: '小时' }
+}
+/** 获取持续时间 */
+const getDuration = (task: ImportTaskRespVO) => {
+  if (!task.startTime) return null
+
+  const endTime = task.endTime || new Date().toISOString()
+  const start = new Date(task.startTime).getTime()
+  const end = new Date(endTime).getTime()
+  const duration = Math.floor((end - start) / 1000)
+
+  if (duration < 60) return `${duration}秒`
+  if (duration < 3600) return `${Math.floor(duration / 60)}分${duration % 60}秒`
+  return `${Math.floor(duration / 3600)}小时${Math.floor((duration % 3600) / 60)}分`
+}
 /** 获取进度条状态 */
 const getProgressStatus = (status: number) => {
-  if (status === TASK_STATUS.COMPLETED) return 'success'
-  if (status === TASK_STATUS.FAILED) return 'exception'
+  // 完成状态：值为4
+  if (status === 4) return 'success'
+  // 失败状态：值为5
+  if (status === 5) return 'exception'
   return undefined
+}
+
+/** 判断任务是否已完成 */
+const isTaskCompleted = (status: number) => {
+  // 完成状态：值为4
+  return status === 4
 }
 
 /** 格式化数字 */

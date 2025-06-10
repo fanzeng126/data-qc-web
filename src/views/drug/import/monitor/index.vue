@@ -1,13 +1,26 @@
 <template>
-  <el-dialog
-    v-model="dialogVisible"
-    :title="dialogTitle"
-    width="1000px"
-    :close-on-click-modal="false"
-    @close="handleClose"
-    class="progress-monitor-dialog"
-  >
-    <div v-loading="loading" class="progress-monitor-content">
+  <div class="drug-import-progress-page">
+    <!-- 页面头部 -->
+    <PageHeader
+      :title="pageTitle"
+      :content="pageDescription"
+      :show-back-button="true"
+      back-button-text="返回列表"
+      @back-click="handleBack"
+    >
+      <template #extra>
+        <el-button type="primary" @click="refreshProgress" :loading="refreshing">
+          <el-icon><Refresh /></el-icon>
+          刷新进度
+        </el-button>
+        <el-button v-if="progressData.canRetry" type="warning" @click="handleRetry">
+          <el-icon><RefreshRight /></el-icon>
+          重试任务
+        </el-button>
+      </template>
+    </PageHeader>
+
+    <div v-loading="loading" class="progress-content">
       <!-- 任务概览卡片 -->
       <el-card class="task-overview-card" shadow="hover">
         <template #header>
@@ -32,11 +45,13 @@
         <div class="overall-progress-section">
           <div class="progress-header">
             <span class="progress-label">总体进度</span>
-            <span class="progress-percentage">{{ progressData.overallProgress || 0 }}%</span>
+            <span class="progress-percentage"
+              >{{ getValidProgress(progressData.overallProgress) }}%</span
+            >
           </div>
 
           <el-progress
-            :percentage="progressData.overallProgress || 0"
+            :percentage="getValidProgress(progressData.overallProgress)"
             :stroke-width="16"
             :show-text="false"
             :status="getProgressStatus(progressData.overallStatus)"
@@ -102,24 +117,21 @@
               <span class="header-title">分表处理进度</span>
             </div>
             <div class="header-right">
-              <el-button
-                type="primary"
-                size="small"
-                @click="refreshProgress"
-                :loading="refreshing"
-                circle
-              >
-                <el-icon><Refresh /></el-icon>
-              </el-button>
+              <el-switch
+                v-model="autoRefresh"
+                @change="handleAutoRefreshChange"
+                active-text="自动刷新"
+                inactive-text="手动刷新"
+              />
             </div>
           </div>
         </template>
 
         <!-- 表进度列表 -->
-        <div class="table-progress-list">
+        <div class="table-progress-list" v-if="progressData.tableProgress?.length">
           <div
-            v-for="table in progressData.tableProgress || []"
-            :key="table.tableType"
+            v-for="table in progressData.tableProgress"
+            :key="`table-${table.tableType}`"
             class="table-progress-item"
             :class="{ 'is-active': isTableActive(table.status) }"
           >
@@ -138,21 +150,21 @@
                 <div class="table-details">
                   <div class="table-name">{{ table.tableName }}</div>
                   <div class="file-name" v-if="table.fileName">{{ table.fileName }}</div>
-                  <div class="table-stage">{{ table.currentStage }}</div>
+                  <div class="table-stage">{{ table.currentStage || '等待处理' }}</div>
                 </div>
               </div>
               <div class="table-status">
                 <el-tag :type="getStatusTagType(table.status)" size="small" class="status-tag">
-                  {{ table.statusDisplay }}
+                  {{ getTableStatusDisplay(table.status) }}
                 </el-tag>
-                <div class="progress-text">{{ table.progress || 0 }}%</div>
+                <div class="progress-text">{{ formatProgressText(table.progress) }}</div>
               </div>
             </div>
 
             <!-- 进度条 -->
             <div class="table-progress-bar">
               <el-progress
-                :percentage="table.progress || 0"
+                :percentage="getValidProgress(table.progress)"
                 :stroke-width="8"
                 :status="getProgressStatus(table.status)"
                 :show-text="false"
@@ -210,6 +222,13 @@
             </div>
           </div>
         </div>
+
+        <!-- 暂无进度数据 -->
+        <div v-else class="no-progress-data">
+          <el-empty description="暂无进度数据">
+            <el-button type="primary" @click="refreshProgress">刷新数据</el-button>
+          </el-empty>
+        </div>
       </el-card>
 
       <!-- 时间线信息 -->
@@ -220,13 +239,16 @@
               <el-icon class="header-icon"><Clock /></el-icon>
               <span class="header-title">处理时间线</span>
             </div>
+            <div class="header-right">
+              <span class="timeline-count">{{ timelineEvents.length }} 个事件</span>
+            </div>
           </div>
         </template>
 
         <el-timeline class="process-timeline">
           <el-timeline-item
             v-for="event in timelineEvents"
-            :key="event.timestamp"
+            :key="event.id"
             :timestamp="event.timestamp"
             :type="event.type"
             :icon="event.icon"
@@ -243,24 +265,19 @@
       </el-card>
     </div>
 
-    <!-- 底部操作按钮 -->
-    <template #footer>
-      <div class="dialog-footer">
-        <el-button @click="handleClose">关闭</el-button>
-        <el-button v-if="progressData.canRetry" type="warning" @click="handleRetry">
-          重试任务
-        </el-button>
-        <el-button type="primary" @click="refreshProgress" :loading="refreshing">
-          刷新进度
-        </el-button>
-      </div>
-    </template>
-  </el-dialog>
+    <!-- 重试确认对话框 -->
+    <RetryConfirmDialog
+      v-model="retryDialogVisible"
+      :task="currentTask"
+      @confirm="handleRetryConfirm"
+    />
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage, ElNotification } from 'element-plus'
 import {
   DataAnalysis,
   List,
@@ -268,6 +285,7 @@ import {
   Document,
   Clock,
   Operation,
+  RefreshRight,
   SuccessFilled,
   WarningFilled,
   CircleCloseFilled
@@ -275,41 +293,47 @@ import {
 import {
   DrugBatchImportApi,
   type ImportProgressVO,
-  TASK_STATUS,
-  TASK_STATUS_TEXT
+  type ImportTaskRespVO,
+  TASK_STATUS
 } from '@/api/drug/task'
 
+// 添加字典导入 - 这是状态管理统一化的基础
+import { DICT_TYPE, getDictLabel, getDictColorType } from '@/utils/dict'
+
+// 导入组件
+import PageHeader from '@/components/PageHeader/index.vue'
+import RetryConfirmDialog from '../task/components/RetryConfirmDialog.vue'
+
 /** 组件名称定义 */
-defineOptions({ name: 'ProgressMonitorModal' })
+defineOptions({ name: 'DrugImportProgressPage' })
 
-/** 组件属性 */
-interface Props {
-  modelValue: boolean
-  taskId?: number
-  autoRefresh?: boolean
-  refreshInterval?: number
+const route = useRoute()
+const router = useRouter()
+
+// ========================= 类型定义 =========================
+
+// 时间线事件的类型接口 - 明确定义确保类型安全
+interface TimelineEvent {
+  id: string // 唯一标识符，避免Vue的key重复警告
+  timestamp: string // 格式化后的时间戳
+  type: 'primary' | 'success' | 'warning' | 'danger' | 'info' // 严格的类型约束
+  icon: any // 图标组件
+  title: string // 事件标题
+  description?: string // 可选的事件描述
 }
-
-const props = withDefaults(defineProps<Props>(), {
-  modelValue: false,
-  autoRefresh: true,
-  refreshInterval: 3000
-})
-
-/** 组件事件 */
-const emit = defineEmits<{
-  'update:modelValue': [value: boolean]
-  retry: [taskId: number]
-}>()
 
 // ========================= 响应式数据 =========================
 
-const dialogVisible = ref(false)
 const loading = ref(false)
 const refreshing = ref(false)
+const autoRefresh = ref(true)
 const refreshTimer = ref<number | null>(null)
+const retryDialogVisible = ref(false)
 
-/** 进度数据 */
+/** 任务ID - 从路由参数中获取 */
+const taskId = ref<number>(Number(route.params.id || route.query.id))
+
+/** 进度数据 - 响应式数据结构，存储所有进度相关信息 */
 const progressData = reactive<ImportProgressVO>({
   taskId: 0,
   taskNo: '',
@@ -328,18 +352,41 @@ const progressData = reactive<ImportProgressVO>({
   canRetry: false
 })
 
+/** 当前任务信息 - 用于重试对话框 */
+const currentTask = ref<ImportTaskRespVO | null>(null)
+
 // ========================= 计算属性 =========================
 
-const dialogTitle = computed(() => {
-  return `任务进度监控 - ${progressData.taskNo || '未知任务'}`
+const pageTitle = computed(() => {
+  return `导入进度监控 - ${progressData.taskNo || '未知任务'}`
 })
 
-/** 时间线事件 */
-const timelineEvents = computed(() => {
-  const events = []
+const pageDescription = computed(() => {
+  const status = getStatusText(progressData.overallStatus)
+  const progress = getValidProgress(progressData.overallProgress)
+  return `任务状态：${status} | 完成进度：${progress}% | 最后更新：${formatTime(new Date().toISOString())}`
+})
 
+/** 时间线事件 - 修复类型和重复键问题 */
+const timelineEvents = computed((): TimelineEvent[] => {
+  const events: TimelineEvent[] = []
+
+  // 生成唯一ID的辅助函数 - 避免Vue的key重复警告
+  const generateEventId = (type: string, index: number = 0, timestamp: string = ''): string => {
+    // 确保timestamp是字符串类型，避免replace方法调用错误
+    const safeTimestamp = timestamp || '' // 处理null/undefined情况
+    const cleanTimestamp =
+      typeof safeTimestamp === 'string'
+        ? safeTimestamp.replace(/[^\w]/g, '_')
+        : String(safeTimestamp).replace(/[^\w]/g, '_') // 强制转换为字符串
+
+    return `${type}_${index}_${cleanTimestamp}`
+  }
+
+  // 任务开始事件
   if (progressData.startTime) {
     events.push({
+      id: generateEventId('task_start', 0, progressData.startTime),
       timestamp: formatTime(progressData.startTime),
       type: 'primary',
       icon: SuccessFilled,
@@ -348,10 +395,11 @@ const timelineEvents = computed(() => {
     })
   }
 
-  // 根据表进度生成事件
-  progressData.tableProgress?.forEach((table) => {
+  // 根据表进度生成事件 - 为每个表的开始和结束创建事件
+  progressData.tableProgress?.forEach((table, index) => {
     if (table.startTime) {
       events.push({
+        id: generateEventId('table_start', index, table.startTime),
         timestamp: formatTime(table.startTime),
         type: 'info',
         icon: Operation,
@@ -366,15 +414,17 @@ const timelineEvents = computed(() => {
         table.status === 4 ? SuccessFilled : table.status === 5 ? CircleCloseFilled : WarningFilled
 
       events.push({
+        id: generateEventId('table_end', index, table.endTime),
         timestamp: formatTime(table.endTime),
         type,
         icon,
         title: `${table.tableName} 处理完成`,
-        description: `状态：${table.statusDisplay} | 成功：${table.successRecords} | 失败：${table.failedRecords}`
+        description: `状态：${getTableStatusDisplay(table.status)} | 成功：${formatNumber(table.successRecords)} | 失败：${formatNumber(table.failedRecords)}`
       })
     }
   })
 
+  // 任务完成事件
   if (progressData.estimatedEndTime && progressData.overallStatus >= 4) {
     const type =
       progressData.overallStatus === 4
@@ -390,6 +440,7 @@ const timelineEvents = computed(() => {
           : WarningFilled
 
     events.push({
+      id: generateEventId('task_end', 0, progressData.estimatedEndTime),
       timestamp: formatTime(progressData.estimatedEndTime),
       type,
       icon,
@@ -398,48 +449,40 @@ const timelineEvents = computed(() => {
     })
   }
 
+  // 按时间排序返回事件列表
   return events.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
 })
 
 // ========================= 监听器 =========================
 
 watch(
-  () => props.modelValue,
-  (val) => {
-    dialogVisible.value = val
-    if (val && props.taskId) {
+  () => route.params.id,
+  (newTaskId) => {
+    if (newTaskId) {
+      taskId.value = Number(newTaskId)
       loadProgress()
-      if (props.autoRefresh) {
-        startAutoRefresh()
-      }
     }
   }
 )
 
-watch(dialogVisible, (val) => {
-  emit('update:modelValue', val)
-  if (!val) {
+watch(autoRefresh, (newVal) => {
+  if (newVal) {
+    startAutoRefresh()
+  } else {
     stopAutoRefresh()
   }
 })
 
-watch(
-  () => props.taskId,
-  (newTaskId) => {
-    if (newTaskId && dialogVisible.value) {
-      loadProgress()
-    }
-  }
-)
-
 // ========================= 生命周期 =========================
 
 onMounted(() => {
-  if (dialogVisible.value && props.taskId) {
+  if (taskId.value) {
     loadProgress()
-    if (props.autoRefresh) {
+    if (autoRefresh.value) {
       startAutoRefresh()
     }
+  } else {
+    ElMessage.error('任务ID参数缺失')
   }
 })
 
@@ -449,21 +492,31 @@ onUnmounted(() => {
 
 // ========================= 核心方法 =========================
 
-/** 加载进度数据 */
+/** 加载进度数据 - 核心数据获取方法 */
 const loadProgress = async () => {
-  if (!props.taskId) {
-    ElMessage.warning('任务ID不能为空')
+  if (!taskId.value) {
     return
   }
 
   loading.value = true
   try {
-    const data = await DrugBatchImportApi.getTaskProgress(props.taskId)
+    const data = await DrugBatchImportApi.getTaskProgress(taskId.value)
     Object.assign(progressData, data)
 
-    // 如果任务已完成，停止自动刷新
+    // 如果任务已完成，停止自动刷新 - 避免不必要的网络请求
     if (data.overallStatus >= 4) {
       stopAutoRefresh()
+    }
+
+    // 构建当前任务信息（用于重试对话框）
+    if (!currentTask.value) {
+      currentTask.value = {
+        id: data.taskId,
+        taskNo: data.taskNo,
+        taskName: data.taskName,
+        status: data.overallStatus,
+        canRetry: data.canRetry
+      } as ImportTaskRespVO
     }
   } catch (error) {
     ElMessage.error('获取进度信息失败')
@@ -486,7 +539,7 @@ const refreshProgress = async () => {
   }
 }
 
-/** 开始自动刷新 */
+/** 开始自动刷新 - 实时监控的核心机制 */
 const startAutoRefresh = () => {
   if (refreshTimer.value) {
     clearInterval(refreshTimer.value)
@@ -496,7 +549,7 @@ const startAutoRefresh = () => {
     if (!loading.value && !refreshing.value) {
       loadProgress()
     }
-  }, props.refreshInterval)
+  }, 3000) // 3秒刷新一次，平衡实时性和性能
 }
 
 /** 停止自动刷新 */
@@ -507,45 +560,82 @@ const stopAutoRefresh = () => {
   }
 }
 
+/** 自动刷新开关变化处理 */
+const handleAutoRefreshChange = (value: boolean) => {
+  if (value) {
+    ElMessage.success('已开启自动刷新')
+    startAutoRefresh()
+  } else {
+    ElMessage.info('已关闭自动刷新')
+    stopAutoRefresh()
+  }
+}
+
 /** 处理重试 */
-const handleRetry = async () => {
+const handleRetry = () => {
+  retryDialogVisible.value = true
+}
+
+/** 重试确认 */
+const handleRetryConfirm = async (params: any) => {
   try {
-    await ElMessageBox.confirm('确认重试此任务？将重新处理失败的部分。', '确认重试', {
-      type: 'warning'
+    const result = await DrugBatchImportApi.retryImportTask(params)
+
+    ElNotification({
+      type: 'success',
+      title: '重试任务已启动',
+      message: `批次编号：${result.retryBatchNo}`,
+      duration: 3000
     })
 
-    emit('retry', props.taskId!)
-    handleClose()
+    // 重新开始监控
+    await loadProgress()
+    if (!autoRefresh.value) {
+      autoRefresh.value = true
+    }
   } catch (error) {
-    // 用户取消
+    ElMessage.error('重试任务失败')
   }
 }
 
-/** 关闭对话框 */
-const handleClose = () => {
-  dialogVisible.value = false
+/** 返回列表 */
+const handleBack = () => {
+  router.push('/drug-import/task')
 }
 
-// ========================= 工具方法 =========================
+// ========================= 状态处理方法（核心修复部分）=========================
 
-/** 获取状态标签类型 */
+/** 处理进度百分比，确保在有效范围内 - 防止Element Plus警告 */
+const getValidProgress = (progress: number): number => {
+  // 处理各种异常情况，确保组件的健壮性
+  if (typeof progress !== 'number' || isNaN(progress)) return 0
+  if (progress < 0) return 0 // 失败状态(-1)转换为0
+  if (progress > 100) return 100 // 超过100的值限制为100
+  return progress
+}
+
+/** 格式化进度显示文本 - 提供更友好的用户体验 */
+const formatProgressText = (progress: number): string => {
+  if (progress === -1) return '失败'
+  if (progress === 0) return '等待中'
+  if (typeof progress !== 'number' || isNaN(progress)) return '计算中'
+  return `${progress}%`
+}
+
+/** 获取状态标签类型 - 使用字典统一管理 */
 const getStatusTagType = (status: number) => {
-  const typeMap = {
-    [TASK_STATUS.PENDING]: 'info',
-    [TASK_STATUS.EXTRACTING]: 'warning',
-    [TASK_STATUS.IMPORTING]: 'warning',
-    [TASK_STATUS.QC_CHECKING]: 'warning',
-    [TASK_STATUS.COMPLETED]: 'success',
-    [TASK_STATUS.FAILED]: 'danger',
-    [TASK_STATUS.PARTIAL_SUCCESS]: 'primary',
-    [TASK_STATUS.CANCELLED]: 'info'
-  }
-  return typeMap[status] || 'info'
+  return getDictColorType(DICT_TYPE.DRUG_TASK_STATUS, status.toString()) || 'info'
 }
 
-/** 获取状态文本 */
+/** 获取状态文本 - 使用字典确保一致性 */
 const getStatusText = (status: number) => {
-  return TASK_STATUS_TEXT[status] || '未知'
+  return getDictLabel(DICT_TYPE.DRUG_TASK_STATUS, status.toString()) || '未知状态'
+}
+
+/** 获取表状态显示文本 - 处理缺失的statusDisplay字段 */
+const getTableStatusDisplay = (status: number) => {
+  // 这里使用任务状态字典，如果将来有专门的表状态字典可以替换
+  return getDictLabel(DICT_TYPE.DRUG_TASK_STATUS, status.toString()) || '未知状态'
 }
 
 /** 获取进度条状态 */
@@ -555,53 +645,60 @@ const getProgressStatus = (status: number) => {
   return undefined
 }
 
-/** 获取表图标颜色 */
+/** 获取表图标颜色 - 根据状态提供视觉反馈 */
 const getTableIconColor = (status: number) => {
   const colorMap = {
-    0: '#909399',
-    1: '#E6A23C',
-    2: '#E6A23C',
-    3: '#E6A23C',
-    4: '#67C23A',
-    5: '#F56C6C',
-    6: '#409EFF'
+    0: '#909399', // 等待中 - 灰色
+    1: '#E6A23C', // 进行中 - 橙色
+    2: '#E6A23C', // 进行中 - 橙色
+    3: '#E6A23C', // 进行中 - 橙色
+    4: '#67C23A', // 成功 - 绿色
+    5: '#F56C6C', // 失败 - 红色
+    6: '#409EFF' // 部分成功 - 蓝色
   }
   return colorMap[status] || '#909399'
 }
 
-/** 获取状态指示器类名 */
+/** 获取状态指示器类名 - 提供动画和视觉效果 */
 const getStatusIndicatorClass = (status: number) => {
   const classMap = {
-    0: 'pending',
-    1: 'processing',
-    2: 'processing',
-    3: 'processing',
-    4: 'success',
-    5: 'error',
-    6: 'warning'
+    0: 'pending', // 等待中
+    1: 'processing', // 进行中（带动画）
+    2: 'processing', // 进行中（带动画）
+    3: 'processing', // 进行中（带动画）
+    4: 'success', // 成功
+    5: 'error', // 失败
+    6: 'warning' // 部分成功
   }
   return classMap[status] || 'pending'
 }
 
-/** 判断表是否处于活跃状态 */
+/** 判断表是否处于活跃状态 - 影响UI显示效果 */
 const isTableActive = (status: number) => {
-  return status >= 1 && status <= 3
+  return status >= 1 && status <= 3 // 正在处理的状态
 }
 
-/** 格式化数字 */
+// ========================= 工具方法 =========================
+
+/** 格式化数字 - 提供千分位分隔符 */
 const formatNumber = (num: number) => {
-  if (!num) return '0'
+  if (!num || typeof num !== 'number') return '0'
   return num.toLocaleString()
 }
 
-/** 格式化时间 */
+/** 格式化时间 - 统一时间显示格式 */
 const formatTime = (time: string) => {
   if (!time) return ''
-  return new Date(time).toLocaleString()
+  try {
+    return new Date(time).toLocaleString()
+  } catch (error) {
+    return time // 如果格式化失败，返回原始值
+  }
 }
 
-/** 格式化持续时间 */
+/** 格式化持续时间 - 友好的时间显示 */
 const formatDuration = (seconds: number) => {
+  if (!seconds || typeof seconds !== 'number') return '计算中'
   if (seconds < 60) return `${seconds}秒`
   if (seconds < 3600) return `${Math.floor(seconds / 60)}分${seconds % 60}秒`
   return `${Math.floor(seconds / 3600)}小时${Math.floor((seconds % 3600) / 60)}分`
@@ -609,12 +706,17 @@ const formatDuration = (seconds: number) => {
 </script>
 
 <style scoped>
-.progress-monitor-content {
+.drug-import-progress-page {
+  padding: 20px;
+  background-color: #f5f5f5;
+  min-height: calc(100vh - 50px);
+}
+
+.progress-content {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  max-height: 70vh;
-  overflow-y: auto;
+  margin-top: 20px;
 }
 
 .card-header {
@@ -642,6 +744,11 @@ const formatDuration = (seconds: number) => {
 
 .status-tag {
   font-weight: 600;
+}
+
+.timeline-count {
+  font-size: 12px;
+  color: #909399;
 }
 
 /* 任务概览卡片样式 */
@@ -940,6 +1047,11 @@ const formatDuration = (seconds: number) => {
   border-radius: 6px;
 }
 
+.no-progress-data {
+  padding: 40px 0;
+  text-align: center;
+}
+
 /* 时间线样式 */
 .timeline-content {
   padding-left: 12px;
@@ -957,14 +1069,8 @@ const formatDuration = (seconds: number) => {
 }
 
 .process-timeline {
-  max-height: 300px;
+  max-height: 400px;
   overflow-y: auto;
-}
-
-.dialog-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
 }
 
 /* 滚动条样式 */
@@ -972,26 +1078,30 @@ const formatDuration = (seconds: number) => {
   padding: 20px;
 }
 
-.progress-monitor-content::-webkit-scrollbar {
+.progress-content::-webkit-scrollbar {
   width: 6px;
 }
 
-.progress-monitor-content::-webkit-scrollbar-track {
+.progress-content::-webkit-scrollbar-track {
   background: #f1f1f1;
   border-radius: 3px;
 }
 
-.progress-monitor-content::-webkit-scrollbar-thumb {
+.progress-content::-webkit-scrollbar-thumb {
   background: #c1c1c1;
   border-radius: 3px;
 }
 
-.progress-monitor-content::-webkit-scrollbar-thumb:hover {
+.progress-content::-webkit-scrollbar-thumb:hover {
   background: #a1a1a1;
 }
 
 /* 响应式设计 */
 @media (max-width: 768px) {
+  .drug-import-progress-page {
+    padding: 10px;
+  }
+
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }

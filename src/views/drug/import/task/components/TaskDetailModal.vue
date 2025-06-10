@@ -31,10 +31,6 @@
             <el-descriptions-item label="文件大小">
               {{ formatFileSize(taskDetail.fileSize) }}
             </el-descriptions-item>
-            <el-descriptions-item label="导入类型">
-              {{ taskDetail.importType === 1 ? '单文件导入' : '压缩包导入' }}
-            </el-descriptions-item>
-
             <el-descriptions-item label="任务状态">
               <el-tag :type="getStatusTagType(taskDetail.status)" effect="dark">
                 {{ taskDetail.statusDisplay }}
@@ -187,7 +183,13 @@
                   :percentage="getSuccessRate(taskDetail)"
                   :stroke-width="8"
                   :show-text="false"
-                  :status="getSuccessRate(taskDetail) >= 95 ? 'success' : getSuccessRate(taskDetail) >= 80 ? undefined : 'exception'"
+                  :status="
+                    getSuccessRate(taskDetail) >= 95
+                      ? 'success'
+                      : getSuccessRate(taskDetail) >= 80
+                        ? undefined
+                        : 'exception'
+                  "
                 />
               </div>
             </div>
@@ -274,7 +276,9 @@
                   </div>
                   <div class="stat-item">
                     <span class="stat-label">重试次数:</span>
-                    <span class="stat-value">{{ detail.retryCount }}/{{ detail.maxRetryCount }}</span>
+                    <span class="stat-value"
+                      >{{ detail.retryCount }}/{{ detail.maxRetryCount }}</span
+                    >
                   </div>
                 </div>
               </div>
@@ -293,12 +297,7 @@
 
               <!-- 错误信息 -->
               <div v-if="detail.errorMessage" class="table-error">
-                <el-alert
-                  :title="detail.errorMessage"
-                  type="error"
-                  :closable="false"
-                  show-icon
-                />
+                <el-alert :title="detail.errorMessage" type="error" :closable="false" show-icon />
               </div>
             </div>
           </div>
@@ -342,19 +341,10 @@
     <template #footer>
       <div class="dialog-footer">
         <el-button @click="handleClose">关闭</el-button>
-        <el-button
-          v-if="taskDetail?.canRetry"
-          type="warning"
-          @click="handleRetry"
-        >
+        <el-button v-if="taskDetail?.canRetry" type="warning" @click="handleRetry">
           重试任务
         </el-button>
-        <el-button
-          type="primary"
-          @click="openProgressMonitor"
-        >
-          查看进度
-        </el-button>
+        <el-button type="primary" @click="openProgressMonitor"> 查看进度 </el-button>
       </div>
     </template>
   </el-dialog>
@@ -373,12 +363,7 @@ import {
   Document,
   WarningFilled
 } from '@element-plus/icons-vue'
-import {
-  DrugBatchImportApi,
-  type ImportTaskDetailVO,
-  TASK_STATUS,
-  TASK_STATUS_TEXT
-} from '@/api/drug/task'
+import { DrugBatchImportApi, type ImportTaskDetailVO, TASK_STATUS } from '@/api/drug/task'
 
 /** 组件名称定义 */
 defineOptions({ name: 'TaskDetailModal' })
@@ -396,8 +381,8 @@ const props = withDefaults(defineProps<Props>(), {
 /** 组件事件 */
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  'retry': [taskId: number]
-  'monitor': [taskId: number]
+  retry: [taskId: number]
+  monitor: [taskId: number]
 }>()
 
 // ========================= 响应式数据 =========================
@@ -416,9 +401,10 @@ const formattedErrorDetail = computed(() => {
   if (!taskDetail.value?.errorDetail) return ''
 
   try {
-    const detail = typeof taskDetail.value.errorDetail === 'string'
-      ? JSON.parse(taskDetail.value.errorDetail)
-      : taskDetail.value.errorDetail
+    const detail =
+      typeof taskDetail.value.errorDetail === 'string'
+        ? JSON.parse(taskDetail.value.errorDetail)
+        : taskDetail.value.errorDetail
     return JSON.stringify(detail, null, 2)
   } catch {
     return String(taskDetail.value.errorDetail)
@@ -427,12 +413,15 @@ const formattedErrorDetail = computed(() => {
 
 // ========================= 监听器 =========================
 
-watch(() => props.modelValue, (val) => {
-  dialogVisible.value = val
-  if (val && props.taskId) {
-    loadTaskDetail()
+watch(
+  () => props.modelValue,
+  (val) => {
+    dialogVisible.value = val
+    if (val && props.taskId) {
+      loadTaskDetail()
+    }
   }
-})
+)
 
 watch(dialogVisible, (val) => {
   emit('update:modelValue', val)
@@ -527,11 +516,16 @@ const getActiveStep = (task: ImportTaskDetailVO) => {
 /** 获取步骤状态 */
 const getStepStatus = (stepStatus: number) => {
   switch (stepStatus) {
-    case 0: return 'wait'
-    case 1: return 'process'
-    case 2: return 'finish'
-    case 3: return 'error'
-    default: return 'wait'
+    case 0:
+      return 'wait'
+    case 1:
+      return 'process'
+    case 2:
+      return 'finish'
+    case 3:
+      return 'error'
+    default:
+      return 'wait'
   }
 }
 
@@ -736,15 +730,15 @@ const formatTime = (time: string) => {
 }
 
 .stat-row.success .stat-value {
-  color: #67C23A;
+  color: #67c23a;
 }
 
 .stat-row.danger .stat-value {
-  color: #F56C6C;
+  color: #f56c6c;
 }
 
 .stat-row.warning .stat-value {
-  color: #E6A23C;
+  color: #e6a23c;
 }
 
 .success-rate-display {
