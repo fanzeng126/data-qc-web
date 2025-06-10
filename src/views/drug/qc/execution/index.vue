@@ -4,7 +4,7 @@
     <PageHeader title="质控执行监控" content="实时监控质控任务执行状态，查看质控结果和异常处理情况">
       <template #extra>
         <el-button type="primary" @click="handleManualTrigger">
-          <el-icon><Play /></el-icon>
+          <el-icon><VideoPlay /></el-icon>
           手动触发质控
         </el-button>
         <el-button @click="handleRefreshAll" :loading="refreshing">
@@ -292,7 +292,7 @@
 import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  Play,
+  VideoPlay,
   Refresh,
   Document,
   CircleCheck,
