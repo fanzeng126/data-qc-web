@@ -22,8 +22,8 @@
             <h4>基本语法：</h4>
             <ul>
               <li><code>#fieldName</code> - 引用字段值，如 <code>#amount</code></li>
-              <li><code>&&</code> - 逻辑AND，<code>||</code> - 逻辑OR</li>
-              <li><code>>, <, >=, <=, ==, !=</code> - 比较操作符</li>
+              <li><code>&amp;&amp;</code> - 逻辑AND，<code>||</code> - 逻辑OR</li>
+              <li><code>&gt;, &lt;, &gt;=, &lt;=, ==, !=</code> - 比较操作符</li>
               <li><code>functionName(params)</code> - 调用自定义函数</li>
             </ul>
           </div>

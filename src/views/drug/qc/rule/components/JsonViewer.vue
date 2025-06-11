@@ -1,9 +1,9 @@
 <template>
   <div class="json-viewer">
     <!-- JSON内容展示区域 -->
-    <div class="json-content" v-if="formattedData">
+    <div class="json-content" v-if="displayData">
       <JsonNode
-        :data="formattedData"
+        :data="displayData"
         :key-name="rootKeyName"
         :level="0"
         :is-root="true"
@@ -24,16 +24,16 @@
     </div>
 
     <!-- 错误状态 -->
-    <div class="error-state" v-if="error">
+    <div class="error-state" v-if="parseError">
       <el-icon class="error-icon"><WarningFilled /></el-icon>
-      <div class="error-message">{{ error }}</div>
+      <div class="error-message">{{ parseError }}</div>
       <el-button size="small" @click="retry">重新解析</el-button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Document, Loading, WarningFilled } from '@element-plus/icons-vue'
 import JsonNode from './JsonNode.vue'
@@ -54,47 +54,51 @@ const props = withDefaults(defineProps<Props>(), {
 // ========================= 响应式数据 =========================
 
 const loading = ref(false)
-const error = ref<string>('')
-
-// ========================= 计算属性 =========================
-
-/**
- * 格式化后的数据
- * 这是组件的核心逻辑，负责将各种类型的数据统一处理成可展示的格式
- */
-const formattedData = computed(() => {
-  if (!props.data) return null
-
-  try {
-    // 如果传入的是字符串，尝试解析为JSON
-    if (typeof props.data === 'string') {
-      return JSON.parse(props.data)
-    }
-
-    // 如果已经是对象，直接返回
-    return props.data
-  } catch (e) {
-    error.value = '无法解析JSON数据：格式不正确'
-    return null
-  }
-})
+const parseError = ref<string>('')
+const displayData = ref<any>(null)
 
 // ========================= 监听器 =========================
 
-// 监听数据变化，重置错误状态
+// 监听数据变化，重新解析
 watch(
   () => props.data,
-  () => {
-    error.value = ''
+  (newData) => {
+    parseError.value = ''
+    parseData(newData)
   },
   { immediate: true }
 )
 
-// ========================= 业务方法 =========================
+// ========================= 方法 =========================
+
+/**
+ * 解析数据
+ * 将这个逻辑从computed移到方法中，避免副作用
+ */
+function parseData(data: any) {
+  try {
+    displayData.value = null
+
+    if (!data) {
+      return
+    }
+
+    // 如果传入的是字符串，尝试解析为JSON
+    if (typeof data === 'string') {
+      displayData.value = JSON.parse(data)
+    } else {
+      // 如果已经是对象，直接使用
+      displayData.value = data
+    }
+  } catch (e) {
+    parseError.value = '无法解析JSON数据：格式不正确'
+    displayData.value = null
+  }
+}
 
 /**
  * 处理复制操作
- * 提供便捷的数据复制功能，就像给用户提供一键保存的功能
+ * 提供便捷的数据复制功能
  */
 const handleCopy = async (data: any, path: string) => {
   try {
@@ -136,17 +140,16 @@ const fallbackCopy = (text: string) => {
  * 当数据解析出错时，提供重新尝试的机会
  */
 const retry = () => {
-  error.value = ''
+  parseError.value = ''
   loading.value = true
 
   // 模拟重新解析的过程
   setTimeout(() => {
     loading.value = false
+    parseData(props.data)
   }, 500)
 }
 </script>
-
-// JsonNode组件将作为单独的组件文件创建
 
 <style lang="scss" scoped>
 .json-viewer {
@@ -227,167 +230,6 @@ const retry = () => {
   }
 }
 
-/* JsonNode组件样式 */
-.json-node {
-  position: relative;
-
-  .node-line {
-    display: flex;
-    align-items: center;
-    min-height: 24px;
-    padding: 2px 0;
-    border-radius: 4px;
-    transition: background-color 0.2s ease;
-
-    &:hover {
-      background-color: rgba(0, 122, 255, 0.1);
-
-      .copy-button {
-        opacity: 1;
-      }
-    }
-
-    .node-indent {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .indent-space {
-      width: 20px;
-      height: 1px;
-    }
-
-    .expand-button {
-      width: 16px;
-      height: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      border-radius: 2px;
-      transition: all 0.2s ease;
-      color: #8e8e93;
-
-      &:hover {
-        background-color: rgba(0, 122, 255, 0.2);
-        color: #007aff;
-      }
-
-      &.expanded {
-        transform: rotate(90deg);
-      }
-    }
-
-    .node-content {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-
-      .node-key {
-        color: #af52de;
-        font-weight: 500;
-
-        &.array-index {
-          color: #8e8e93;
-          font-style: italic;
-        }
-      }
-
-      .colon {
-        color: #8e8e93;
-      }
-
-      .json-value {
-        &.json-string {
-          color: #007aff;
-        }
-
-        &.json-number {
-          color: #ff9500;
-        }
-
-        &.json-boolean {
-          color: #34c759;
-          font-weight: 500;
-        }
-
-        &.json-null,
-        &.json-undefined {
-          color: #8e8e93;
-          font-style: italic;
-        }
-      }
-
-      .data-summary {
-        color: #8e8e93;
-        font-style: italic;
-        margin-left: 8px;
-      }
-
-      .type-icon {
-        color: #8e8e93;
-        font-size: 12px;
-      }
-    }
-
-    .copy-button {
-      opacity: 0;
-      transition: opacity 0.2s ease;
-      color: #8e8e93;
-      cursor: pointer;
-      padding: 4px;
-      border-radius: 4px;
-
-      &:hover {
-        background-color: rgba(0, 122, 255, 0.2);
-        color: #007aff;
-      }
-    }
-  }
-
-  .node-children {
-    margin-left: 20px;
-    border-left: 1px solid #e1e5e9;
-    padding-left: 8px;
-    position: relative;
-
-    &::before {
-      content: '';
-      position: absolute;
-      left: -1px;
-      top: 0;
-      bottom: 0;
-      width: 1px;
-      background-color: transparent;
-      transition: background-color 0.2s ease;
-    }
-
-    &:hover::before {
-      background-color: rgba(0, 122, 255, 0.3);
-    }
-  }
-
-  // 展开/折叠动画
-  .collapse-transition {
-    transition: all 0.3s ease;
-    overflow: hidden;
-  }
-
-  .collapse-enter-from,
-  .collapse-leave-to {
-    opacity: 0;
-    max-height: 0;
-  }
-
-  .collapse-enter-to,
-  .collapse-leave-from {
-    opacity: 1;
-    max-height: 500px;
-  }
-}
-
 /* 响应式设计 */
 @media (max-width: 768px) {
   .json-viewer {
@@ -397,67 +239,6 @@ const retry = () => {
       padding: 12px;
       max-height: 300px;
     }
-
-    .json-node {
-      .node-line {
-        .node-content {
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 4px;
-        }
-      }
-
-      .node-children {
-        margin-left: 16px;
-      }
-    }
-  }
-}
-
-/* 暗黑模式适配 */
-.dark .json-viewer {
-  background-color: #1c1c1e;
-  border-color: #38383a;
-  color: #ffffff;
-
-  .json-node {
-    .node-line:hover {
-      background-color: rgba(255, 255, 255, 0.1);
-    }
-
-    .node-content {
-      .node-key {
-        color: #bf5af2;
-      }
-
-      .json-value {
-        &.json-string {
-          color: #64d2ff;
-        }
-
-        &.json-number {
-          color: #ffcc02;
-        }
-
-        &.json-boolean {
-          color: #30d158;
-        }
-      }
-    }
-
-    .node-children {
-      border-left-color: #38383a;
-
-      &:hover::before {
-        background-color: rgba(255, 255, 255, 0.2);
-      }
-    }
-  }
-
-  .empty-data,
-  .loading-state,
-  .error-state {
-    color: #8e8e93;
   }
 }
 

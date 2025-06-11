@@ -47,7 +47,7 @@
         <span class="trend-label">{{ trendLabel }}</span>
       </div>
 
-      <!-- 详细信息列表（可选） */
+      <!-- 详细信息列表（可选） -->
       <div class="details-section" v-if="details && details.length > 0">
         <div class="detail-item" v-for="detail in details" :key="detail.label">
           <span class="detail-label">{{ detail.label }}:</span>

@@ -223,7 +223,7 @@
             <!-- 自动修复选项 - 为简单问题提供快速解决方案 -->
             <div class="suggestion-item auto-fix" v-if="resultDetail.autoFixSuggestion">
               <div class="suggestion-header">
-                <el-icon><Magic /></el-icon>
+                <el-icon><MagicStick /></el-icon>
                 <span class="suggestion-title">自动修复</span>
                 <el-tag type="success" size="small">推荐</el-tag>
               </div>
@@ -337,7 +337,7 @@ import {
   Collection,
   Clock,
   FolderOpened,
-  Magic,
+  MagicStick,
   Edit,
   Hide,
   Download

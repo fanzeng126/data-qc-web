@@ -127,7 +127,7 @@
               :loading="testing"
               :disabled="!hasTestData"
             >
-              <el-icon><Play /></el-icon>
+              <el-icon><VideoPlay /></el-icon>
               执行测试
             </el-button>
           </div>
@@ -240,7 +240,7 @@ import {
   MagicStick,
   Delete,
   Plus,
-  Play,
+  VideoPlay,
   CircleCheck,
   CircleClose,
   Promotion,

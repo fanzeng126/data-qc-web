@@ -11,7 +11,7 @@
       <el-card class="expression-card" shadow="never">
         <template #header>
           <div class="card-header">
-            <el-icon><Code /></el-icon>
+            <el-icon><VideoPlay /></el-icon>
             <span>测试表达式</span>
           </div>
         </template>
@@ -76,7 +76,7 @@
               :loading="testing"
               :disabled="!hasTestData"
             >
-              <el-icon><Play /></el-icon>
+              <el-icon><VideoPlay /></el-icon>
               执行测试
             </el-button>
           </div>
@@ -137,11 +137,10 @@
 import { ref, reactive, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
-  Code,
   EditPen,
   MagicStick,
   DataAnalysis,
-  Play,
+  VideoPlay,
   CircleCheck,
   CircleClose,
   Promotion,

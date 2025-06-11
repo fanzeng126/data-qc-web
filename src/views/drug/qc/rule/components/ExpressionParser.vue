@@ -30,11 +30,7 @@
           字段说明
         </h4>
         <div class="field-list">
-          <div
-            v-for="field in parsedExpression.fields"
-            :key="field.name"
-            class="field-item"
-          >
+          <div v-for="field in parsedExpression.fields" :key="field.name" class="field-item">
             <div class="field-header">
               <code class="field-name">{{ field.name }}</code>
               <el-tag size="small" :type="getFieldTypeColor(field.type)">
@@ -50,7 +46,7 @@
         </div>
       </div>
 
-      <!-- 逻辑说明 */
+      <!-- 逻辑说明 -->
       <div class="logic-explanation">
         <h4 class="section-title">
           <el-icon><Connection /></el-icon>
@@ -62,69 +58,62 @@
           </div>
 
           <!-- 执行步骤 -->
-      <div class="execution-steps" v-if="parsedExpression.steps.length > 0">
-        <h5 class="steps-title">执行步骤:</h5>
-        <ol class="steps-list">
-          <li v-for="(step, index) in parsedExpression.steps" :key="index" class="step-item">
-            {{ step }}
-          </li>
-        </ol>
+          <div class="execution-steps" v-if="parsedExpression.steps.length > 0">
+            <h5 class="steps-title">执行步骤:</h5>
+            <ol class="steps-list">
+              <li v-for="(step, index) in parsedExpression.steps" :key="index" class="step-item">
+                {{ step }}
+              </li>
+            </ol>
+          </div>
+
+          <!-- 示例场景 -->
+          <div class="example-scenarios" v-if="parsedExpression.examples.length > 0">
+            <h5 class="examples-title">示例场景:</h5>
+            <div class="examples-list">
+              <div
+                v-for="(example, index) in parsedExpression.examples"
+                :key="index"
+                class="example-item"
+              >
+                <div class="example-header">
+                  <span class="example-title">{{ example.title }}</span>
+                  <el-tag size="small" :type="example.result ? 'success' : 'danger'">
+                    {{ example.result ? '通过' : '失败' }}
+                  </el-tag>
+                </div>
+                <div class="example-data"> <strong>数据:</strong> {{ example.data }} </div>
+                <div class="example-reason"> <strong>原因:</strong> {{ example.reason }} </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- 示例场景 -->
-      <div class="example-scenarios" v-if="parsedExpression.examples.length > 0">
-        <h5 class="examples-title">示例场景:</h5>
-        <div class="examples-list">
+      <!-- 常见问题 -->
+      <div class="common-issues" v-if="parsedExpression.commonIssues.length > 0">
+        <h4 class="section-title">
+          <el-icon><Warning /></el-icon>
+          常见问题
+        </h4>
+        <div class="issues-list">
           <div
-            v-for="(example, index) in parsedExpression.examples"
+            v-for="(issue, index) in parsedExpression.commonIssues"
             :key="index"
-            class="example-item"
+            class="issue-item"
           >
-            <div class="example-header">
-              <span class="example-title">{{ example.title }}</span>
-              <el-tag
-                size="small"
-                :type="example.result ? 'success' : 'danger'"
-              >
-                {{ example.result ? '通过' : '失败' }}
-              </el-tag>
+            <div class="issue-title">
+              <el-icon><QuestionFilled /></el-icon>
+              {{ issue.title }}
             </div>
-            <div class="example-data">
-              <strong>数据:</strong> {{ example.data }}
-            </div>
-            <div class="example-reason">
-              <strong>原因:</strong> {{ example.reason }}
+            <div class="issue-description">{{ issue.description }}</div>
+            <div class="issue-solution" v-if="issue.solution">
+              <strong>解决方案:</strong> {{ issue.solution }}
             </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
-
-  <!-- 常见问题 -->
-  <div class="common-issues" v-if="parsedExpression.commonIssues.length > 0">
-    <h4 class="section-title">
-      <el-icon><Warning /></el-icon>
-      常见问题
-    </h4>
-    <div class="issues-list">
-      <div
-        v-for="(issue, index) in parsedExpression.commonIssues"
-        :key="index"
-        class="issue-item"
-      >
-        <div class="issue-title">
-          <el-icon><QuestionFilled /></el-icon>
-          {{ issue.title }}
-        </div>
-        <div class="issue-description">{{ issue.description }}</div>
-        <div class="issue-solution" v-if="issue.solution">
-          <strong>解决方案:</strong> {{ issue.solution }}
-        </div>
-      </div>
-    </div>
-  </div>
-  </div>
   </div>
 </template>
 
@@ -133,46 +122,46 @@ import { computed } from 'vue'
 import { Operation, Grid, Connection, Warning, QuestionFilled } from '@element-plus/icons-vue'
 
 interface Props {
-  expression: string  // SpEL表达式
+  expression: string // SpEL表达式
 }
 
 const props = defineProps<Props>()
 
 // 表达式解析结果接口
 interface ParsedExpression {
-  parts: ExpressionPart[]      // 表达式分解部分
-  fields: FieldReference[]     // 字段引用
-  summary: string              // 逻辑总结
-  steps: string[]              // 执行步骤
-  examples: ExampleScenario[]  // 示例场景
-  commonIssues: CommonIssue[]  // 常见问题
+  parts: ExpressionPart[] // 表达式分解部分
+  fields: FieldReference[] // 字段引用
+  summary: string // 逻辑总结
+  steps: string[] // 执行步骤
+  examples: ExampleScenario[] // 示例场景
+  commonIssues: CommonIssue[] // 常见问题
 }
 
 interface ExpressionPart {
-  expression: string    // 表达式片段
-  type: string         // 类型：field, operator, value, function
-  explanation: string  // 解释说明
-  operator?: string    // 连接操作符
+  expression: string // 表达式片段
+  type: string // 类型：field, operator, value, function
+  explanation: string // 解释说明
+  operator?: string // 连接操作符
 }
 
 interface FieldReference {
-  name: string         // 字段名
-  type: string         // 数据类型
-  description: string  // 字段描述
-  example?: string     // 示例值
+  name: string // 字段名
+  type: string // 数据类型
+  description: string // 字段描述
+  example?: string // 示例值
 }
 
 interface ExampleScenario {
-  title: string        // 场景标题
-  data: string         // 示例数据
-  result: boolean      // 执行结果
-  reason: string       // 结果原因
+  title: string // 场景标题
+  data: string // 示例数据
+  result: boolean // 执行结果
+  reason: string // 结果原因
 }
 
 interface CommonIssue {
-  title: string        // 问题标题
-  description: string  // 问题描述
-  solution?: string    // 解决方案
+  title: string // 问题标题
+  description: string // 问题描述
+  solution?: string // 解决方案
 }
 
 // ========================= 核心解析逻辑 =========================
@@ -223,8 +212,7 @@ function parseSpelExpression(expression: string): ParsedExpression {
  * 例如: #fieldName != null && #fieldName.trim().length() > 0
  */
 function isFieldValidationExpression(expression: string): boolean {
-  return /^#\w+\s*(!=|==)\s*null/.test(expression) ||
-    /\.trim\(\)\.length\(\)/.test(expression)
+  return /^#\w+\s*(!=|==)\s*null/.test(expression) || /\.trim\(\)\.length\(\)/.test(expression)
 }
 
 /**
@@ -422,12 +410,8 @@ function parseLogicalCombination(expression: string): ParsedExpression {
   return {
     parts: conditions,
     fields: extractFieldsFromExpression(expression),
-    summary: `组合验证：${conditions.map(c => c.explanation).join('，')}`,
-    steps: [
-      '依次检查各个条件',
-      '根据逻辑操作符（且/或）组合结果',
-      '返回最终验证结果'
-    ],
+    summary: `组合验证：${conditions.map((c) => c.explanation).join('，')}`,
+    steps: ['依次检查各个条件', '根据逻辑操作符（且/或）组合结果', '返回最终验证结果'],
     examples: [
       {
         title: '所有条件满足',
@@ -455,7 +439,7 @@ function parseFunctionCall(expression: string): ParsedExpression {
   if (!functionMatch) return parseGenericExpression(expression)
 
   const [, functionName, params] = functionMatch
-  const paramList = params.split(',').map(p => p.trim())
+  const paramList = params.split(',').map((p) => p.trim())
 
   return {
     parts: [
@@ -464,15 +448,15 @@ function parseFunctionCall(expression: string): ParsedExpression {
         type: 'function',
         explanation: getFunctionDescription(functionName)
       },
-      ...paramList.map(param => ({
+      ...paramList.map((param) => ({
         expression: param,
         type: param.startsWith('#') ? 'field' : 'value',
         explanation: param.startsWith('#') ? `字段参数：${param}` : `固定值：${param}`
       }))
     ],
     fields: paramList
-      .filter(p => p.startsWith('#'))
-      .map(p => ({
+      .filter((p) => p.startsWith('#'))
+      .map((p) => ({
         name: p.substring(1),
         type: 'mixed',
         description: getFieldDescription(p.substring(1))
@@ -518,9 +502,9 @@ function parseGenericExpression(expression: string): ParsedExpression {
  */
 function extractFieldsFromExpression(expression: string): FieldReference[] {
   const fieldMatches = expression.match(/#(\w+)/g) || []
-  const uniqueFields = [...new Set(fieldMatches.map(f => f.substring(1)))]
+  const uniqueFields = [...new Set(fieldMatches.map((f) => f.substring(1)))]
 
-  return uniqueFields.map(fieldName => ({
+  return uniqueFields.map((fieldName) => ({
     name: fieldName,
     type: getFieldType(fieldName),
     description: getFieldDescription(fieldName),
@@ -609,7 +593,11 @@ function getConditionExplanation(condition: string): string {
 /**
  * 生成数值比较示例
  */
-function generateNumericExamples(fieldName: string, operator: string, value: number): ExampleScenario[] {
+function generateNumericExamples(
+  fieldName: string,
+  operator: string,
+  value: number
+): ExampleScenario[] {
   const examples: ExampleScenario[] = []
 
   switch (operator) {
@@ -988,7 +976,8 @@ function getFieldTypeColor(type: string): string {
             }
           }
 
-          .example-data, .example-reason {
+          .example-data,
+          .example-reason {
             font-size: 13px;
             color: #4b5563;
             margin-bottom: 4px;

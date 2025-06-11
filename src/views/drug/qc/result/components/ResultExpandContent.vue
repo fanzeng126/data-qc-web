@@ -185,7 +185,7 @@
           <!-- 自动修复选项 -->
           <div class="suggestion-item auto-fix" v-if="result.autoFixSuggestion">
             <div class="suggestion-header">
-              <el-icon><Magic /></el-icon>
+              <el-icon><MagicStick /></el-icon>
               <span class="suggestion-title">自动修复</span>
               <el-tag type="success" size="small">推荐</el-tag>
             </div>
@@ -281,7 +281,7 @@ import {
   FolderOpened,
   QuestionFilled,
   Refresh,
-  Magic,
+  MagicStick,
   Edit,
   Hide
 } from '@element-plus/icons-vue'

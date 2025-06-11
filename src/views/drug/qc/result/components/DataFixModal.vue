@@ -57,7 +57,7 @@
           <el-radio value="auto" class="strategy-option">
             <div class="strategy-content">
               <div class="strategy-title">
-                <el-icon><Magic /></el-icon>
+                <el-icon><MagicStick /></el-icon>
                 自动修复
               </div>
               <div class="strategy-description">
@@ -204,7 +204,7 @@
                   </div>
                 </div>
 
-                <!-- 风险提示 */
+                <!-- 风险提示 -->
                 <div class="risk-section" v-if="issue.risks?.length">
                   <h4 class="section-title">风险提示</h4>
                   <el-alert
@@ -224,106 +224,109 @@
       </el-card>
 
       <!-- 修复配置 -->
-                <el-card class="config-card" shadow="never" v-if="fixStrategy !== 'auto'">
-                  <template #header>
-                    <div class="card-header">
-                      <el-icon><Setting /></el-icon>
-                      <span>修复配置</span>
-                    </div>
-                  </template>
+      <el-card class="config-card" shadow="never" v-if="fixStrategy !== 'auto'">
+        <template #header>
+          <div class="card-header">
+            <el-icon><Setting /></el-icon>
+            <span>修复配置</span>
+          </div>
+        </template>
 
-                  <el-form :model="fixConfig" label-width="120px" class="config-form">
-                    <el-form-item label="备份原数据">
-                      <el-switch v-model="fixConfig.backupOriginal" />
-                      <span class="form-help">修复前自动备份原始数据，便于回滚</span>
-                    </el-form-item>
+        <el-form :model="fixConfig" label-width="120px" class="config-form">
+          <el-form-item label="备份原数据">
+            <el-switch v-model="fixConfig.backupOriginal" />
+            <span class="form-help">修复前自动备份原始数据，便于回滚</span>
+          </el-form-item>
 
-                    <el-form-item label="批量大小">
-                      <el-input-number
-                        v-model="fixConfig.batchSize"
-                        :min="10"
-                        :max="1000"
-                        :step="10"
-                        style="width: 150px"
-                      />
-                      <span class="form-help">每批处理的记录数，数值越大处理越快但占用资源更多</span>
-                    </el-form-item>
+          <el-form-item label="批量大小">
+            <el-input-number
+              v-model="fixConfig.batchSize"
+              :min="10"
+              :max="1000"
+              :step="10"
+              style="width: 150px"
+            />
+            <span class="form-help">每批处理的记录数，数值越大处理越快但占用资源更多</span>
+          </el-form-item>
 
-                    <el-form-item label="失败处理">
-                      <el-radio-group v-model="fixConfig.failureHandling">
-                        <el-radio value="continue">继续处理其他记录</el-radio>
-                        <el-radio value="stop">停止所有处理</el-radio>
-                        <el-radio value="retry">自动重试3次</el-radio>
-                      </el-radio-group>
-                    </el-form-item>
+          <el-form-item label="失败处理">
+            <el-radio-group v-model="fixConfig.failureHandling">
+              <el-radio value="continue">继续处理其他记录</el-radio>
+              <el-radio value="stop">停止所有处理</el-radio>
+              <el-radio value="retry">自动重试3次</el-radio>
+            </el-radio-group>
+          </el-form-item>
 
-                    <el-form-item label="通知设置">
-                      <el-checkbox-group v-model="fixConfig.notifications">
-                        <el-checkbox value="email">邮件通知</el-checkbox>
-                        <el-checkbox value="sms">短信通知</el-checkbox>
-                        <el-checkbox value="system">系统消息</el-checkbox>
-                      </el-checkbox-group>
-                    </el-form-item>
-                  </el-form>
-                </el-card>
+          <el-form-item label="通知设置">
+            <el-checkbox-group v-model="fixConfig.notifications">
+              <el-checkbox value="email">邮件通知</el-checkbox>
+              <el-checkbox value="sms">短信通知</el-checkbox>
+              <el-checkbox value="system">系统消息</el-checkbox>
+            </el-checkbox-group>
+          </el-form-item>
+        </el-form>
+      </el-card>
 
-                <!-- 修复预览 -->
-                <el-card class="preview-card" shadow="never" v-if="showPreview">
-                  <template #header>
-                    <div class="card-header">
-                      <el-icon><View /></el-icon>
-                      <span>修复预览</span>
-                      <el-button size="small" @click="showPreview = false">
-                        <el-icon><Close /></el-icon>
-                        关闭预览
-                      </el-button>
-                    </div>
-                  </template>
+      <!-- 修复预览 -->
+      <el-card class="preview-card" shadow="never" v-if="showPreview">
+        <template #header>
+          <div class="card-header">
+            <el-icon><View /></el-icon>
+            <span>修复预览</span>
+            <el-button size="small" @click="showPreview = false">
+              <el-icon><Close /></el-icon>
+              关闭预览
+            </el-button>
+          </div>
+        </template>
 
-                  <div class="preview-content">
-                    <div class="preview-summary">
-                      <el-descriptions :column="4" border>
-                        <el-descriptions-item label="总记录数">{{ previewResult?.totalRecords }}</el-descriptions-item>
-                        <el-descriptions-item label="将被修复">{{ previewResult?.willBeFixed }}</el-descriptions-item>
-                        <el-descriptions-item label="预计成功率">{{ previewResult?.successRate }}%</el-descriptions-item>
-                        <el-descriptions-item label="预计用时">{{ previewResult?.estimatedTime }}分钟</el-descriptions-item>
-                      </el-descriptions>
-                    </div>
+        <div class="preview-content">
+          <div class="preview-summary">
+            <el-descriptions :column="4" border>
+              <el-descriptions-item label="总记录数">{{
+                previewResult?.totalRecords
+              }}</el-descriptions-item>
+              <el-descriptions-item label="将被修复">{{
+                previewResult?.willBeFixed
+              }}</el-descriptions-item>
+              <el-descriptions-item label="预计成功率"
+                >{{ previewResult?.successRate }}%</el-descriptions-item
+              >
+              <el-descriptions-item label="预计用时"
+                >{{ previewResult?.estimatedTime }}分钟</el-descriptions-item
+              >
+            </el-descriptions>
+          </div>
 
-                    <div class="preview-details" v-if="previewResult?.details">
-                      <h4>修复详情</h4>
-                      <el-table :data="previewResult.details" size="small" border>
-                        <el-table-column label="问题类型" prop="issueType" width="120" />
-                        <el-table-column label="记录数" prop="recordCount" width="100" />
-                        <el-table-column label="修复方法" prop="fixMethod" width="150" />
-                        <el-table-column label="成功率" prop="successRate" width="100">
-                          <template #default="{ row }">{{ row.successRate }}%</template>
-                        </el-table-column>
-                        <el-table-column label="注意事项" prop="notes" min-width="200" />
-                      </el-table>
-                    </div>
-                  </div>
-                </el-card>
-              </div>
+          <div class="preview-details" v-if="previewResult?.details">
+            <h4>修复详情</h4>
+            <el-table :data="previewResult.details" size="small" border>
+              <el-table-column label="问题类型" prop="issueType" width="120" />
+              <el-table-column label="记录数" prop="recordCount" width="100" />
+              <el-table-column label="修复方法" prop="fixMethod" width="150" />
+              <el-table-column label="成功率" prop="successRate" width="100">
+                <template #default="{ row }">{{ row.successRate }}%</template>
+              </el-table-column>
+              <el-table-column label="注意事项" prop="notes" min-width="200" />
+            </el-table>
+          </div>
+        </div>
+      </el-card>
+    </div>
 
-              <template #footer>
-                <div class="dialog-footer">
-                  <el-button @click="dialogVisible = false">取消</el-button>
-                  <el-button @click="previewFix" :loading="previewing">
-                    <el-icon><View /></el-icon>
-                    预览修复
-                  </el-button>
-                  <el-button
-                    type="primary"
-                    @click="executeFix"
-                    :loading="fixing"
-                    :disabled="!canExecuteFix"
-                  >
-                    <el-icon><Tools /></el-icon>
-                    开始修复
-                  </el-button>
-                </div>
-              </template>
+    <template #footer>
+      <div class="dialog-footer">
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button @click="previewFix" :loading="previewing">
+          <el-icon><View /></el-icon>
+          预览修复
+        </el-button>
+        <el-button type="primary" @click="executeFix" :loading="fixing" :disabled="!canExecuteFix">
+          <el-icon><Tools /></el-icon>
+          开始修复
+        </el-button>
+      </div>
+    </template>
   </el-dialog>
 </template>
 
@@ -333,7 +336,7 @@ import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
 import {
   Tools,
   Setting,
-  Magic,
+  MagicStick,
   Guide,
   Edit,
   Warning,
@@ -344,7 +347,7 @@ import {
 } from '@element-plus/icons-vue'
 
 interface Props {
-  resultIds: number[]  // 需要修复的结果ID列表
+  resultIds: number[] // 需要修复的结果ID列表
 }
 
 const props = defineProps<Props>()
@@ -415,8 +418,7 @@ const loadFixData = async () => {
     ])
 
     fixSummary.value = summary
-    dataIssues.value = issues.map(issue => ({ ...issue, expanded: false }))
-
+    dataIssues.value = issues.map((issue) => ({ ...issue, expanded: false }))
   } catch (error) {
     ElMessage.error('加载修复数据失败')
     console.error('加载修复数据失败:', error)
@@ -427,7 +429,7 @@ const loadFixData = async () => {
 
 /** 模拟加载修复概览 */
 async function loadFixSummary(resultIds: number[]) {
-  await new Promise(resolve => setTimeout(resolve, 800))
+  await new Promise((resolve) => setTimeout(resolve, 800))
 
   return {
     totalRecords: resultIds.length,
@@ -439,7 +441,7 @@ async function loadFixSummary(resultIds: number[]) {
 
 /** 模拟加载数据问题 */
 async function loadDataIssues(resultIds: number[]) {
-  await new Promise(resolve => setTimeout(resolve, 600))
+  await new Promise((resolve) => setTimeout(resolve, 600))
 
   return [
     {
@@ -451,11 +453,7 @@ async function loadDataIssues(resultIds: number[]) {
       fixMethod: {
         title: '默认值填充',
         description: '使用预定义的默认值填充空字段',
-        steps: [
-          '识别空值字段',
-          '根据字段类型确定默认值',
-          '批量更新空值记录'
-        ]
+        steps: ['识别空值字段', '根据字段类型确定默认值', '批量更新空值记录']
       },
       sampleRecords: [
         {
@@ -477,11 +475,7 @@ async function loadDataIssues(resultIds: number[]) {
       fixMethod: {
         title: '人工审核调整',
         description: '需要人工确认正确的金额值',
-        steps: [
-          '标记异常金额记录',
-          '人工审核每条记录',
-          '确认或修正金额值'
-        ]
+        steps: ['标记异常金额记录', '人工审核每条记录', '确认或修正金额值']
       },
       sampleRecords: [
         {
@@ -502,7 +496,7 @@ const previewFix = async () => {
   previewing.value = true
   try {
     // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await new Promise((resolve) => setTimeout(resolve, 1000))
 
     previewResult.value = {
       totalRecords: fixSummary.value.totalRecords,
@@ -529,7 +523,6 @@ const previewFix = async () => {
 
     showPreview.value = true
     ElMessage.success('预览生成成功')
-
   } catch (error) {
     ElMessage.error('预览生成失败')
   } finally {
@@ -560,7 +553,6 @@ const executeFix = async () => {
 
     emit('success')
     dialogVisible.value = false
-
   } catch (error: any) {
     if (error !== 'cancel') {
       ElMessage.error('修复过程中出现错误')
@@ -576,7 +568,7 @@ async function simulateFixProcess() {
   const stepDelay = 800
 
   for (let i = 1; i <= totalSteps; i++) {
-    await new Promise(resolve => setTimeout(resolve, stepDelay))
+    await new Promise((resolve) => setTimeout(resolve, stepDelay))
 
     const progress = Math.round((i / totalSteps) * 100)
     console.log(`修复进度: ${progress}%`)
@@ -595,7 +587,7 @@ const toggleIssue = (issue: any) => {
 /** 展开/收起全部 */
 const expandAll = () => {
   allExpanded.value = !allExpanded.value
-  dataIssues.value.forEach(issue => {
+  dataIssues.value.forEach((issue) => {
     issue.expanded = allExpanded.value
   })
 }

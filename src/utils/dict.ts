@@ -194,5 +194,15 @@ export enum DICT_TYPE {
   DRUG_RETRY_TYPE = 'drug_retry_type', // 重试类型
   DRUG_DATA_SOURCE = 'drug_data_source',
   DRUG_EXTRACT_STATUS = 'drug_extract_status',
-  DRUG_IMPORT_STATUS = 'drug_import_status'
+  DRUG_IMPORT_STATUS = 'drug_import_status',
+  // 质控规则类型
+  DRUG_QC_RULE_TYPE = 'drug_qc_rule_type',
+  // 质控规则分类
+  DRUG_QC_RULE_CATEGORY = 'drug_qc_rule_category',
+  // 质控表类型
+  DRUG_QC_TABLE_TYPE = 'drug_qc_table_type',
+  // 质控执行状态
+  DRUG_QC_EXECUTION_STATUS = 'drug_qc_execution_status',
+  // 质控错误级别
+  DRUG_QC_ERROR_LEVEL = 'drug_qc_error_level'
 }

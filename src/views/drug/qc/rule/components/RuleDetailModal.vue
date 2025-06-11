@@ -220,7 +220,7 @@ import {
   type QcRuleExecutionStatsVO,
   type QcRuleExecutionLogVO,
   type QcRuleOperationLogVO
-} from '@/api/drug/qc/rule/rule'
+} from '@/api/drug/qc/rule'
 
 // 导入子组件
 import ExpressionParser from './ExpressionParser.vue'
