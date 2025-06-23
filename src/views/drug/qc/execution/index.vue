@@ -291,18 +291,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import {
-  VideoPlay,
-  Refresh,
-  Document,
-  CircleCheck,
-  Warning,
-  Clock,
-  View,
-  Download,
-  Close,
-  Loading
-} from '@element-plus/icons-vue'
+import { VideoPlay, Refresh, View, Download, Close, Loading } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import {
   QcExecutionApi,

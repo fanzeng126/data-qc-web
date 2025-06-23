@@ -144,22 +144,16 @@ import {
   CircleCheck,
   CircleClose,
   Promotion,
-  CopyDocument,
-  Plus,
-  Delete
+  CopyDocument
 } from '@element-plus/icons-vue'
 
-interface Props {
-  expression?: string
-}
-
-const props = defineProps<Props>()
+// 移除Props定义，通过open方法接收表达式
 
 // ========================= 响应式数据 =========================
 
 const dialogVisible = defineModel<boolean>({ default: false })
 const testing = ref(false)
-const currentExpression = ref('')
+const expression = ref('') // 修复：添加缺失的expression变量定义
 
 /** 测试数据 */
 const testData = reactive<Record<string, any>>({})
@@ -309,9 +303,14 @@ async function simulateExpressionExecution(expr: string, data: Record<string, an
  * 提供基础的表达式计算能力，避免直接使用eval函数带来的安全风险
  */
 function safeEval(expr: string): any {
-  // 创建安全的执行环境，只提供必要的Math对象
-  const safeFunction = new Function('Math', `return ${expr}`)
-  return safeFunction(Math)
+  try {
+    // 创建安全的执行环境，只提供必要的Math对象
+    const safeFunction = new Function('Math', `return ${expr}`)
+    return safeFunction(Math)
+  } catch (error) {
+    // 如果Function构造失败，返回false
+    return false
+  }
 }
 
 /**

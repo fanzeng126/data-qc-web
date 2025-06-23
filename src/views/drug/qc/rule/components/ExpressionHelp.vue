@@ -120,15 +120,18 @@
       </div>
     </template>
   </el-dialog>
+  <!-- 表达式帮助弹窗 -->
+  <ExpressionBuilder ref="expressionBuilder" />
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { QuestionFilled, Collection, Grid, Operation, Tools } from '@element-plus/icons-vue'
-
+import ExpressionBuilder from './ExpressionBuilder.vue'
 const dialogVisible = defineModel<boolean>({ default: false })
-
+/** 显示表达式构建器 */
+const expressionBuilder = ref()
 // 表达式模板数据
 const expressionTemplates = ref([
   {
@@ -259,7 +262,7 @@ const copyTemplate = async (expression: string) => {
 
 // 打开表达式构建器
 const openExpressionBuilder = () => {
-  ElMessage.info('表达式构建器功能开发中...')
+  expressionBuilder.value.open()
 }
 
 // 对外方法

@@ -303,14 +303,11 @@
 
       <!-- 分页 -->
       <div class="pagination-wrapper">
-        <el-pagination
-          v-model:current-page="queryParams.pageNo"
-          v-model:page-size="queryParams.pageSize"
-          :page-sizes="[10, 20, 50, 100]"
+        <Pagination
           :total="total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleQuery"
-          @current-change="handleQuery"
+          v-model:page="queryParams.pageNo"
+          v-model:limit="queryParams.pageSize"
+          @pagination="loadTaskList"
         />
       </div>
     </el-card>
@@ -471,16 +468,6 @@ const handleQuery = () => {
 /** 重置查询 */
 const resetQuery = () => {
   queryFormRef.value?.resetFields()
-  Object.assign(queryParams, {
-    pageNo: 1,
-    pageSize: 20,
-    taskNo: undefined,
-    taskName: undefined,
-    status: undefined,
-    fileName: undefined,
-    creator: undefined,
-    createTime: undefined
-  })
   loadTaskList()
 }
 

@@ -27,7 +27,7 @@
                       <el-select
                         v-model="ruleCodePrefix"
                         style="width: 100px"
-                        @change="updateRuleCode"
+                        @change="handlePrefixChange"
                       >
                         <el-option label="PRE_QC" value="PRE_QC" />
                         <el-option label="POST_QC" value="POST_QC" />
@@ -47,8 +47,8 @@
               <el-col :span="8">
                 <el-form-item label="规则类型" prop="ruleType">
                   <el-radio-group v-model="formData.ruleType" @change="handleRuleTypeChange">
-                    <el-radio :label="1">前置质控</el-radio>
-                    <el-radio :label="2">后置质控</el-radio>
+                    <el-radio :value="1">前置质控</el-radio>
+                    <el-radio :value="2">后置质控</el-radio>
                   </el-radio-group>
                 </el-form-item>
               </el-col>
@@ -67,7 +67,7 @@
               <el-col :span="8">
                 <el-form-item label="适用表" prop="tableType">
                   <el-select v-model="formData.tableType" placeholder="请选择适用表" clearable>
-                    <el-option label="全部表" :value="null" />
+                    <el-option label="全部表" value="" />
                     <el-option
                       v-for="dict in tableTypeOptions"
                       :key="dict.value"
@@ -88,8 +88,8 @@
               <el-col :span="8">
                 <el-form-item label="错误级别" prop="errorLevel">
                   <el-radio-group v-model="formData.errorLevel">
-                    <el-radio :label="1">错误</el-radio>
-                    <el-radio :label="2">警告</el-radio>
+                    <el-radio :value="1">错误</el-radio>
+                    <el-radio :value="2">警告</el-radio>
                   </el-radio-group>
                 </el-form-item>
               </el-col>
@@ -115,9 +115,9 @@
                 <span class="card-header">规则表达式</span>
                 <div>
                   <el-button size="small" @click="showExpressionHelp">表达式帮助</el-button>
-                  <el-button size="small" type="primary" @click="testExpression"
-                    >测试表达式</el-button
-                  >
+                  <el-button size="small" type="primary" @click="testExpression">
+                    测试表达式
+                  </el-button>
                 </div>
               </div>
             </template>
@@ -219,15 +219,15 @@
   <!-- 表达式帮助弹窗 -->
   <ExpressionHelp ref="expressionHelpRef" />
 
-  <!-- 表达式测试弹窗 -->
-  <ExpressionTest ref="expressionTestRef" />
+  <!-- 规则测试弹窗 - 修改：使用RuleTestModal -->
+  <RuleTestModal v-model="testVisible" :rule="currentTestRule" />
 </template>
 
 <script setup lang="ts">
 import { QcRuleApi, QcRuleVO } from '@/api/drug/qc/rule'
 import { getDictOptions, DICT_TYPE } from '@/utils/dict'
 import ExpressionHelp from './components/ExpressionHelp.vue'
-import ExpressionTest from './components/ExpressionTest.vue'
+import RuleTestModal from './components/RuleTestModal.vue'
 
 /** 质控规则表单 */
 defineOptions({ name: 'QcRuleForm' })
@@ -240,6 +240,10 @@ const dialogTitle = ref('') // 弹窗的标题
 const formLoading = ref(false) // 表单的加载中
 const formType = ref('') // 表单的类型：create - 新增；update - 修改
 const ruleCodePrefix = ref('PRE_QC') // 规则编码前缀
+
+// 测试相关状态 - 新增
+const testVisible = ref(false)
+const currentTestRule = ref<any>(null)
 
 // 表单数据
 const formData = ref<QcRuleVO>({
@@ -391,6 +395,13 @@ const handleRuleTypeChange = (value: number) => {
   updateRuleCode()
 }
 
+/** 编码前缀变化处理 - 新增双向联动 */
+const handlePrefixChange = (prefix: string) => {
+  // 前缀变化时联动规则类型
+  formData.value.ruleType = prefix === 'PRE_QC' ? 1 : 2
+  updateRuleCode()
+}
+
 /** 更新规则编码 */
 const updateRuleCode = () => {
   if (formType.value === 'create' && !formData.value.ruleCode.includes('_')) {
@@ -433,14 +444,32 @@ const showExpressionHelp = () => {
   expressionHelpRef.value.open()
 }
 
-/** 测试表达式 */
-const expressionTestRef = ref()
+/** 测试表达式 - 修改：使用RuleTestModal */
 const testExpression = () => {
   if (!formData.value.ruleExpression) {
     message.warning('请先输入规则表达式')
     return
   }
-  expressionTestRef.value.open(formData.value.ruleExpression)
+
+  // 构造当前规则对象用于测试
+  currentTestRule.value = {
+    id: formData.value.id || 0, // 新建时为0
+    ruleCode: formData.value.ruleCode || '临时规则',
+    ruleName: formData.value.ruleName || '临时测试规则',
+    ruleType: formData.value.ruleType,
+    ruleCategory: formData.value.ruleCategory,
+    tableType: formData.value.tableType,
+    fieldName: formData.value.fieldName,
+    ruleExpression: formData.value.ruleExpression,
+    errorMessage: formData.value.errorMessage,
+    errorLevel: formData.value.errorLevel,
+    priority: formData.value.priority,
+    enabled: formData.value.enabled,
+    description: formData.value.description || '这是一个临时测试规则'
+  }
+
+  // 打开测试弹窗
+  testVisible.value = true
 }
 </script>
 

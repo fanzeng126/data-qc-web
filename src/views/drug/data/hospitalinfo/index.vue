@@ -9,12 +9,7 @@
     <!-- 统计卡片 -->
     <el-row :gutter="20" class="stat-cards">
       <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
-        <StatCard
-          title="机构总数"
-          :value="statistics.totalCount"
-          icon="Building"
-          color="#409eff"
-        />
+        <StatCard title="机构总数" :value="statistics.totalCount" icon="Building" color="#409eff" />
       </el-col>
       <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
         <StatCard
@@ -110,8 +105,8 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import PageHeader from '@/components/PageHeader/index.vue'
-import StatCard from '../import/components/StatCard.vue'
-import DrugDataTable from './components/DrugDataTable.vue'
+import StatCard from '../../import/task/components/StatCard.vue'
+import DrugDataTable from '../components/DrugDataTable.vue'
 import { DrugHospitalApi } from '@/api/drug/hospital'
 
 /** 页面名称 */
@@ -169,7 +164,7 @@ const provinceList = [
   { code: '110000', name: '北京市' },
   { code: '120000', name: '天津市' },
   { code: '310000', name: '上海市' },
-  { code: '440000', name: '广东省' },
+  { code: '440000', name: '广东省' }
   // ... 更多省份
 ]
 
@@ -241,7 +236,9 @@ function formatLargeNumber(num: number) {
 
 function formatMoney(amount: number) {
   if (!amount) return '¥0.00'
-  return '¥' + amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return (
+    '¥' + amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  )
 }
 </script>
 

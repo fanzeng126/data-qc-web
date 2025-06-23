@@ -8,21 +8,29 @@
   >
     <div class="rule-test-container">
       <!-- 规则信息展示 -->
-      <el-card class="rule-info-card" shadow="never" v-if="ruleInfo">
+      <el-card class="rule-info-card" shadow="never" v-if="ruleData">
         <template #header>
           <span>测试规则</span>
         </template>
         <el-descriptions :column="2" border size="small">
           <el-descriptions-item label="规则编码">
-            <el-tag type="primary">{{ ruleInfo.ruleCode }}</el-tag>
+            <el-tag type="primary">{{ ruleData.ruleCode }}</el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="规则名称">
-            {{ ruleInfo.ruleName }}
+            {{ ruleData.ruleName }}
+          </el-descriptions-item>
+          <el-descriptions-item label="规则类型">
+            <el-tag :type="ruleData.ruleType === 1 ? 'primary' : 'success'">
+              {{ ruleData.ruleType === 1 ? '前置质控' : '后置质控' }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="适用表">
+            {{ ruleData.tableType || '全部表' }}
           </el-descriptions-item>
         </el-descriptions>
         <div class="expression-display">
           <div class="expression-label">规则表达式：</div>
-          <pre class="expression-code">{{ expression }}</pre>
+          <pre class="expression-code">{{ ruleData.ruleExpression || '暂无表达式' }}</pre>
         </div>
       </el-card>
 
@@ -101,15 +109,12 @@
                 <el-option label="布尔值" value="boolean" />
               </el-select>
               <el-input v-model="field.value" placeholder="字段值" style="flex: 1" />
-              <el-button
-                type="danger"
-                icon="Delete"
-                @click="removeCustomField(index)"
-                circle
-                size="small"
-              />
+              <el-button type="danger" @click="removeCustomField(index)" circle size="small">
+                <el-icon><Delete /></el-icon>
+              </el-button>
             </div>
-            <el-button type="primary" plain @click="addCustomField" icon="Plus" size="small">
+            <el-button type="primary" plain @click="addCustomField" size="small">
+              <el-icon><Plus /></el-icon>
               添加自定义字段
             </el-button>
           </div>
@@ -125,7 +130,7 @@
               type="primary"
               @click="executeTest"
               :loading="testing"
-              :disabled="!hasTestData"
+              :disabled="!hasTestData || !ruleData?.ruleExpression"
             >
               <el-icon><VideoPlay /></el-icon>
               执行测试
@@ -136,40 +141,65 @@
         <!-- 执行结果 -->
         <div class="test-result" v-if="testResult">
           <div class="result-header">
-            <el-tag :type="testResult.passed ? 'success' : 'danger'" size="large" effect="dark">
+            <el-tag
+              :type="testResult.testSuccess ? 'success' : 'danger'"
+              size="large"
+              effect="dark"
+            >
               <el-icon>
-                <CircleCheck v-if="testResult.passed" />
+                <CircleCheck v-if="testResult.testSuccess" />
                 <CircleClose v-else />
               </el-icon>
-              {{ testResult.passed ? '测试通过' : '测试失败' }}
+              {{ testResult.testSuccess ? '测试成功' : '测试失败' }}
             </el-tag>
-            <span class="execution-time">执行时间: {{ testResult.executionTime }}ms</span>
+            <span class="execution-time">执行时间: {{ testResult.totalExecutionTime }}ms</span>
           </div>
 
           <!-- 详细信息 -->
-          <div class="result-details" v-if="testResult.details">
-            <el-descriptions :column="1" border>
-              <el-descriptions-item label="执行结果">
-                {{ testResult.result }}
+          <div class="result-details">
+            <el-descriptions :column="2" border>
+              <el-descriptions-item label="总测试用例">
+                {{ testResult.totalTestCases }}
               </el-descriptions-item>
-              <el-descriptions-item label="错误信息" v-if="testResult.errorMessage">
-                <div class="error-message">{{ testResult.errorMessage }}</div>
+              <el-descriptions-item label="通过用例">
+                <el-tag type="success">{{ testResult.passedCases }}</el-tag>
               </el-descriptions-item>
-              <el-descriptions-item label="执行过程" v-if="testResult.executionSteps">
-                <ol class="execution-steps">
-                  <li v-for="step in testResult.executionSteps" :key="step">
-                    {{ step }}
-                  </li>
-                </ol>
+              <el-descriptions-item label="失败用例">
+                <el-tag type="danger">{{ testResult.failedCases }}</el-tag>
+              </el-descriptions-item>
+              <el-descriptions-item label="异常用例">
+                <el-tag type="warning">{{ testResult.exceptionCases }}</el-tag>
+              </el-descriptions-item>
+              <el-descriptions-item label="通过率">
+                <el-tag :type="testResult.passRate >= 80 ? 'success' : 'warning'">
+                  {{ testResult.passRate?.toFixed(2) }}%
+                </el-tag>
               </el-descriptions-item>
             </el-descriptions>
           </div>
 
+          <!-- 详细测试结果 -->
+          <div class="detailed-results" v-if="testResult.detailedResults?.length">
+            <h4>详细测试结果：</h4>
+            <el-table :data="testResult.detailedResults" size="small" max-height="300">
+              <el-table-column prop="caseIndex" label="用例#" width="80" />
+              <el-table-column label="结果" width="80">
+                <template #default="{ row }">
+                  <el-tag :type="row.passed ? 'success' : 'danger'" size="small">
+                    {{ row.passed ? '通过' : '失败' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="executionTime" label="执行时间(ms)" width="120" />
+              <el-table-column prop="errorMessage" label="错误信息" show-overflow-tooltip />
+            </el-table>
+          </div>
+
           <!-- 测试建议 -->
-          <div class="test-suggestions" v-if="testResult.suggestions?.length">
-            <h4>优化建议：</h4>
+          <div class="test-suggestions" v-if="testResult.recommendations?.length">
+            <h4>测试建议：</h4>
             <ul class="suggestions-list">
-              <li v-for="suggestion in testResult.suggestions" :key="suggestion">
+              <li v-for="suggestion in testResult.recommendations" :key="suggestion">
                 {{ suggestion }}
               </li>
             </ul>
@@ -199,22 +229,20 @@
           <el-timeline-item
             v-for="(record, index) in testHistory"
             :key="index"
-            :type="record.passed ? 'success' : 'danger'"
+            :type="record.testSuccess ? 'success' : 'danger'"
             :timestamp="record.timestamp"
           >
             <div class="history-item">
               <div class="history-header">
                 <span
                   class="result-badge"
-                  :class="{ success: record.passed, error: !record.passed }"
+                  :class="{ success: record.testSuccess, error: !record.testSuccess }"
                 >
-                  {{ record.passed ? '通过' : '失败' }}
+                  {{ record.testSuccess ? '成功' : '失败' }}
                 </span>
-                <span class="test-summary">{{ record.summary }}</span>
+                <span class="test-summary"> 通过率: {{ record.passRate?.toFixed(2) }}% </span>
               </div>
-              <div class="test-data-preview">
-                测试数据: {{ formatTestDataPreview(record.testData) }}
-              </div>
+              <div class="test-data-preview"> 测试用例: {{ record.totalTestCases }}个 </div>
             </div>
           </el-timeline-item>
         </el-timeline>
@@ -239,17 +267,19 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   MagicStick,
   Delete,
-  Plus,
   VideoPlay,
   CircleCheck,
   CircleClose,
   Promotion,
-  DocumentAdd
+  DocumentAdd,
+  Plus
 } from '@element-plus/icons-vue'
+import { QcRuleApi } from '@/api/drug/qc/rule'
+
+// ========================= Props定义 =========================
 
 interface Props {
-  expression?: string
-  ruleInfo?: any
+  rule?: any // 修改：接收rule对象
 }
 
 const props = defineProps<Props>()
@@ -273,15 +303,18 @@ const testHistory = ref<Array<any>>([])
 
 // ========================= 计算属性 =========================
 
+/** 规则数据 - 修改：从props.rule获取 */
+const ruleData = computed(() => props.rule)
+
 /**
  * 从表达式中检测字段
- * 这个函数就像是"侦探"，从表达式中找出所有需要的数据字段
  */
 const detectedFields = computed(() => {
-  if (!props.expression) return []
+  const expression = ruleData.value?.ruleExpression
+  if (!expression) return []
 
   // 提取所有 #fieldName 格式的字段
-  const fieldMatches = props.expression.match(/#(\w+)/g) || []
+  const fieldMatches = expression.match(/#(\w+)/g) || []
   const uniqueFields = [...new Set(fieldMatches.map((f) => f.substring(1)))]
 
   return uniqueFields.map((fieldName) => ({
@@ -310,11 +343,10 @@ watch(dialogVisible, (visible) => {
 // ========================= 核心方法 =========================
 
 /**
- * 执行测试
- * 这是组件的核心功能，模拟规则执行过程
+ * 执行测试 - 修改：调用真实API
  */
 const executeTest = async () => {
-  if (!props.expression) {
+  if (!ruleData.value?.ruleExpression) {
     ElMessage.error('没有可测试的表达式')
     return
   }
@@ -331,109 +363,67 @@ const executeTest = async () => {
       }
     })
 
-    // 模拟API调用执行测试
-    const startTime = Date.now()
-    const result = await simulateRuleExecution(props.expression, fullTestData)
-    const endTime = Date.now()
-
-    testResult.value = {
-      ...result,
-      executionTime: endTime - startTime,
-      testData: fullTestData
+    // 构建测试请求
+    const testRequest = {
+      ruleExpression: ruleData.value.ruleExpression,
+      testDataJson: JSON.stringify([fullTestData]), // 包装成数组
+      testOptions: {
+        enableDetailedOutput: true,
+        enablePerformanceAnalysis: true,
+        enableErrorAnalysis: true,
+        timeout: 10000
+      }
     }
+
+    // 调用后端API
+    const result = await QcRuleApi.testRuleExpression(testRequest)
+    testResult.value = result
 
     // 添加到历史记录
     testHistory.value.unshift({
       timestamp: new Date().toLocaleString(),
-      passed: result.passed,
-      summary: generateTestSummary(result),
+      testSuccess: result.testSuccess,
+      passRate: result.passRate,
+      totalTestCases: result.totalTestCases,
       testData: fullTestData,
-      expression: props.expression
+      expression: ruleData.value.ruleExpression
     })
 
     // 限制历史记录数量
     if (testHistory.value.length > 10) {
       testHistory.value = testHistory.value.slice(0, 10)
     }
+
+    if (result.testSuccess) {
+      ElMessage.success('规则测试执行成功')
+    } else {
+      ElMessage.warning('规则测试发现问题，请查看详细结果')
+    }
   } catch (error) {
-    ElMessage.error('测试执行失败: ' + error.message)
+    console.error('测试执行失败:', error)
+    ElMessage.error('测试执行失败: ' + (error.message || '未知错误'))
+
+    // 构造错误结果
     testResult.value = {
-      passed: false,
-      result: 'false',
-      errorMessage: error.message,
-      executionTime: 0
+      testSuccess: false,
+      totalExecutionTime: 0,
+      totalTestCases: 1,
+      passedCases: 0,
+      failedCases: 0,
+      exceptionCases: 1,
+      passRate: 0,
+      detailedResults: [
+        {
+          caseIndex: 0,
+          passed: false,
+          executionTime: 0,
+          errorMessage: error.message || '测试执行异常'
+        }
+      ],
+      recommendations: ['请检查规则表达式语法和测试数据是否正确']
     }
   } finally {
     testing.value = false
-  }
-}
-
-/**
- * 模拟规则执行
- * 这个函数模拟后端的规则引擎，用于测试目的
- */
-async function simulateRuleExecution(expression: string, data: Record<string, any>) {
-  // 模拟网络延迟
-  await new Promise((resolve) => setTimeout(resolve, 300 + Math.random() * 500))
-
-  try {
-    // 这里简化处理，实际应该调用后端API
-    const result = evaluateExpression(expression, data)
-
-    return {
-      passed: Boolean(result),
-      result: String(result),
-      details: `表达式 "${expression}" 在给定数据下的执行结果`,
-      executionSteps: generateExecutionSteps(expression, data),
-      suggestions: generateSuggestions(expression, data, result)
-    }
-  } catch (error) {
-    throw new Error(`表达式执行错误: ${error.message}`)
-  }
-}
-
-/**
- * 简单的表达式求值器
- * 这个函数提供基本的表达式计算能力（实际项目中应该使用专业的表达式引擎）
- */
-function evaluateExpression(expression: string, data: Record<string, any>): any {
-  // 替换表达式中的字段引用
-  let processedExpression = expression
-
-  // 处理字段引用 #fieldName
-  Object.keys(data).forEach((key) => {
-    const fieldRef = `#${key}`
-    const value = data[key]
-
-    if (processedExpression.includes(fieldRef)) {
-      // 根据值类型进行相应处理
-      if (typeof value === 'string') {
-        processedExpression = processedExpression.replace(new RegExp(`#${key}`, 'g'), `"${value}"`)
-      } else if (value === null) {
-        processedExpression = processedExpression.replace(new RegExp(`#${key}`, 'g'), 'null')
-      } else {
-        processedExpression = processedExpression.replace(new RegExp(`#${key}`, 'g'), String(value))
-      }
-    }
-  })
-
-  // 处理一些常见的方法调用
-  processedExpression = processedExpression
-    .replace(/\.trim\(\)/g, '.trim()')
-    .replace(/\.length\(\)/g, '.length')
-    .replace(/Math\.abs\(/g, 'Math.abs(')
-
-  // 简单的安全性检查
-  if (processedExpression.includes('eval') || processedExpression.includes('Function')) {
-    throw new Error('不安全的表达式')
-  }
-
-  try {
-    // 创建安全的执行环境
-    const safeEval = new Function('Math', `return ${processedExpression}`)
-    return safeEval(Math)
-  } catch (error) {
-    throw new Error(`表达式语法错误: ${error.message}`)
   }
 }
 
@@ -494,7 +484,7 @@ const saveAsTemplate = async () => {
     })
 
     if (templateName.value) {
-      // 这里应该调用API保存模板
+      // TODO: 实现模板保存功能
       ElMessage.success(`测试模板"${templateName.value}"已保存`)
     }
   } catch (error) {
@@ -599,42 +589,10 @@ function convertFieldValue(value: any, type: string): any {
   }
 }
 
-function generateExecutionSteps(expression: string, data: Record<string, any>): string[] {
-  return ['解析表达式中的字段引用', '从测试数据中获取字段值', '执行表达式计算', '返回计算结果']
-}
-
-function generateSuggestions(expression: string, data: Record<string, any>, result: any): string[] {
-  const suggestions: string[] = []
-
-  if (!result) {
-    suggestions.push('表达式返回false，请检查测试数据是否符合规则要求')
-  }
-
-  if (Object.keys(data).length < 3) {
-    suggestions.push('建议增加更多测试数据以验证规则的完整性')
-  }
-
-  return suggestions
-}
-
-function generateTestSummary(result: any): string {
-  return result.passed ? '规则验证通过' : '规则验证失败'
-}
-
-function formatTestDataPreview(data: Record<string, any>): string {
-  const keys = Object.keys(data).slice(0, 3)
-  const preview = keys.map((key) => `${key}=${data[key]}`).join(', ')
-  return keys.length < Object.keys(data).length ? `${preview}...` : preview
-}
-
 // ========================= 对外方法 =========================
 
 defineExpose({
-  open: (expression: string, ruleInfo?: any) => {
-    // 设置表达式和规则信息
-    if (ruleInfo) {
-      // 通过props传递或直接设置
-    }
+  open: () => {
     dialogVisible.value = true
   }
 })
@@ -731,23 +689,15 @@ defineExpose({
 
   .result-details {
     margin-bottom: 16px;
+  }
 
-    .error-message {
-      color: #f56c6c;
-      background-color: #fef0f0;
-      padding: 8px 12px;
-      border-radius: 4px;
-      border: 1px solid #fbc4c4;
-    }
+  .detailed-results {
+    margin-bottom: 16px;
 
-    .execution-steps {
-      margin: 0;
-      padding-left: 20px;
-
-      li {
-        margin-bottom: 4px;
-        color: #606266;
-      }
+    h4 {
+      margin: 0 0 12px 0;
+      color: #303133;
+      font-size: 14px;
     }
   }
 
@@ -825,7 +775,6 @@ defineExpose({
   .test-data-preview {
     font-size: 12px;
     color: #909399;
-    font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
   }
 }
 

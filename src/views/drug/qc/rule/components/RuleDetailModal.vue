@@ -77,7 +77,16 @@
             <!-- 表达式解析 -->
             <el-divider content-position="left">表达式说明</el-divider>
             <div class="expression-explanation">
-              <ExpressionParser :expression="ruleDetail.ruleExpression" />
+              <div class="expression-info">
+                <p><strong>表达式类型：</strong>SpEL (Spring Expression Language)</p>
+                <p><strong>表达式长度：</strong>{{ ruleDetail.ruleExpression.length }} 字符</p>
+                <p
+                  ><strong>复杂度评估：</strong>
+                  <el-tag :type="getComplexityType(ruleDetail.ruleExpression)">
+                    {{ getComplexityLevel(ruleDetail.ruleExpression) }}
+                  </el-tag>
+                </p>
+              </div>
             </div>
           </div>
         </el-card>
@@ -94,7 +103,7 @@
             </el-descriptions-item>
             <el-descriptions-item label="阈值配置" v-if="ruleDetail.thresholdValue">
               <div class="threshold-config">
-                <JsonViewer :data="parsedThreshold" />
+                <pre>{{ formatJson(ruleDetail.thresholdValue) }}</pre>
               </div>
             </el-descriptions-item>
             <el-descriptions-item label="规则说明" v-if="ruleDetail.description">
@@ -112,25 +121,25 @@
           <el-row :gutter="20">
             <el-col :span="6">
               <div class="stat-item">
-                <div class="stat-value">{{ executionStats.totalExecutions }}</div>
+                <div class="stat-value">{{ executionStats.totalExecutions || 0 }}</div>
                 <div class="stat-label">总执行次数</div>
               </div>
             </el-col>
             <el-col :span="6">
               <div class="stat-item">
-                <div class="stat-value success">{{ executionStats.successExecutions }}</div>
+                <div class="stat-value success">{{ executionStats.successExecutions || 0 }}</div>
                 <div class="stat-label">成功次数</div>
               </div>
             </el-col>
             <el-col :span="6">
               <div class="stat-item">
-                <div class="stat-value error">{{ executionStats.failedExecutions }}</div>
+                <div class="stat-value error">{{ executionStats.failedExecutions || 0 }}</div>
                 <div class="stat-label">失败次数</div>
               </div>
             </el-col>
             <el-col :span="6">
               <div class="stat-item">
-                <div class="stat-value">{{ executionStats.avgExecutionTime }}ms</div>
+                <div class="stat-value">{{ executionStats.averageExecutionTime || 0 }}ms</div>
                 <div class="stat-label">平均执行时间</div>
               </div>
             </el-col>
@@ -146,27 +155,37 @@
             </div>
           </template>
 
-          <el-table :data="recentExecutions" stripe>
-            <el-table-column prop="executionNo" label="执行批次" width="150" />
-            <el-table-column prop="taskId" label="任务ID" width="100" />
-            <el-table-column prop="checkedRecords" label="检查记录数" width="120" align="center" />
-            <el-table-column prop="failedRecords" label="异常记录数" width="120" align="center">
-              <template #default="{ row }">
-                <span :class="{ 'error-text': row.failedRecords > 0 }">
-                  {{ row.failedRecords }}
-                </span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="executionTime" label="执行时间" width="120" align="center">
-              <template #default="{ row }"> {{ row.executionTime }}ms </template>
-            </el-table-column>
-            <el-table-column
-              prop="createTime"
-              label="执行时间"
-              min-width="150"
-              :formatter="dateFormatter"
-            />
-          </el-table>
+          <div v-if="recentExecutions.length > 0">
+            <el-table :data="recentExecutions" stripe>
+              <el-table-column prop="executionId" label="执行ID" width="120" />
+              <el-table-column prop="taskId" label="任务ID" width="100" />
+              <el-table-column
+                prop="processedRecords"
+                label="处理记录数"
+                width="120"
+                align="center"
+              />
+              <el-table-column prop="failedRecords" label="失败记录数" width="120" align="center">
+                <template #default="{ row }">
+                  <span :class="{ 'error-text': row.failedRecords > 0 }">
+                    {{ row.failedRecords || 0 }}
+                  </span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="executionTime" label="执行耗时" width="120" align="center">
+                <template #default="{ row }"> {{ row.executionTime || 0 }}ms </template>
+              </el-table-column>
+              <el-table-column
+                prop="startTime"
+                label="执行时间"
+                min-width="150"
+                :formatter="dateFormatter"
+              />
+            </el-table>
+          </div>
+          <div v-else class="no-data">
+            <el-empty description="暂无执行记录" />
+          </div>
         </el-card>
 
         <!-- 操作记录 -->
@@ -175,20 +194,25 @@
             <span>操作记录</span>
           </template>
 
-          <el-timeline>
-            <el-timeline-item
-              v-for="log in operationLogs"
-              :key="log.id"
-              :timestamp="formatTime(log.createTime)"
-              :type="getLogType(log.operation)"
-            >
-              <div class="timeline-content">
-                <div class="operation-title">{{ log.operationName }}</div>
-                <div class="operation-detail">{{ log.operationDetail }}</div>
-                <div class="operation-user">操作人: {{ log.creator }}</div>
-              </div>
-            </el-timeline-item>
-          </el-timeline>
+          <div v-if="operationLogs.length > 0">
+            <el-timeline>
+              <el-timeline-item
+                v-for="log in operationLogs"
+                :key="log.logId"
+                :timestamp="formatTime(log.operationTime)"
+                :type="getLogType(log.operationType)"
+              >
+                <div class="timeline-content">
+                  <div class="operation-title">{{ log.operationDescription }}</div>
+                  <div class="operation-detail">操作类型: {{ log.operationType }}</div>
+                  <div class="operation-user">操作人: {{ log.operatorName }}</div>
+                </div>
+              </el-timeline-item>
+            </el-timeline>
+          </div>
+          <div v-else class="no-data">
+            <el-empty description="暂无操作记录" />
+          </div>
         </el-card>
       </template>
     </div>
@@ -203,28 +227,26 @@
       </div>
     </template>
 
-    <!-- 规则测试弹窗 -->
-    <RuleTestModal ref="testModalRef" />
+    <!-- 规则测试弹窗 - 修改：使用v-model方式 -->
+    <RuleTestModal v-model="testVisible" :rule="ruleDetail" />
   </el-dialog>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Connection, Edit } from '@element-plus/icons-vue'
 import { dateFormatter } from '@/utils/formatTime'
 import { getDictLabel, DICT_TYPE } from '@/utils/dict'
 import {
   QcRuleApi,
-  type QcRuleDetailVO,
+  type QcRuleRespVO,
   type QcRuleExecutionStatsVO,
-  type QcRuleExecutionLogVO,
+  type QcRuleExecutionRecordVO,
   type QcRuleOperationLogVO
 } from '@/api/drug/qc/rule'
 
 // 导入子组件
-import ExpressionParser from './ExpressionParser.vue'
-import JsonViewer from './JsonViewer.vue'
 import RuleTestModal from './RuleTestModal.vue'
 
 interface Props {
@@ -239,38 +261,25 @@ const emit = defineEmits(['edit'])
 const dialogVisible = defineModel<boolean>({ default: false })
 const loading = ref(false)
 
+// 测试相关状态 - 新增
+const testVisible = ref(false)
+
 /** 规则详细信息 */
-const ruleDetail = ref<QcRuleDetailVO>()
+const ruleDetail = ref<QcRuleRespVO>()
 
 /** 执行统计 */
-const executionStats = reactive<QcRuleExecutionStatsVO>({
+const executionStats = reactive<Partial<QcRuleExecutionStatsVO>>({
   totalExecutions: 0,
   successExecutions: 0,
   failedExecutions: 0,
-  avgExecutionTime: 0
+  averageExecutionTime: 0
 })
 
 /** 最近执行记录 */
-const recentExecutions = ref<QcRuleExecutionLogVO[]>([])
+const recentExecutions = ref<QcRuleExecutionRecordVO[]>([])
 
 /** 操作记录 */
 const operationLogs = ref<QcRuleOperationLogVO[]>([])
-
-/** 子组件引用 */
-const testModalRef = ref()
-
-// ========================= 计算属性 =========================
-
-/** 解析阈值配置 */
-const parsedThreshold = computed(() => {
-  if (!ruleDetail.value?.thresholdValue) return {}
-
-  try {
-    return JSON.parse(ruleDetail.value.thresholdValue)
-  } catch (e) {
-    return { error: '无法解析的JSON格式' }
-  }
-})
 
 // ========================= 监听器 =========================
 
@@ -288,15 +297,18 @@ const loadRuleDetail = async () => {
 
   loading.value = true
   try {
-    // 并行加载所有数据
-    const [detail, stats, executions, logs] = await Promise.all([
-      QcRuleApi.getRuleDetail(props.ruleId),
-      QcRuleApi.getRuleExecutionStats(props.ruleId),
-      QcRuleApi.getRecentExecutions(props.ruleId, 10),
-      QcRuleApi.getOperationLogs(props.ruleId, 20)
-    ])
+    // 优先加载基本信息
+    ruleDetail.value = await QcRuleApi.getQcRule(props.ruleId) // 修改：使用getQcRule而不是getRuleDetail
 
-    ruleDetail.value = detail
+    // 并行加载其他数据，失败时不影响基本信息显示
+    const promises = [
+      QcRuleApi.getRuleExecutionStats(props.ruleId).catch(() => ({})),
+      QcRuleApi.getRecentExecutions(props.ruleId, 10).catch(() => []),
+      QcRuleApi.getOperationLogs(props.ruleId, 20).catch(() => [])
+    ]
+
+    const [stats, executions, logs] = await Promise.all(promises)
+
     Object.assign(executionStats, stats)
     recentExecutions.value = executions
     operationLogs.value = logs
@@ -310,11 +322,20 @@ const loadRuleDetail = async () => {
 
 // ========================= 业务方法 =========================
 
-/** 测试表达式 */
+/** 测试表达式 - 修改：使用v-model方式打开测试弹窗 */
 const testExpression = () => {
-  if (ruleDetail.value) {
-    testModalRef.value.open(ruleDetail.value.ruleExpression, ruleDetail.value)
+  if (!ruleDetail.value) {
+    ElMessage.warning('规则信息未加载完成')
+    return
   }
+
+  if (!ruleDetail.value.ruleExpression) {
+    ElMessage.warning('该规则没有配置表达式')
+    return
+  }
+
+  // 直接显示测试弹窗，ruleDetail会通过props传递
+  testVisible.value = true
 }
 
 /** 编辑规则 */
@@ -327,8 +348,7 @@ const editRule = () => {
 
 /** 查看全部历史 */
 const viewAllHistory = () => {
-  // 跳转到执行历史页面或打开历史弹窗
-  window.open(`/drug-qc/rule/${props.ruleId}/history`, '_blank')
+  ElMessage.info('执行历史功能开发中...')
 }
 
 // ========================= 工具方法 =========================
@@ -356,12 +376,38 @@ const getLogType = (operation: string): string => {
   }
 }
 
+/** 格式化JSON */
+const formatJson = (jsonStr: string): string => {
+  try {
+    return JSON.stringify(JSON.parse(jsonStr), null, 2)
+  } catch (e) {
+    return jsonStr
+  }
+}
+
+/** 获取表达式复杂度类型 */
+const getComplexityType = (expression: string): string => {
+  const length = expression.length
+  if (length < 50) return 'success'
+  if (length < 100) return 'warning'
+  return 'danger'
+}
+
+/** 获取表达式复杂度级别 */
+const getComplexityLevel = (expression: string): string => {
+  const length = expression.length
+  if (length < 50) return '简单'
+  if (length < 100) return '中等'
+  return '复杂'
+}
+
 // ========================= 对外方法 =========================
 
 defineExpose({
   open: (ruleId: number) => {
     if (ruleId) {
-      // 直接设置props不太好，这里通过重新加载处理
+      // 通过重新定义props来处理，这里直接加载数据
+      Object.assign(props, { ruleId })
       loadRuleDetail()
       dialogVisible.value = true
     }
@@ -435,6 +481,13 @@ defineExpose({
     border: 1px solid #bfdbfe;
     border-radius: 6px;
     padding: 12px;
+
+    .expression-info {
+      p {
+        margin: 4px 0;
+        font-size: 14px;
+      }
+    }
   }
 }
 
@@ -454,6 +507,12 @@ defineExpose({
   padding: 12px;
   max-height: 200px;
   overflow-y: auto;
+
+  pre {
+    margin: 0;
+    font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
+    font-size: 12px;
+  }
 }
 
 .rule-description {
@@ -511,6 +570,11 @@ defineExpose({
     color: #909399;
     font-size: 12px;
   }
+}
+
+.no-data {
+  text-align: center;
+  padding: 40px 0;
 }
 
 .dialog-footer {

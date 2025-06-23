@@ -1,3 +1,4 @@
+<!-- 修复统计数据初始化和显示问题 -->
 <template>
   <div class="qc-rule-container">
     <!-- 页面头部 -->
@@ -27,43 +28,44 @@
         <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
           <StatCard
             title="前置质控规则"
-            :value="statistics.preQcRules"
+            :value="statistics.preQcRules || 0"
             icon="Shield"
             color="#409eff"
-            :description="`启用: ${statistics.preQcEnabled}条`"
+            :description="`启用: ${statistics.preQcEnabled || 0}条`"
           />
         </el-col>
         <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
           <StatCard
             title="后置质控规则"
-            :value="statistics.postQcRules"
+            :value="statistics.postQcRules || 0"
             icon="CircleCheck"
             color="#67c23a"
-            :description="`启用: ${statistics.postQcEnabled}条`"
+            :description="`启用: ${statistics.postQcEnabled || 0}条`"
           />
         </el-col>
         <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
           <StatCard
             title="今日执行次数"
-            :value="statistics.todayExecutions"
+            :value="statistics.todayExecutions || 0"
             icon="Clock"
             color="#e6a23c"
-            :description="`成功: ${statistics.successExecutions}次`"
+            :description="`成功: ${statistics.successExecutions || 0}次`"
           />
         </el-col>
         <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
           <StatCard
             title="规则通过率"
-            :value="statistics.passRate"
+            :value="statistics.passRate || 0"
             suffix="%"
             icon="TrendCharts"
             color="#909399"
-            :trend="statistics.passRateTrend"
+            :trend="statistics.passRateTrend || 0"
           />
         </el-col>
       </el-row>
     </div>
 
+    <!-- 其余代码保持不变... -->
     <!-- 搜索和操作区域 -->
     <el-card class="search-card" shadow="never">
       <el-form
@@ -299,14 +301,11 @@
 
       <!-- 分页 -->
       <div class="pagination-wrapper">
-        <el-pagination
-          v-model:current-page="queryParams.pageNo"
-          v-model:page-size="queryParams.pageSize"
-          :page-sizes="[10, 20, 50, 100]"
+        <Pagination
           :total="total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleQuery"
-          @current-change="handleQuery"
+          v-model:page="queryParams.pageNo"
+          v-model:limit="queryParams.pageSize"
+          @pagination="loadRuleList"
         />
       </div>
     </el-card>
@@ -388,7 +387,7 @@ const ruleList = ref<QcRuleRespVO[]>([])
 const total = ref(0)
 const multipleSelection = ref<QcRuleRespVO[]>([])
 
-/** 统计数据 */
+/** 统计数据 - 修复初始化为0而不是null */
 const statistics = reactive<QcRuleStatisticsVO>({
   totalRules: 0,
   preQcRules: 0,
@@ -438,11 +437,14 @@ const loadRuleList = async () => {
   }
 }
 
-/** 加载统计数据 */
+/** 加载统计数据 - 添加防空值处理 */
 const loadStatistics = async () => {
   try {
     const data = await QcRuleApi.getQcRuleStatistics()
-    Object.assign(statistics, data)
+    // 确保所有值都不为null
+    Object.keys(statistics).forEach((key) => {
+      statistics[key] = data[key] ?? 0
+    })
   } catch (error) {
     console.error('加载统计数据失败:', error)
   }
@@ -457,17 +459,7 @@ const handleQuery = () => {
 /** 重置查询 */
 const resetQuery = () => {
   queryFormRef.value?.resetFields()
-  Object.assign(queryParams, {
-    pageNo: 1,
-    pageSize: 20,
-    ruleCode: undefined,
-    ruleName: undefined,
-    ruleType: undefined,
-    ruleCategory: undefined,
-    tableType: undefined,
-    enabled: undefined
-  })
-  loadRuleList()
+  handleQuery()
 }
 
 /** 刷新页面 */
