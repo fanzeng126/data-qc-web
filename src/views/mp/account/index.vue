@@ -101,7 +101,7 @@
   <AccountForm ref="formRef" @success="getList" />
 </template>
 <script lang="ts" setup>
-import * as AccountApi from '@/api/mp/account'
+import * as AccountApi from '@/mp/account'
 import AccountForm from './AccountForm.vue'
 
 defineOptions({ name: 'MpAccount' })

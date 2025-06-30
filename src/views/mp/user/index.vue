@@ -101,8 +101,8 @@
 </template>
 <script lang="ts" setup>
 import { dateFormatter } from '@/utils/formatTime'
-import * as MpUserApi from '@/api/mp/user'
-import * as MpTagApi from '@/api/mp/tag'
+import * as MpUserApi from '@/mp/user'
+import * as MpTagApi from '@/mp/tag'
 import WxAccountSelect from '@/views/mp/components/wx-account-select'
 import type { FormInstance } from 'element-plus'
 import UserForm from './UserForm.vue'

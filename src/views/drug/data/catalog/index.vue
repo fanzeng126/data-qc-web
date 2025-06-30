@@ -1,424 +1,386 @@
 <template>
-  <ContentWrap>
-    <!-- 搜索工作栏 -->
-    <el-form
-      class="-mb-15px"
-      :model="queryParams"
-      ref="queryFormRef"
-      :inline="true"
-      label-width="68px"
+  <div class="catalog-container">
+    <!-- Page Header -->
+    <PageHeader
+      title="药品目录管理"
+      content="维护医疗机构药品目录信息，包括药品编码、名称、规格、生产企业等关键数据，支持YPID匹配和质控管理"
     >
-      <el-form-item label="导入任务ID" prop="taskId">
-        <el-input
-          v-model="queryParams.taskId"
-          placeholder="请输入导入任务ID"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="组织机构代码" prop="organizationCode">
-        <el-input
-          v-model="queryParams.organizationCode"
-          placeholder="请输入组织机构代码"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="医疗机构代码" prop="hospitalCode">
-        <el-input
-          v-model="queryParams.hospitalCode"
-          placeholder="请输入医疗机构代码"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="组织机构名称" prop="organizationName">
-        <el-input
-          v-model="queryParams.organizationName"
-          placeholder="请输入组织机构名称"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="省级行政区划代码" prop="domainCode">
-        <el-input
-          v-model="queryParams.domainCode"
-          placeholder="请输入省级行政区划代码"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="国家药管平台药品编码(YPID)" prop="ypid">
-        <el-input
-          v-model="queryParams.ypid"
-          placeholder="请输入国家药管平台药品编码(YPID)"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="院内药品唯一码" prop="hospitalDrugId">
-        <el-input
-          v-model="queryParams.hospitalDrugId"
-          placeholder="请输入院内药品唯一码"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="省级药品集中采购平台药品编码" prop="provinceDrugId">
-        <el-input
-          v-model="queryParams.provinceDrugId"
-          placeholder="请输入省级药品集中采购平台药品编码"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="批准文号" prop="approvalNumber">
-        <el-input
-          v-model="queryParams.approvalNumber"
-          placeholder="请输入批准文号"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="品种通用名（不含剂型）" prop="drugName">
-        <el-input
-          v-model="queryParams.drugName"
-          placeholder="请输入品种通用名（不含剂型）"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="产品名称" prop="productName">
-        <el-input
-          v-model="queryParams.productName"
-          placeholder="请输入产品名称"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="商品名" prop="tradeName">
-        <el-input
-          v-model="queryParams.tradeName"
-          placeholder="请输入商品名"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="商品名（英文）" prop="tradeNameEn">
-        <el-input
-          v-model="queryParams.tradeNameEn"
-          placeholder="请输入商品名（英文）"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="生产企业" prop="manufacturer">
-        <el-input
-          v-model="queryParams.manufacturer"
-          placeholder="请输入生产企业"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="剂型名称" prop="drugForm">
-        <el-input
-          v-model="queryParams.drugForm"
-          placeholder="请输入剂型名称"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="制剂规格" prop="drugSpec">
-        <el-input
-          v-model="queryParams.drugSpec"
-          placeholder="请输入制剂规格"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="制剂单位" prop="dosageUnit">
-        <el-input
-          v-model="queryParams.dosageUnit"
-          placeholder="请输入制剂单位"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="最小销售包装单位" prop="packUnit">
-        <el-input
-          v-model="queryParams.packUnit"
-          placeholder="请输入最小销售包装单位"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="转换系数" prop="conversionFactor">
-        <el-input
-          v-model="queryParams.conversionFactor"
-          placeholder="请输入转换系数"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="是否网上集中采购药品:1-是,2-否" prop="isCentralizedPurchase">
-        <el-input
-          v-model="queryParams.isCentralizedPurchase"
-          placeholder="请输入是否网上集中采购药品:1-是,2-否"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="是否基本药物:1-是,2-否" prop="isBasicDrug">
-        <el-input
-          v-model="queryParams.isBasicDrug"
-          placeholder="请输入是否基本药物:1-是,2-否"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="是否通过一致性评价:1-是,2-否" prop="isConsistencyEvaluation">
-        <el-input
-          v-model="queryParams.isConsistencyEvaluation"
-          placeholder="请输入是否通过一致性评价:1-是,2-否"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="质控状态:0-未质控,1-质控通过,2-质控失败" prop="qcStatus">
-        <el-select
-          v-model="queryParams.qcStatus"
-          placeholder="请选择质控状态:0-未质控,1-质控通过,2-质控失败"
-          clearable
-          class="!w-240px"
-        >
-          <el-option label="请选择字典生成" value="" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="质控结果详情(JSON格式)" prop="qcResult">
-        <el-input
-          v-model="queryParams.qcResult"
-          placeholder="请输入质控结果详情(JSON格式)"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item label="错误信息" prop="errorMessage">
-        <el-input
-          v-model="queryParams.errorMessage"
-          placeholder="请输入错误信息"
-          clearable
-          @keyup.enter="handleQuery"
-          class="!w-240px"
-        />
-      </el-form-item>
-      <el-form-item
-        label="YPID匹配状态:0-未匹配,1-自动匹配,2-手动匹配,3-匹配失败"
-        prop="ypidMatchStatus"
-      >
-        <el-select
-          v-model="queryParams.ypidMatchStatus"
-          placeholder="请选择YPID匹配状态:0-未匹配,1-自动匹配,2-手动匹配,3-匹配失败"
-          clearable
-          class="!w-240px"
-        >
-          <el-option label="请选择字典生成" value="" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="创建时间" prop="createTime">
-        <el-date-picker
-          v-model="queryParams.createTime"
-          value-format="YYYY-MM-DD HH:mm:ss"
-          type="daterange"
-          start-placeholder="开始日期"
-          end-placeholder="结束日期"
-          :default-time="[new Date('1 00:00:00'), new Date('1 23:59:59')]"
-          class="!w-220px"
-        />
-      </el-form-item>
-      <el-form-item>
-        <el-button @click="handleQuery"><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button>
-        <el-button @click="resetQuery"><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button>
-        <el-button
-          type="primary"
-          plain
-          @click="openForm('create')"
-          v-hasPermi="['drug:catalog:create']"
-        >
-          <Icon icon="ep:plus" class="mr-5px" /> 新增
+      <template #extra>
+        <el-button type="primary" @click="openForm('create')" v-hasPermi="['drug:catalog:create']">
+          <Icon icon="ep:plus" class="mr-5px" />
+          新增药品
         </el-button>
         <el-button
           type="success"
-          plain
           @click="handleExport"
           :loading="exportLoading"
           v-hasPermi="['drug:catalog:export']"
         >
-          <Icon icon="ep:download" class="mr-5px" /> 导出
+          <Icon icon="ep:download" class="mr-5px" />
+          导出目录
         </el-button>
-      </el-form-item>
-    </el-form>
-  </ContentWrap>
+      </template>
+    </PageHeader>
 
-  <!-- 列表 -->
-  <ContentWrap>
-    <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
-      <el-table-column label="主键ID" align="center" prop="id" />
-      <el-table-column label="导入任务ID" align="center" prop="taskId" />
-      <el-table-column label="组织机构代码" align="center" prop="organizationCode" />
-      <el-table-column label="医疗机构代码" align="center" prop="hospitalCode" />
-      <el-table-column label="组织机构名称" align="center" prop="organizationName" />
-      <el-table-column label="省级行政区划代码" align="center" prop="domainCode" />
-      <el-table-column label="国家药管平台药品编码(YPID)" align="center" prop="ypid" />
-      <el-table-column label="院内药品唯一码" align="center" prop="hospitalDrugId" />
-      <el-table-column label="省级药品集中采购平台药品编码" align="center" prop="provinceDrugId" />
-      <el-table-column label="批准文号" align="center" prop="approvalNumber" />
-      <el-table-column label="品种通用名（不含剂型）" align="center" prop="drugName" />
-      <el-table-column label="产品名称" align="center" prop="productName" />
-      <el-table-column label="商品名" align="center" prop="tradeName" />
-      <el-table-column label="商品名（英文）" align="center" prop="tradeNameEn" />
-      <el-table-column label="生产企业" align="center" prop="manufacturer" />
-      <el-table-column label="剂型名称" align="center" prop="drugForm" />
-      <el-table-column label="制剂规格" align="center" prop="drugSpec" />
-      <el-table-column label="制剂单位" align="center" prop="dosageUnit" />
-      <el-table-column label="最小销售包装单位" align="center" prop="packUnit" />
-      <el-table-column label="转换系数" align="center" prop="conversionFactor" />
-      <el-table-column
-        label="是否网上集中采购药品:1-是,2-否"
-        align="center"
-        prop="isCentralizedPurchase"
-      />
-      <el-table-column label="是否基本药物:1-是,2-否" align="center" prop="isBasicDrug" />
-      <el-table-column
-        label="是否通过一致性评价:1-是,2-否"
-        align="center"
-        prop="isConsistencyEvaluation"
-      />
-      <el-table-column
-        label="质控状态:0-未质控,1-质控通过,2-质控失败"
-        align="center"
-        prop="qcStatus"
-      />
-      <el-table-column label="质控结果详情(JSON格式)" align="center" prop="qcResult" />
-      <el-table-column label="错误信息" align="center" prop="errorMessage" />
-      <el-table-column
-        label="YPID匹配状态:0-未匹配,1-自动匹配,2-手动匹配,3-匹配失败"
-        align="center"
-        prop="ypidMatchStatus"
-      />
-      <el-table-column
-        label="创建时间"
-        align="center"
-        prop="createTime"
-        :formatter="dateFormatter"
-        width="180px"
-      />
-      <el-table-column label="操作" align="center" min-width="120px">
-        <template #default="scope">
-          <el-button
-            link
-            type="primary"
-            @click="openForm('update', scope.row.id)"
-            v-hasPermi="['drug:catalog:update']"
-          >
-            编辑
-          </el-button>
-          <el-button
-            link
-            type="danger"
-            @click="handleDelete(scope.row.id)"
-            v-hasPermi="['drug:catalog:delete']"
-          >
-            删除
-          </el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-    <!-- 分页 -->
-    <Pagination
-      :total="total"
-      v-model:page="queryParams.pageNo"
-      v-model:limit="queryParams.pageSize"
-      @pagination="getList"
-    />
-  </ContentWrap>
+    <!-- Statistics Overview -->
+    <div class="stats-overview">
+      <el-row :gutter="20">
+        <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
+          <StatCard
+            title="药品品种总数"
+            :value="statistics.totalDrugs || 0"
+            icon="FirstAidKit"
+            color="#409eff"
+            description="已登记品种"
+            :loading="statsLoading"
+          />
+        </el-col>
+        <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
+          <StatCard
+            title="基本药物品种"
+            :value="statistics.basicDrugs || 0"
+            icon="CircleCheck"
+            color="#67c23a"
+            description="国家基药目录"
+            :loading="statsLoading"
+          />
+        </el-col>
+        <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
+          <StatCard
+            title="一致性评价药品"
+            :value="statistics.consistencyDrugs || 0"
+            icon="Medal"
+            color="#e6a23c"
+            description="通过评价"
+            :loading="statsLoading"
+          />
+        </el-col>
+        <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
+          <StatCard
+            title="YPID匹配率"
+            :value="statistics.ypidMatchRate || 0"
+            suffix="%"
+            icon="Connection"
+            color="#909399"
+            :trend="statistics.matchRateTrend || 0"
+            :loading="statsLoading"
+          />
+        </el-col>
+      </el-row>
+    </div>
 
-  <!-- 表单弹窗：添加/修改 -->
-  <CatalogForm ref="formRef" @success="getList" />
+    <!-- Search Card -->
+    <el-card class="search-card" shadow="never">
+      <el-form
+        ref="queryFormRef"
+        :model="queryParams"
+        :inline="true"
+        label-width="100px"
+        class="search-form"
+      >
+        <el-row :gutter="20">
+          <el-col :xs="24" :sm="12" :md="8" :lg="6">
+            <el-form-item label="药品编码" prop="ypid">
+              <el-input
+                v-model="queryParams.ypid"
+                placeholder="YPID编码"
+                clearable
+                @keyup.enter="handleQuery"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12" :md="8" :lg="6">
+            <el-form-item label="产品名称" prop="productName">
+              <el-input
+                v-model="queryParams.productName"
+                placeholder="产品名称"
+                clearable
+                @keyup.enter="handleQuery"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12" :md="8" :lg="6">
+            <el-form-item label="通用名" prop="drugName">
+              <el-input
+                v-model="queryParams.drugName"
+                placeholder="药品通用名"
+                clearable
+                @keyup.enter="handleQuery"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12" :md="8" :lg="6">
+            <el-form-item label="生产企业" prop="manufacturer">
+              <el-input
+                v-model="queryParams.manufacturer"
+                placeholder="生产企业名称"
+                clearable
+                @keyup.enter="handleQuery"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12" :md="8" :lg="6">
+            <el-form-item label="基本药物" prop="isBasicDrug">
+              <el-select
+                v-model="queryParams.isBasicDrug"
+                placeholder="是否基药"
+                clearable
+                style="width: 100%"
+              >
+                <el-option label="全部" value="" />
+                <el-option label="是" :value="1" />
+                <el-option label="否" :value="2" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12" :md="8" :lg="6">
+            <el-form-item label="匹配状态" prop="ypidMatchStatus">
+              <el-select
+                v-model="queryParams.ypidMatchStatus"
+                placeholder="YPID匹配状态"
+                clearable
+                style="width: 100%"
+              >
+                <el-option label="全部" value="" />
+                <el-option label="未匹配" :value="0" />
+                <el-option label="自动匹配" :value="1" />
+                <el-option label="手动匹配" :value="2" />
+                <el-option label="匹配失败" :value="3" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row>
+          <el-col :span="24" style="text-align: center">
+            <el-form-item>
+              <el-button type="primary" @click="handleQuery">
+                <Icon icon="ep:search" class="mr-5px" />
+                搜索
+              </el-button>
+              <el-button @click="resetQuery">
+                <Icon icon="ep:refresh" class="mr-5px" />
+                重置
+              </el-button>
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+    </el-card>
+
+    <!-- Data Table -->
+    <el-card class="table-card" shadow="never">
+      <template #header>
+        <div class="table-header">
+          <span class="table-title">药品目录列表</span>
+          <div class="table-actions">
+            <el-button size="small" @click="handleRefresh" :loading="refreshing">
+              <Icon icon="ep:refresh" class="mr-5px" />
+              刷新
+            </el-button>
+          </div>
+        </div>
+      </template>
+
+      <el-table
+        v-loading="loading"
+        :data="list"
+        :stripe="true"
+        :show-overflow-tooltip="true"
+        border
+        style="width: 100%"
+      >
+        <el-table-column type="selection" width="55" />
+
+        <!-- Drug Basic Info -->
+        <el-table-column label="药品信息" align="left" min-width="300" fixed="left">
+          <template #default="{ row }">
+            <div class="drug-info">
+              <div class="drug-name">{{ row.productName }}</div>
+              <div class="drug-details">
+                <span class="generic-name">通用名: {{ row.drugName }}</span>
+                <span v-if="row.tradeName" class="trade-name">商品名: {{ row.tradeName }}</span>
+              </div>
+              <div class="drug-codes">
+                <el-tag size="small" type="info">YPID: {{ row.ypid }}</el-tag>
+                <el-tag size="small" v-if="row.hospitalDrugId"
+                  >院内码: {{ row.hospitalDrugId }}</el-tag
+                >
+              </div>
+            </div>
+          </template>
+        </el-table-column>
+
+        <!-- Manufacturer -->
+        <el-table-column
+          label="生产企业"
+          align="center"
+          prop="manufacturer"
+          width="180"
+          show-overflow-tooltip
+        />
+
+        <!-- Drug Specs -->
+        <el-table-column label="规格信息" align="center" width="200">
+          <template #default="{ row }">
+            <div class="spec-info">
+              <div>{{ row.drugForm }} | {{ row.drugSpec }}</div>
+              <div class="units">
+                <span>制剂: {{ row.dosageUnit }}</span>
+                <span>包装: {{ row.packUnit }}</span>
+              </div>
+              <div class="conversion">转换系数: {{ row.conversionFactor }}</div>
+            </div>
+          </template>
+        </el-table-column>
+
+        <!-- Approval Number -->
+        <el-table-column
+          label="批准文号"
+          align="center"
+          prop="approvalNumber"
+          width="150"
+          show-overflow-tooltip
+        />
+
+        <!-- Drug Properties -->
+        <el-table-column label="药品属性" align="center" width="160">
+          <template #default="{ row }">
+            <div class="property-tags">
+              <el-tag v-if="row.isCentralizedPurchase === 1" size="small" type="primary"
+                >集采</el-tag
+              >
+              <el-tag v-if="row.isBasicDrug === 1" size="small" type="success">基药</el-tag>
+              <el-tag v-if="row.isConsistencyEvaluation === 1" size="small" type="warning"
+                >一致性</el-tag
+              >
+            </div>
+          </template>
+        </el-table-column>
+
+        <!-- Match Status -->
+        <el-table-column label="匹配状态" align="center" prop="ypidMatchStatus" width="100">
+          <template #default="{ row }">
+            <el-tag :type="getMatchStatusType(row.ypidMatchStatus)" size="small" effect="dark">
+              {{ getMatchStatusText(row.ypidMatchStatus) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+
+        <!-- QC Status -->
+        <el-table-column label="质控状态" align="center" prop="qcStatus" width="100">
+          <template #default="{ row }">
+            <el-tag :type="getQcStatusType(row.qcStatus)" size="small">
+              {{ getQcStatusText(row.qcStatus) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+
+        <!-- Create Time -->
+        <el-table-column
+          label="创建时间"
+          align="center"
+          prop="createTime"
+          :formatter="dateFormatter"
+          width="160"
+        />
+
+        <!-- Actions -->
+        <el-table-column label="操作" align="center" width="160" fixed="right">
+          <template #default="scope">
+            <div class="action-buttons">
+              <el-button
+                link
+                type="primary"
+                size="small"
+                @click="openForm('update', scope.row.id)"
+                v-hasPermi="['drug:catalog:update']"
+              >
+                <Icon icon="ep:edit" class="mr-3px" />
+                编辑
+              </el-button>
+              <el-button
+                link
+                type="danger"
+                size="small"
+                @click="handleDelete(scope.row.id)"
+                v-hasPermi="['drug:catalog:delete']"
+              >
+                <Icon icon="ep:delete" class="mr-3px" />
+                删除
+              </el-button>
+            </div>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <!-- Pagination -->
+      <div class="pagination-wrapper">
+        <Pagination
+          :total="total"
+          v-model:page="queryParams.pageNo"
+          v-model:limit="queryParams.pageSize"
+          @pagination="getList"
+        />
+      </div>
+    </el-card>
+
+    <!-- Form Dialog -->
+    <CatalogForm ref="formRef" @success="handleFormSuccess" />
+  </div>
 </template>
 
 <script setup lang="ts">
+import { ref, reactive, onMounted } from 'vue'
 import { dateFormatter } from '@/utils/formatTime'
 import download from '@/utils/download'
 import { CatalogApi, CatalogVO } from '@/api/drug/data/catalog'
 import CatalogForm from './CatalogForm.vue'
+import PageHeader from '@/components/PageHeader/index.vue'
+import StatCard from '@/components/StatCard/index.vue'
 
-/** 药品目录 列表 */
+/** Drug Catalog Management Page */
 defineOptions({ name: 'Catalog' })
 
-const message = useMessage() // 消息弹窗
-const { t } = useI18n() // 国际化
+const message = useMessage()
+const { t } = useI18n()
 
-const loading = ref(true) // 列表的加载中
-const list = ref<CatalogVO[]>([]) // 列表的数据
-const total = ref(0) // 列表的总页数
+// ========================= Reactive Data =========================
+const loading = ref(true)
+const refreshing = ref(false)
+const statsLoading = ref(true)
+const list = ref<CatalogVO[]>([])
+const total = ref(0)
 const queryParams = reactive({
   pageNo: 1,
   pageSize: 10,
-  taskId: undefined,
-  organizationCode: undefined,
-  hospitalCode: undefined,
-  organizationName: undefined,
-  domainCode: undefined,
   ypid: undefined,
-  hospitalDrugId: undefined,
-  provinceDrugId: undefined,
-  approvalNumber: undefined,
-  drugName: undefined,
   productName: undefined,
-  tradeName: undefined,
-  tradeNameEn: undefined,
+  drugName: undefined,
   manufacturer: undefined,
-  drugForm: undefined,
-  drugSpec: undefined,
-  dosageUnit: undefined,
-  packUnit: undefined,
-  conversionFactor: undefined,
-  isCentralizedPurchase: undefined,
   isBasicDrug: undefined,
-  isConsistencyEvaluation: undefined,
-  qcStatus: undefined,
-  qcResult: undefined,
-  errorMessage: undefined,
-  ypidMatchStatus: undefined,
-  createTime: []
+  ypidMatchStatus: undefined
 })
-const queryFormRef = ref() // 搜索的表单
-const exportLoading = ref(false) // 导出的加载中
+const queryFormRef = ref()
+const exportLoading = ref(false)
 
-/** 查询列表 */
+// Statistics data
+const statistics = reactive({
+  totalDrugs: 0,
+  basicDrugs: 0,
+  consistencyDrugs: 0,
+  ypidMatchRate: 0,
+  matchRateTrend: 0
+})
+
+// ========================= Lifecycle =========================
+onMounted(() => {
+  getList()
+  loadStatistics()
+})
+
+// ========================= Core Methods =========================
+
+/** Query list */
 const getList = async () => {
   loading.value = true
   try {
@@ -430,43 +392,82 @@ const getList = async () => {
   }
 }
 
-/** 搜索按钮操作 */
+/** Load statistics */
+const loadStatistics = async () => {
+  statsLoading.value = true
+  try {
+    const allData = await CatalogApi.getCatalogPage({ pageNo: 1, pageSize: 100 })
+    const allList = allData.list || []
+
+    statistics.totalDrugs = allData.total || 0
+    statistics.basicDrugs = allList.filter((item) => item.isBasicDrug === 1).length
+    statistics.consistencyDrugs = allList.filter(
+      (item) => item.isConsistencyEvaluation === 1
+    ).length
+
+    const matchedCount = allList.filter(
+      (item) => item.ypidMatchStatus === 1 || item.ypidMatchStatus === 2
+    ).length
+    statistics.ypidMatchRate =
+      allList.length > 0 ? Math.round((matchedCount / allList.length) * 100) : 0
+    statistics.matchRateTrend = 2
+  } catch (error) {
+    console.error('Failed to load statistics:', error)
+  } finally {
+    statsLoading.value = false
+  }
+}
+
+/** Search */
 const handleQuery = () => {
   queryParams.pageNo = 1
   getList()
 }
 
-/** 重置按钮操作 */
+/** Reset query */
 const resetQuery = () => {
   queryFormRef.value.resetFields()
   handleQuery()
 }
 
-/** 添加/修改操作 */
+/** Refresh */
+const handleRefresh = async () => {
+  refreshing.value = true
+  try {
+    await Promise.all([getList(), loadStatistics()])
+    message.success('刷新成功')
+  } finally {
+    refreshing.value = false
+  }
+}
+
+/** Open form */
 const formRef = ref()
 const openForm = (type: string, id?: number) => {
   formRef.value.open(type, id)
 }
 
-/** 删除按钮操作 */
+/** Form success callback */
+const handleFormSuccess = () => {
+  getList()
+  loadStatistics()
+}
+
+/** Delete */
 const handleDelete = async (id: number) => {
   try {
-    // 删除的二次确认
     await message.delConfirm()
-    // 发起删除
     await CatalogApi.deleteCatalog(id)
     message.success(t('common.delSuccess'))
-    // 刷新列表
     await getList()
+    await loadStatistics()
   } catch {}
 }
 
-/** 导出按钮操作 */
+/** Export */
 const handleExport = async () => {
   try {
-    // 导出的二次确认
     await message.exportConfirm()
-    // 发起导出
     exportLoading.value = true
     const data = await CatalogApi.exportCatalog(queryParams)
     download.excel(data, '药品目录.xls')
@@ -476,8 +477,221 @@ const handleExport = async () => {
   }
 }
 
-/** 初始化 **/
-onMounted(() => {
-  getList()
-})
+// ========================= Utility Methods =========================
+
+/** Get match status type */
+const getMatchStatusType = (status: number): string => {
+  const types = {
+    0: 'info',
+    1: 'success',
+    2: 'primary',
+    3: 'danger'
+  }
+  return types[status] || 'info'
+}
+
+/** Get match status text */
+const getMatchStatusText = (status: number): string => {
+  const texts = {
+    0: '未匹配',
+    1: '自动匹配',
+    2: '手动匹配',
+    3: '匹配失败'
+  }
+  return texts[status] || '未知'
+}
+
+/** Get QC status type */
+const getQcStatusType = (status: number): string => {
+  const types = {
+    0: 'info',
+    1: 'success',
+    2: 'danger'
+  }
+  return types[status] || 'info'
+}
+
+/** Get QC status text */
+const getQcStatusText = (status: number): string => {
+  const texts = {
+    0: '未质控',
+    1: '质控通过',
+    2: '质控失败'
+  }
+  return texts[status] || '未知'
+}
 </script>
+
+<style scoped>
+.catalog-container {
+  padding: 20px;
+  background-color: #f5f5f5;
+  min-height: calc(100vh - 50px);
+}
+
+.stats-overview {
+  margin-bottom: 20px;
+}
+
+.search-card {
+  margin-bottom: 20px;
+  border-radius: 8px;
+}
+
+.search-form {
+  margin-bottom: -18px;
+}
+
+.table-card {
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.table-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.table-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.pagination-wrapper {
+  display: flex;
+  justify-content: end;
+  margin-top: 20px;
+  padding: 20px;
+}
+
+/* Drug info styles */
+.drug-info {
+  text-align: left;
+  padding: 8px 0;
+}
+
+.drug-name {
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.drug-details {
+  font-size: 12px;
+  color: #606266;
+  margin-bottom: 6px;
+}
+
+.generic-name {
+  margin-right: 12px;
+}
+
+.trade-name {
+  color: #909399;
+}
+
+.drug-codes {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Spec info styles */
+.spec-info {
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.units {
+  color: #606266;
+  margin-top: 2px;
+}
+
+.units span {
+  margin-right: 8px;
+}
+
+.conversion {
+  color: #909399;
+  margin-top: 2px;
+}
+
+/* Property tags */
+.property-tags {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .catalog-container {
+    padding: 10px;
+  }
+
+  .search-form :deep(.el-form-item) {
+    margin-bottom: 12px;
+  }
+
+  .table-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .drug-codes {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+}
+
+/* Table optimization */
+:deep(.el-table) {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+:deep(.el-table th) {
+  background-color: #fafafa;
+  color: #606266;
+  font-weight: 600;
+}
+
+/* Tag styles */
+:deep(.el-tag) {
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+/* Card styles */
+:deep(.el-card) {
+  border: none;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+:deep(.el-card__header) {
+  border-bottom: 1px solid #f0f0f0;
+  background-color: #fafafa;
+  padding: 16px 20px;
+}
+</style>

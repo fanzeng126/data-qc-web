@@ -84,7 +84,7 @@
 </template>
 <script lang="ts" setup>
 import { dateFormatter } from '@/utils/formatTime'
-import * as MpTagApi from '@/api/mp/tag'
+import * as MpTagApi from '@/mp/tag'
 import TagForm from './TagForm.vue'
 import WxAccountSelect from '@/views/mp/components/wx-account-select'
 

@@ -1,17 +1,16 @@
 <template>
   <Dialog v-model="dialogVisible" title="药品出入库数据导入" width="600px">
     <!-- 导入说明 -->
-    <el-alert
-      title="导入说明"
-      type="info"
-      :closable="false"
-      class="mb-4"
-    >
+    <el-alert title="导入说明" type="info" :closable="false" class="mb-4">
       <template #default>
         <div class="import-tips">
           <p>1. 请下载并使用标准模板进行数据录入</p>
           <p>2. Excel文件大小不超过10MB，数据行数不超过5000行</p>
-          <p>3. 必填字段：{{ ioType === 'IN' ? '药品编码、数量、单价、供应商' : '药品编码、数量、科室' }}</p>
+          <p
+            >3. 必填字段：{{
+              ioType === 'IN' ? '药品编码、数量、单价、供应商' : '药品编码、数量、科室'
+            }}</p
+          >
           <p>4. 日期格式：YYYYMMDD（如：20240301）</p>
         </div>
       </template>
@@ -88,12 +87,7 @@
           :prop="ioType === 'IN' ? 'inPackQuantity' : 'outPackQuantity'"
           width="100"
         />
-        <el-table-column
-          v-if="ioType === 'IN'"
-          label="入库单价"
-          prop="inPackPrice"
-          width="100"
-        />
+        <el-table-column v-if="ioType === 'IN'" label="入库单价" prop="inPackPrice" width="100" />
         <el-table-column
           :label="ioType === 'IN' ? '供应商' : '科室'"
           :prop="ioType === 'IN' ? 'supplierName' : 'departmentName'"
@@ -101,10 +95,7 @@
         />
         <el-table-column label="状态" width="80" align="center">
           <template #default="scope">
-            <el-tag
-              :type="scope.row._hasError ? 'danger' : 'success'"
-              size="small"
-            >
+            <el-tag :type="scope.row._hasError ? 'danger' : 'success'" size="small">
               {{ scope.row._hasError ? '错误' : '正常' }}
             </el-tag>
           </template>
@@ -121,11 +112,7 @@
         </span>
       </template>
       <div class="error-list">
-        <div
-          v-for="(error, index) in errorMessages.slice(0, 10)"
-          :key="index"
-          class="error-item"
-        >
+        <div v-for="(error, index) in errorMessages.slice(0, 10)" :key="index" class="error-item">
           <el-tag type="danger" size="small">第{{ error.row }}行</el-tag>
           <span class="error-msg">{{ error.message }}</span>
         </div>
@@ -140,18 +127,12 @@
       <template #header>
         <span>导入进度</span>
       </template>
-      <el-progress
-        :percentage="importProgress"
-        :status="importStatus"
-        class="import-progress"
-      />
+      <el-progress :percentage="importProgress" :status="importStatus" class="import-progress" />
       <p class="progress-text">{{ progressText }}</p>
     </el-card>
 
     <template #footer>
-      <el-button @click="dialogVisible = false" :disabled="importing">
-        取 消
-      </el-button>
+      <el-button @click="dialogVisible = false" :disabled="importing"> 取 消 </el-button>
       <el-button
         type="primary"
         @click="handleImport"
@@ -191,7 +172,7 @@ const errorMessages = ref<{ row: number; message: string }[]>([])
 
 // 计算属性
 const hasErrors = computed(() => {
-  return previewData.value.some(item => item._hasError) || errorMessages.value.length > 0
+  return previewData.value.some((item) => item._hasError) || errorMessages.value.length > 0
 })
 
 /** 打开对话框 */
@@ -234,7 +215,7 @@ const downloadTemplate = async () => {
       { wch: 15 }, // 批次号/用途
       { wch: 12 }, // 日期
       { wch: 12 }, // 有效期
-      { wch: 20 }  // 备注
+      { wch: 20 } // 备注
     ]
     ws['!cols'] = colWidths
 
@@ -244,7 +225,7 @@ const downloadTemplate = async () => {
     const fileName = `药品${ioType.value === 'IN' ? '入库' : '出库'}导入模板.xlsx`
     XLSX.writeFile(wb, fileName)
 
-    message.success('模板下载成功')
+    message.success('模板开始下载')
   } catch (error) {
     console.error('下载模板失败', error)
     message.error('下载模板失败')
@@ -259,28 +240,28 @@ const createTemplateData = () => {
     return [
       {
         '药品编码*': 'YP001',
-        '产品名称': '示例药品名称',
+        产品名称: '示例药品名称',
         '入库数量*': 100,
         '入库单价*': 25.5,
         '供应商名称*': '示例供应商',
-        '批次号': 'LOT20240301',
+        批次号: 'LOT20240301',
         '出入库日期*': '20240301',
-        '有效期': '20251201',
-        '备注': '示例备注信息'
+        有效期: '20251201',
+        备注: '示例备注信息'
       }
     ]
   } else {
     return [
       {
         '药品编码*': 'YP001',
-        '产品名称': '示例药品名称',
+        产品名称: '示例药品名称',
         '出库数量*': 50,
         '科室代码*': 'KS001',
         '科室名称*': '内科',
-        '出库用途': 'CLINICAL',
+        出库用途: 'CLINICAL',
         '出库日期*': '20240301',
-        '医生姓名': '张医生',
-        '备注': '示例备注信息'
+        医生姓名: '张医生',
+        备注: '示例备注信息'
       }
     ]
   }
@@ -327,7 +308,7 @@ const parseExcelFile = async (file: File) => {
     const rows = jsonData.slice(1) as any[]
 
     const processedData = rows
-      .filter(row => row.some(cell => cell !== null && cell !== undefined && cell !== ''))
+      .filter((row) => row.some((cell) => cell !== null && cell !== undefined && cell !== ''))
       .map((row, index) => {
         const rowData: any = {}
         headers.forEach((header, headerIndex) => {
@@ -347,7 +328,6 @@ const parseExcelFile = async (file: File) => {
     errorMessages.value = errors
 
     message.success(`解析成功，共${validData.length}条数据`)
-
   } catch (error) {
     console.error('解析文件失败', error)
     message.error('解析文件失败，请检查文件格式')
@@ -357,21 +337,21 @@ const parseExcelFile = async (file: File) => {
 /** 映射表头到字段 */
 const mapHeaderToField = (header: string): string | null => {
   const fieldMap: Record<string, string> = {
-    '药品编码': 'hosDrugId',
-    '产品名称': 'productName',
-    '入库数量': 'inPackQuantity',
-    '入库单价': 'inPackPrice',
-    '出库数量': 'outPackQuantity',
-    '供应商名称': 'supplierName',
-    '批次号': 'batchNo',
-    '科室代码': 'departmentCode',
-    '科室名称': 'departmentName',
-    '出库用途': 'outPurpose',
-    '出入库日期': 'outInDate',
-    '出库日期': 'outInDate',
-    '有效期': 'expiryDate',
-    '医生姓名': 'doctorName',
-    '备注': 'remark'
+    药品编码: 'hosDrugId',
+    产品名称: 'productName',
+    入库数量: 'inPackQuantity',
+    入库单价: 'inPackPrice',
+    出库数量: 'outPackQuantity',
+    供应商名称: 'supplierName',
+    批次号: 'batchNo',
+    科室代码: 'departmentCode',
+    科室名称: 'departmentName',
+    出库用途: 'outPurpose',
+    出入库日期: 'outInDate',
+    出库日期: 'outInDate',
+    有效期: 'expiryDate',
+    医生姓名: 'doctorName',
+    备注: 'remark'
   }
 
   // 移除*号和空格
@@ -382,7 +362,7 @@ const mapHeaderToField = (header: string): string | null => {
 /** 校验导入数据 */
 const validateImportData = (data: any[]) => {
   const errors: { row: number; message: string }[] = []
-  const validData = data.map(item => {
+  const validData = data.map((item) => {
     const errors_for_item: string[] = []
 
     // 必填字段校验
@@ -449,7 +429,7 @@ const handleImport = async () => {
       {
         confirmButtonText: '确认导入',
         cancelButtonText: '取消',
-        type: 'warning',
+        type: 'warning'
       }
     )
 
@@ -480,7 +460,7 @@ const handleImport = async () => {
         failCount += batch.length
       }
 
-      importProgress.value = Math.round((i + 1) / batches.length * 100)
+      importProgress.value = Math.round(((i + 1) / batches.length) * 100)
     }
 
     // 导入完成
@@ -499,7 +479,6 @@ const handleImport = async () => {
       dialogVisible.value = false
       emit('success')
     }, 2000)
-
   } catch (error) {
     if (error !== 'cancel') {
       console.error('导入失败', error)

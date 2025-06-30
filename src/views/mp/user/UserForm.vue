@@ -31,8 +31,8 @@
   </Dialog>
 </template>
 <script lang="ts" setup>
-import * as MpTagApi from '@/api/mp/tag'
-import * as MpUserApi from '@/api/mp/user'
+import * as MpTagApi from '@/mp/tag'
+import * as MpUserApi from '@/mp/user'
 
 defineOptions({ name: 'MpUserForm' })
 

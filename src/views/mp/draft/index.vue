@@ -63,8 +63,8 @@
 
 <script lang="ts" setup>
 import WxAccountSelect from '@/views/mp/components/wx-account-select'
-import * as MpDraftApi from '@/api/mp/draft'
-import * as MpFreePublishApi from '@/api/mp/freePublish'
+import * as MpDraftApi from '@/mp/draft'
+import * as MpFreePublishApi from '@/mp/freePublish'
 import {
   type Article,
   type NewsItem,

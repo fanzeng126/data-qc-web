@@ -136,9 +136,9 @@ import WxNews from '@/views/mp/components/wx-news'
 import WxVoicePlayer from '@/views/mp/components/wx-voice-play'
 import WxVideoPlayer from '@/views/mp/components/wx-video-play'
 import { NewsType } from './types'
-import * as MpMaterialApi from '@/api/mp/material'
-import * as MpFreePublishApi from '@/api/mp/freePublish'
-import * as MpDraftApi from '@/api/mp/draft'
+import * as MpMaterialApi from '@/mp/material'
+import * as MpFreePublishApi from '@/mp/freePublish'
+import * as MpDraftApi from '@/mp/draft'
 import { dateFormatter } from '@/utils/formatTime'
 
 defineOptions({ name: 'WxMaterialSelect' })

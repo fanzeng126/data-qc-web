@@ -33,8 +33,8 @@
 <script lang="ts" setup>
 import WxReplySelect, { Reply, ReplyType } from '@/views/mp/components/wx-reply'
 import MsgList from './components/MsgList.vue'
-import { getMessagePage, sendMessage } from '@/api/mp/message'
-import { getUser } from '@/api/mp/user'
+import { getMessagePage, sendMessage } from '@/mp/message'
+import { getUser } from '@/mp/user'
 import profile from '@/assets/imgs/profile.jpg'
 import { User } from './types'
 

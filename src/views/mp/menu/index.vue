@@ -56,7 +56,7 @@
 import WxAccountSelect from '@/views/mp/components/wx-account-select'
 import MenuEditor from './components/MenuEditor.vue'
 import MenuPreviewer from './components/MenuPreviewer.vue'
-import * as MpMenuApi from '@/api/mp/menu'
+import * as MpMenuApi from '@/mp/menu'
 import * as UtilsTree from '@/utils/tree'
 import { RawMenu, Menu } from './components/types'
 

@@ -1,791 +1,977 @@
 <template>
   <div class="dashboard-container">
-    <!-- 页面标题栏 -->
-    <div class="page-header">
-      <div class="page-title">数据概览</div>
-      <div class="page-actions">
-        <div class="date-picker">
-          <el-select
-            v-model="selectedPeriodType"
-            placeholder="时间类型"
-            size="default"
-            style="width: 80px;"
-            @change="handlePeriodTypeChange"
-          >
-            <el-option label="年" value="year"/>
-            <el-option label="月" value="month"/>
-            <el-option label="日" value="day"/>
-          </el-select>
-          <el-select
-            v-model="selectedPeriodValue"
-            :placeholder="getValuePlaceholder()"
-            size="default"
-            style="width: 140px; margin-left: 8px;"
-          >
-            <el-option
-              v-for="option in currentPeriodOptions"
-              :key="option.value"
-              :label="option.label"
-              :value="option.value"
-            />
-          </el-select>
-          <!-- <el-button type="default" class="ml-8px" @click="setToday">今天</el-button> -->
-        </div>
-        <el-button type="default" class="ml-8px">
-          <el-icon class="mr-4px"><Download /></el-icon>
-          导出报告
+    <!-- Page Header -->
+    <PageHeader
+      title="药品使用监测质量控制平台"
+      content="实时监控药品数据导入、质控状态和数据质量，确保医疗机构药品使用数据的准确性和完整性"
+    >
+      <template #extra>
+        <el-button type="primary" @click="handleQuickImport">
+          <el-icon>
+            <Upload />
+          </el-icon>
+          快速导入
         </el-button>
-      </div>
+        <el-button @click="handleViewReports">
+          <el-icon>
+            <Document />
+          </el-icon>
+          查看报告
+        </el-button>
+      </template>
+    </PageHeader>
+
+    <!-- 概览 统计 -->
+    <div class="stats-section">
+      <el-row :gutter="20">
+        <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
+          <StatCard
+            title="今日导入任务"
+            :value="statistics.todayTasks"
+            icon="FolderAdd"
+            color="#409EFF"
+            :trend="statistics.taskTrend"
+            :description="`成功: ${statistics.todaySuccessTasks}个`"
+          />
+        </el-col>
+        <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
+          <StatCard
+            title="处理数据量"
+            :value="statistics.totalRecords"
+            suffix="条"
+            icon="DataLine"
+            color="#67C23A"
+            :trend="statistics.recordTrend"
+            :description="`今日新增: ${statistics.todayRecords}条`"
+          />
+        </el-col>
+        <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
+          <StatCard
+            title="质控通过率"
+            :value="statistics.qcPassRate"
+            suffix="%"
+            icon="CircleCheck"
+            color="#E6A23C"
+            :trend="statistics.qcTrend"
+            :footerText="getQcStatusText()"
+          />
+        </el-col>
+        <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
+          <StatCard
+            title="数据完整性"
+            :value="statistics.dataIntegrity"
+            suffix="%"
+            icon="Compass"
+            color="#909399"
+            :description="`异常数据: ${statistics.abnormalCount}条`"
+          />
+        </el-col>
+      </el-row>
     </div>
 
-    <!-- 统计卡片 -->
-    <div class="dashboard-cards">
-      <div class="dashboard-card" v-for="(card, index) in dashboardCards" :key="index">
-        <div class="card-header">
-          <div class="card-title">{{ card.title }}</div>
-          <div class="card-icon" :class="card.iconBg">{{ card.icon }}</div>
-        </div>
-        <div class="card-value">{{ card.value }}</div>
-        <div class="card-description">
-          <span :class="card.trendClass">{{ card.trend }}</span>&nbsp;{{ card.description }}
-        </div>
-      </div>
-    </div>
-
-    <!-- 图表区域 -->
-    <div class="chart-grid">
-      <el-card shadow="never" class="chart-card">
-        <template #header>
-          <div class="chart-header">
-            <div class="card-title">质控问题趋势</div>
-            <div class="chart-actions">
-              <el-button
-                v-for="period in chartPeriods"
-                :key="period.value"
-                :type="selectedChartPeriod === period.value ? 'primary' : 'default'"
-                size="small"
-                @click="selectedChartPeriod = period.value"
-              >
-                {{ period.label }}
+    <!-- 主要内容区域 -->
+    <el-row :gutter="20" class="content-section">
+      <!-- 左列：Recent Tasks 和 Activities -->
+      <el-col :xs="24" :lg="16">
+        <!-- 最近的导入任务 -->
+        <el-card class="content-card" shadow="never">
+          <template #header>
+            <div class="card-header">
+              <div class="header-title">
+                <el-icon>
+                  <Clock />
+                </el-icon>
+                <span>最近导入任务</span>
+              </div>
+              <el-button link type="primary" @click="handleViewAllTasks">
+                查看全部
+                <el-icon>
+                  <ArrowRight />
+                </el-icon>
               </el-button>
             </div>
-          </div>
-        </template>
-        <div class="chart-container">
-          <el-skeleton :loading="loading" animated>
-            <Echart :options="lineOptionsData" :height="320" />
-          </el-skeleton>
-        </div>
-        <div class="trend-legend">
-          <div class="legend-item" v-for="item in trendLegend" :key="item.name">
-            <div class="legend-color" :style="{ backgroundColor: item.color }"></div>
-            <span>{{ item.name }}</span>
-          </div>
-        </div>
-      </el-card>
+          </template>
 
-      <el-card shadow="never" class="chart-card">
-        <template #header>
-          <div class="card-title">问题类型分布</div>
-        </template>
-        <div class="chart-container">
-          <el-skeleton :loading="loading" animated>
-            <Echart :options="pieOptionsData" :height="320" />
-          </el-skeleton>
-        </div>
-      </el-card>
-    </div>
-
-    <!-- 最近质控问题表格 -->
-    <el-card shadow="never" class="table-card">
-      <template #header>
-        <div class="card-header-flex">
-          <div class="card-title">最近质控问题</div>
-          <div class="search-box">
-            <el-input
-              v-model="searchQuery"
-              placeholder="搜索问题..."
-              prefix-icon="Search"
-              clearable
-              size="default"
-              style="width: 200px;"
+          <el-table :data="recentTasks" v-loading="tasksLoading" stripe style="width: 100%">
+            <template #empty>
+              <el-empty description="暂无导入任务" :image-size="80">
+                <el-button type="primary" @click="handleQuickImport">开始导入</el-button>
+              </el-empty>
+            </template>
+            <el-table-column prop="taskNo" label="任务编号" width="180" show-overflow-tooltip />
+            <el-table-column
+              prop="taskName"
+              label="任务名称"
+              min-width="100"
+              show-overflow-tooltip
             />
-          </div>
-        </div>
-      </template>
-      <div class="table-container">
-        <el-skeleton :loading="loading" animated>
-          <el-table :data="issuesData" stripe style="width: 100%">
-            <el-table-column prop="caseNumber" label="病案号"  />
-            <el-table-column prop="department" label="科室"  />
-            <el-table-column prop="issueType" label="问题类型"  />
-            <el-table-column prop="severity" label="严重程度" >
-              <template #default="scope">
-                <el-tag
-                  :type="getSeverityType(scope.row.severity)"
-                  size="small"
-                >
-                  {{ scope.row.severity }}
+            <el-table-column prop="fileName" label="文件名" min-width="120" show-overflow-tooltip />
+            <el-table-column prop="status" label="状态" width="100" align="center">
+              <template #default="{ row }">
+                <el-tag :type="getTaskStatusType(row.status)" size="small">
+                  {{ getTaskStatusLabel(row.status) }}
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="discoveryTime" label="发现时间"  />
-            <el-table-column prop="status" label="状态" >
-              <template #default="scope">
-                <el-tag
-                  :type="getStatusType(scope.row.status)"
-                  size="small"
-                >
-                  {{ scope.row.status }}
-                </el-tag>
+            <el-table-column prop="progress" label="进度" width="120">
+              <template #default="{ row }">
+                <el-progress :percentage="row.progressPercent" :stroke-width="6" />
               </template>
             </el-table-column>
-            <el-table-column label="操作" >
-              <template #default="scope">
-                <el-button type="primary" size="small" link @click="handleView(scope.row)">
+            <el-table-column prop="duration" label="耗时" width="100" align="center">
+              <template #default="{ row }">
+                <span v-if="row.duration">{{ formatDuration(row.duration) }}</span>
+                <span v-else>-</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="creator" label="创建人" width="100" show-overflow-tooltip />
+            <el-table-column
+              prop="createTime"
+              label="创建时间"
+              width="160"
+              :formatter="dateFormatter"
+            />
+            <el-table-column label="操作" width="80" align="center">
+              <template #default="{ row }">
+                <el-button link type="primary" size="small" @click="handleViewTask(row)">
                   查看
-                </el-button>
-                <el-button
-                  v-if="scope.row.status !== '已处理'"
-                  type="primary"
-                  size="small"
-                  link
-                  @click="handleProcess(scope.row)"
-                >
-                  处理
                 </el-button>
               </template>
             </el-table-column>
           </el-table>
-        </el-skeleton>
-      </div>
+        </el-card>
 
-      <!-- 分页 -->
-      <div class="pagination-container">
-        <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          :total="total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
-        />
-      </div>
-    </el-card>
+        <!-- 数据质量监控 -->
+        <el-card class="content-card chart-card" shadow="never">
+          <template #header>
+            <div class="card-header">
+              <div class="header-title">
+                <el-icon>
+                  <TrendCharts />
+                </el-icon>
+                <span>数据质量监控</span>
+              </div>
+              <el-radio-group v-model="chartPeriod" size="small" @change="handleChartPeriodChange">
+                <el-radio-button label="day">今日</el-radio-button>
+                <el-radio-button label="week">本周</el-radio-button>
+                <el-radio-button label="month">本月</el-radio-button>
+              </el-radio-group>
+            </div>
+          </template>
+
+          <div class="chart-container" v-loading="chartLoading">
+            <div ref="qualityChartRef" style="width: 100%; height: 300px"></div>
+          </div>
+        </el-card>
+      </el-col>
+
+      <!-- 右列：快速作和警报 -->
+      <el-col :xs="24" :lg="8">
+        <!-- 快速作 -->
+        <el-card class="content-card" shadow="never">
+          <template #header>
+            <div class="card-header">
+              <div class="header-title">
+                <el-icon>
+                  <Lightning />
+                </el-icon>
+                <span>快捷操作</span>
+              </div>
+            </div>
+          </template>
+
+          <div class="quick-actions">
+            <div
+              v-for="action in quickActions"
+              :key="action.key"
+              class="action-item"
+              @click="handleQuickAction(action)"
+            >
+              <div class="action-icon" :style="{ backgroundColor: action.color }">
+                <el-icon :size="24">
+                  <component :is="action.icon" />
+                </el-icon>
+              </div>
+              <div class="action-content">
+                <div class="action-title">{{ action.title }}</div>
+                <div class="action-desc">{{ action.description }}</div>
+              </div>
+              <el-icon class="action-arrow">
+                <ArrowRight />
+              </el-icon>
+            </div>
+          </div>
+        </el-card>
+
+        <!-- 系统警报 -->
+        <el-card class="content-card" shadow="never">
+          <template #header>
+            <div class="card-header">
+              <div class="header-title">
+                <el-icon>
+                  <Bell />
+                </el-icon>
+                <span>系统提醒</span>
+                <el-badge :value="unreadAlerts" :hidden="unreadAlerts === 0" class="alert-badge" />
+              </div>
+              <el-button link type="primary" size="small" @click="handleViewAllAlerts">
+                全部
+              </el-button>
+            </div>
+          </template>
+
+          <div class="alerts-container" v-loading="alertsLoading">
+            <el-empty v-if="alerts.length === 0" description="暂无提醒" :image-size="80" />
+            <div v-else class="alert-list">
+              <div
+                v-for="alert in alerts"
+                :key="alert.id"
+                class="alert-item"
+                :class="{ unread: !alert.read }"
+                @click="handleViewAlert(alert)"
+              >
+                <el-icon class="alert-icon" :style="{ color: getAlertColor(alert.type) }">
+                  <component :is="getAlertIcon(alert.type)" />
+                </el-icon>
+                <div class="alert-content">
+                  <div class="alert-title">{{ alert.title }}</div>
+                  <div class="alert-time">{{ formatPast(alert.createTime) }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </el-card>
+
+        <!-- Data Statistics Summary -->
+        <el-card class="content-card" shadow="never">
+          <template #header>
+            <div class="card-header">
+              <div class="header-title">
+                <el-icon>
+                  <PieChart />
+                </el-icon>
+                <span>数据分布</span>
+              </div>
+            </div>
+          </template>
+
+          <div class="data-distribution">
+            <div v-for="item in dataDistribution" :key="item.key" class="distribution-item">
+              <div class="distribution-header">
+                <span class="distribution-label">{{ item.label }}</span>
+                <span class="distribution-value">{{ item.value }}条</span>
+              </div>
+              <el-progress
+                :percentage="item.percentage"
+                :stroke-width="8"
+                :color="item.color"
+                :show-text="false"
+              />
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
   </div>
 </template>
 
-<script lang="ts" setup>
-import { reactive, ref, computed, watch, onMounted } from 'vue'
-import { EChartsOption } from 'echarts'
-import { Download } from '@element-plus/icons-vue'
-
+<script setup lang="ts">
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import * as echarts from 'echarts'
+import {
+  Upload,
+  Document,
+  FolderAdd,
+  DataLine,
+  CircleCheck,
+  Compass,
+  Clock,
+  ArrowRight,
+  TrendCharts,
+  Lightning,
+  Bell,
+  PieChart,
+  Warning,
+  SuccessFilled,
+  CircleClose,
+  InfoFilled,
+  Setting
+} from '@element-plus/icons-vue'
+import { dateFormatter, formatPast } from '@/utils/formatTime'
+import { DashboardApi } from '@/api/drug/dashboard'
+import PageHeader from '@/components/PageHeader/index.vue'
+import StatCard from '@/components/StatCard/index.vue'
+
+defineOptions({ name: 'DrugMonitorDashboard' })
 
 const router = useRouter()
 
-defineOptions({ name: 'Index' })
+// ==================== Reactive Data ====================
 
-// 响应式数据
-const loading = ref(true)
-const selectedPeriodType = ref('day')
-const selectedPeriodValue = ref('today')
-const selectedChartPeriod = ref('week')
-const searchQuery = ref('')
-const currentPage = ref(1)
-const pageSize = ref(10)
-const total = ref(100)
-
-// 时间选择选项
-const periodOptions = {
-  year: [
-    { label: '2025年', value: '2025' },
-    { label: '2024年', value: '2024' },
-    { label: '2023年', value: '2023' },
-    { label: '2022年', value: '2022' },
-    { label: '2021年', value: '2021' }
-  ],
-  month: [
-    { label: '近一个月', value: 'recent1month' },
-    { label: '近三个月', value: 'recent3months' },
-    { label: '近半年', value: 'recent6months' }
-  ],
-  day: [
-    { label: '今天', value: 'today' },
-    { label: '近一天', value: 'recent1day' },
-    { label: '近三天', value: 'recent3days' },
-    { label: '近七天', value: 'recent7days' },
-    { label: '近十五天', value: 'recent15days' }
-  ]
-}
-
-// 计算当前时间段选项
-const currentPeriodOptions = computed(() => {
-  return periodOptions[selectedPeriodType.value] || []
+const statistics = reactive({
+  todayTasks: 0,
+  todaySuccessTasks: 0,
+  taskTrend: 0,
+  totalRecords: 0,
+  todayRecords: 0,
+  recordTrend: 0,
+  qcPassRate: 0,
+  qcTrend: 0,
+  dataIntegrity: 0,
+  abnormalCount: 0
 })
 
-// 仪表盘卡片数据
-const dashboardCards = reactive([
-  {
-    title: '今日审核病例',
-    icon: '📋',
-    iconBg: 'bg-blue',
-    value: '128',
-    trend: '↑ 12.5%',
-    trendClass: 'text-success',
-    description: '较昨日'
-  },
-  {
-    title: '未处理问题',
-    icon: '⚠️',
-    iconBg: 'bg-orange',
-    value: '42',
-    trend: '↑ 5.3%',
-    trendClass: 'text-danger',
-    description: '较昨日'
-  },
-  {
-    title: '问题处理率',
-    icon: '✓',
-    iconBg: 'bg-green',
-    value: '86.2%',
-    trend: '↑ 2.1%',
-    trendClass: 'text-success',
-    description: '较上周'
-  },
-  {
-    title: '平均审核时间',
-    icon: '⏱',
-    iconBg: 'bg-blue',
-    value: '1.8分钟',
-    trend: '↓ 0.3分钟',
-    trendClass: 'text-success',
-    description: '较上周'
-  }
-])
+const recentTasks = ref([])
+const tasksLoading = ref(false)
 
-// 图表时间周期选项
-const chartPeriods = [
-  { label: '日', value: 'day' },
-  { label: '周', value: 'week' },
-  { label: '月', value: 'month' }
+const chartPeriod = ref('day')
+const chartLoading = ref(false)
+const qualityChartRef = ref()
+let qualityChart = null
+
+const alerts = ref([])
+const unreadAlerts = ref(0)
+const alertsLoading = ref(false)
+
+const quickActions = [
+  {
+    key: 'import',
+    title: '批量导入',
+    description: '上传压缩包批量导入数据',
+    icon: Upload, // 直接使用组件引用，而不是字符串
+    color: '#409EFF',
+    path: '/drug-import/batch'
+  },
+  {
+    key: 'qc',
+    title: '质控检查',
+    description: '执行数据质控规则检查',
+    icon: Compass,
+    color: '#67C23A',
+    path: '/drug-qc/execution'
+  },
+  {
+    key: 'rule',
+    title: '规则管理',
+    description: '配置质控规则',
+    icon: Setting,
+    color: '#E6A23C',
+    path: '/drug-qc/rule'
+  },
+  {
+    key: 'report',
+    title: '质控报告',
+    description: '查看质控分析报告',
+    icon: Document,
+    color: '#909399',
+    path: '/drug-qc/result'
+  }
 ]
 
-// 趋势图例数据
-const trendLegend = [
-  { name: '诊断问题', color: '#1976D2' },
-  { name: '编码问题', color: '#4CAF50' },
-  { name: '数据逻辑问题', color: '#FF9800' }
-]
-
-// 折线图配置
-const lineOptionsData = reactive<EChartsOption>({
-  tooltip: {
-    trigger: 'axis',
-    axisPointer: {
-      type: 'cross'
-    }
-  },
-  legend: {
-    show: false
-  },
-  grid: {
-    left: '3%',
-    right: '4%',
-    bottom: '3%',
-    containLabel: true
-  },
-  xAxis: {
-    type: 'category',
-    data: ['第1周', '第2周', '第3周', '第4周', '第5周', '本周'],
-    axisLine: {
-      show: false
-    },
-    axisTick: {
-      show: false
-    }
-  },
-  yAxis: {
-    type: 'value',
-    splitLine: {
-      lineStyle: {
-        color: 'rgba(0, 0, 0, 0.05)'
-      }
-    }
-  },
-  series: [
-    {
-      name: '诊断问题',
-      type: 'line',
-      data: [65, 59, 80, 81, 56, 55],
-      smooth: true,
-      lineStyle: {
-        color: '#1976D2'
-      },
-      itemStyle: {
-        color: '#1976D2'
-      },
-      areaStyle: {
-        color: {
-          type: 'linear',
-          x: 0,
-          y: 0,
-          x2: 0,
-          y2: 1,
-          colorStops: [
-            { offset: 0, color: 'rgba(25, 118, 210, 0.1)' },
-            { offset: 1, color: 'rgba(25, 118, 210, 0.01)' }
-          ]
-        }
-      }
-    },
-    {
-      name: '编码问题',
-      type: 'line',
-      data: [28, 48, 40, 19, 36, 27],
-      smooth: true,
-      lineStyle: {
-        color: '#4CAF50'
-      },
-      itemStyle: {
-        color: '#4CAF50'
-      },
-      areaStyle: {
-        color: {
-          type: 'linear',
-          x: 0,
-          y: 0,
-          x2: 0,
-          y2: 1,
-          colorStops: [
-            { offset: 0, color: 'rgba(76, 175, 80, 0.1)' },
-            { offset: 1, color: 'rgba(76, 175, 80, 0.01)' }
-          ]
-        }
-      }
-    },
-    {
-      name: '数据逻辑问题',
-      type: 'line',
-      data: [17, 25, 30, 24, 22, 15],
-      smooth: true,
-      lineStyle: {
-        color: '#FF9800'
-      },
-      itemStyle: {
-        color: '#FF9800'
-      },
-      areaStyle: {
-        color: {
-          type: 'linear',
-          x: 0,
-          y: 0,
-          x2: 0,
-          y2: 1,
-          colorStops: [
-            { offset: 0, color: 'rgba(255, 152, 0, 0.1)' },
-            { offset: 1, color: 'rgba(255, 152, 0, 0.01)' }
-          ]
-        }
-      }
-    }
-  ]
-})
-
-// 饼图配置
-const pieOptionsData = reactive<EChartsOption>({
-  tooltip: {
-    trigger: 'item',
-    formatter: '{a} <br/>{b} : {c} ({d}%)'
-  },
-  legend: {
-    orient: 'vertical',
-    right: '10%',
-    top: 'center',
-    textStyle: {
-      fontSize: 12
-    }
-  },
-  series: [
-    {
-      name: '问题类型',
-      type: 'pie',
-      radius: ['40%', '70%'],
-      center: ['35%', '50%'],
-      data: [
-        { value: 35, name: '诊断问题' },
-        { value: 25, name: '编码问题' },
-        { value: 20, name: '数据逻辑问题' },
-        { value: 12, name: '费用问题' },
-        { value: 8, name: '其他问题' }
-      ],
-      itemStyle: {
-        borderRadius: 5,
-        borderColor: '#fff',
-        borderWidth: 2
-      },
-      label: {
-        show: false
-      },
-      emphasis: {
-        label: {
-          show: true,
-          fontSize: '16',
-          fontWeight: 'bold'
-        },
-        itemStyle: {
-          shadowBlur: 10,
-          shadowOffsetX: 0,
-          shadowColor: 'rgba(0, 0, 0, 0.5)'
-        }
-      }
-    }
-  ],
-  color: ['#1976D2', '#4CAF50', '#FF9800', '#F44336', '#9E9E9E']
-})
-
-// 表格数据
-const issuesData = reactive([
-  {
-    caseNumber: '202504280001',
-    department: '心内科',
-    issueType: '主要诊断选择错误',
-    severity: '严重',
-    discoveryTime: '2025-05-18 09:23',
-    status: '未处理'
-  },
-  {
-    caseNumber: '202504280015',
-    department: '神经外科',
-    issueType: '手术编码错误',
-    severity: '中等',
-    discoveryTime: '2025-05-18 10:45',
-    status: '处理中'
-  },
-  {
-    caseNumber: '202504280023',
-    department: '骨科',
-    issueType: '诊断名称不完整',
-    severity: '轻微',
-    discoveryTime: '2025-05-18 11:37',
-    status: '已处理'
-  },
-  {
-    caseNumber: '202504280042',
-    department: '肿瘤科',
-    issueType: '费用逻辑矛盾',
-    severity: '中等',
-    discoveryTime: '2025-05-18 13:12',
-    status: '未处理'
-  },
-  {
-    caseNumber: '202504280056',
-    department: '妇产科',
-    issueType: '关键信息缺失',
-    severity: '严重',
-    discoveryTime: '2025-05-18 14:05',
-    status: '未处理'
-  }
+const dataDistribution = ref([
+  { key: 'hospital', label: '医疗机构', value: 0, percentage: 0, color: '#409EFF' },
+  { key: 'catalog', label: '药品目录', value: 0, percentage: 0, color: '#67C23A' },
+  { key: 'inbound', label: '入库记录', value: 0, percentage: 0, color: '#E6A23C' },
+  { key: 'outbound', label: '出库记录', value: 0, percentage: 0, color: '#F56C6C' },
+  { key: 'usage', label: '使用记录', value: 0, percentage: 0, color: '#909399' }
 ])
 
-// 方法
-const handlePeriodTypeChange = () => {
-  // 当时间类型改变时，重置时间值为第一个选项
-  const options = currentPeriodOptions.value
-  if (options.length > 0) {
-    selectedPeriodValue.value = options[0].value
-  }
-  // 重新加载数据
-  loadDataByPeriod()
-}
-
-const getValuePlaceholder = () => {
-  const placeholders = {
-    year: '选择年份',
-    month: '选择月份范围',
-    day: '选择日期范围'
-  }
-  return placeholders[selectedPeriodType.value] || '请选择'
-}
-
-const setToday = () => {
-  selectedPeriodType.value = 'day'
-  selectedPeriodValue.value = 'today'
-  loadDataByPeriod()
-}
-
-const loadDataByPeriod = () => {
-  console.log(`加载数据: ${selectedPeriodType.value} - ${selectedPeriodValue.value}`)
-  // 这里可以根据选择的时间段重新加载数据
-  // 例如：调用API获取对应时间段的数据
-}
-
-const getSeverityType = (severity: string) => {
-  const typeMap: { [key: string]: string } = {
-    '严重': 'danger',
-    '中等': 'warning',
-    '轻微': 'success'
-  }
-  return typeMap[severity] || 'info'
-}
-
-const getStatusType = (status: string) => {
-  const typeMap: { [key: string]: string } = {
-    '未处理': 'danger',
-    '处理中': 'warning',
-    '已处理': 'success'
-  }
-  return typeMap[status] || 'info'
-}
-
-const handleView = (row: any) => {
-  // console.log('查看问题:', row)
-  // 跳转到问题详情页
-  router.push({ path: '/data' });
-}
-
-const handleProcess = (row: any) => {
-  // console.log('处理问题:', row)
-  // 跳转到问题处理页
-  router.push({ path: '/audit' });
-}
-
-const handleSizeChange = (size: number) => {
-  pageSize.value = size
-  // 重新加载数据
-}
-
-const handleCurrentChange = (page: number) => {
-  currentPage.value = page
-  // 重新加载数据
-}
+// ==================== Lifecycle ====================
 
 onMounted(() => {
-  // 初始化时间选择默认值
-  selectedPeriodType.value = 'day'
-  selectedPeriodValue.value = 'today'
-
-  // 模拟数据加载
-  setTimeout(() => {
-    loading.value = false
-  }, 1000)
+  initDashboard()
+  initChart()
+  startAutoRefresh()
 })
 
-// 监听时间值变化
-watch(selectedPeriodValue, () => {
-  loadDataByPeriod()
+onUnmounted(() => {
+  stopAutoRefresh()
+  if (qualityChart) {
+    qualityChart.dispose()
+  }
 })
+
+// ==================== 方法 ====================
+
+const initDashboard = async () => {
+  await Promise.all([loadStatistics(), loadRecentTasks(), loadAlerts(), loadDataDistribution()])
+}
+
+const loadStatistics = async () => {
+  try {
+    const data = await DashboardApi.getStatistics()
+    Object.assign(statistics, data)
+  } catch (error) {
+    console.error('Failed to load statistics:', error)
+  }
+}
+
+const loadRecentTasks = async () => {
+  tasksLoading.value = true
+  try {
+    const response = await DashboardApi.getRecentTasks(10)
+    console.log('Recent tasks response:', response)
+    
+    // 正确解析返回的数据结构
+    recentTasks.value = response.data?.list || response.list || response || []
+  } catch (error) {
+    console.error('Failed to load recent tasks:', error)
+  } finally {
+    tasksLoading.value = false
+  }
+}
+
+const loadAlerts = async () => {
+  alertsLoading.value = true
+  try {
+    const response = await DashboardApi.getSystemAlerts(5)
+    console.log('System alerts response:', response)
+    
+    // 正确解析返回的数据结构
+    alerts.value = response.data?.list || response.list || response || []
+    unreadAlerts.value = response.data?.unreadCount || response.unreadCount || 0
+  } catch (error) {
+    console.error('Failed to load alerts:', error)
+  } finally {
+    alertsLoading.value = false
+  }
+}
+
+const loadDataDistribution = async () => {
+  try {
+    const data = await DashboardApi.getDataDistribution()
+
+    const total = Object.values(data).reduce((sum, val) => sum + val, 0)
+
+    dataDistribution.value = [
+      {
+        key: 'hospital',
+        label: '医疗机构',
+        value: data.hospitalCount || 0,
+        percentage: total > 0 ? Math.round((data.hospitalCount / total) * 100) : 0,
+        color: '#409EFF'
+      },
+      {
+        key: 'catalog',
+        label: '药品目录',
+        value: data.catalogCount || 0,
+        percentage: total > 0 ? Math.round((data.catalogCount / total) * 100) : 0,
+        color: '#67C23A'
+      },
+      {
+        key: 'inbound',
+        label: '入库记录',
+        value: data.inboundCount || 0,
+        percentage: total > 0 ? Math.round((data.inboundCount / total) * 100) : 0,
+        color: '#E6A23C'
+      },
+      {
+        key: 'outbound',
+        label: '出库记录',
+        value: data.outboundCount || 0,
+        percentage: total > 0 ? Math.round((data.outboundCount / total) * 100) : 0,
+        color: '#F56C6C'
+      },
+      {
+        key: 'usage',
+        label: '使用记录',
+        value: data.usageCount || 0,
+        percentage: total > 0 ? Math.round((data.usageCount / total) * 100) : 0,
+        color: '#909399'
+      }
+    ]
+  } catch (error) {
+    console.error('Failed to load data distribution:', error)
+  }
+}
+
+const initChart = () => {
+  qualityChart = echarts.init(qualityChartRef.value)
+  loadChartData()
+}
+
+const loadChartData = async () => {
+  chartLoading.value = true
+  try {
+    const data = await DashboardApi.getQualityTrend(chartPeriod.value)
+
+    const option = {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: {
+          type: 'cross'
+        }
+      },
+      legend: {
+        data: ['导入量', '质控通过率'],
+        bottom: 0
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '15%',
+        containLabel: true
+      },
+      xAxis: {
+        type: 'category',
+        boundaryGap: false,
+        data: data.dates
+      },
+      yAxis: [
+        {
+          type: 'value',
+          name: '导入量',
+          position: 'left'
+        },
+        {
+          type: 'value',
+          name: '通过率(%)',
+          position: 'right',
+          max: 100,
+          min: 0
+        }
+      ],
+      series: [
+        {
+          name: '导入量',
+          type: 'line',
+          data: data.importCounts,
+          smooth: true,
+          itemStyle: {
+            color: '#409EFF'
+          },
+          areaStyle: {
+            color: {
+              type: 'linear',
+              x: 0,
+              y: 0,
+              x2: 0,
+              y2: 1,
+              colorStops: [
+                { offset: 0, color: 'rgba(64, 158, 255, 0.3)' },
+                { offset: 1, color: 'rgba(64, 158, 255, 0.1)' }
+              ]
+            }
+          }
+        },
+        {
+          name: '质控通过率',
+          type: 'line',
+          yAxisIndex: 1,
+          data: data.passRates,
+          smooth: true,
+          itemStyle: {
+            color: '#67C23A'
+          }
+        }
+      ]
+    }
+
+    qualityChart.setOption(option)
+  } catch (error) {
+    console.error('Failed to load chart data:', error)
+  } finally {
+    chartLoading.value = false
+  }
+}
+
+// Auto refresh
+let refreshTimer = null
+
+const startAutoRefresh = () => {
+  refreshTimer = setInterval(() => {
+    loadStatistics()
+    loadRecentTasks()
+  }, 60000) // Refresh every minute
+}
+
+const stopAutoRefresh = () => {
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+    refreshTimer = null
+  }
+}
+
+// 事件处理程序
+const handleQuickImport = () => {
+  router.push('/drug-import/batch')
+}
+
+const handleViewReports = () => {
+  router.push('/drug-qc/result')
+}
+
+const handleViewAllTasks = () => {
+  router.push('/drug-import/task')
+}
+
+const handleViewTask = (task) => {
+  router.push(`/drug-import/detail/${task.id}`)
+}
+
+const handleChartPeriodChange = () => {
+  loadChartData()
+}
+
+const handleQuickAction = (action) => {
+  router.push(action.path)
+}
+
+const handleViewAllAlerts = () => {
+  router.push('/user/notify-message')
+}
+
+const handleViewAlert = async (alert) => {
+  if (!alert.read) {
+    await DashboardApi.markAlertAsRead(alert.id)
+    alert.read = true
+    unreadAlerts.value--
+  }
+
+  // Navigate based on alert type
+  if (alert.link) {
+    router.push(alert.link)
+  }
+}
+
+// Utility methods
+const getQcStatusText = () => {
+  const rate = statistics.qcPassRate
+  if (rate >= 95) return '优秀'
+  if (rate >= 90) return '良好'
+  if (rate >= 80) return '合格'
+  return '待改进'
+}
+
+const getTaskStatusType = (status) => {
+  const statusMap = {
+    0: 'info',
+    1: 'warning',
+    2: 'warning',
+    3: 'warning',
+    4: 'success',
+    5: 'danger',
+    6: 'warning'
+  }
+  return statusMap[status] || 'info'
+}
+
+const getTaskStatusLabel = (status) => {
+  const statusMap = {
+    0: '待处理',
+    1: '解压中',
+    2: '导入中',
+    3: '质控中',
+    4: '完成',
+    5: '失败',
+    6: '部分成功'
+  }
+  return statusMap[status] || '未知'
+}
+
+const formatDuration = (duration) => {
+  if (!duration) return '-'
+
+  const hours = Math.floor(duration / 3600)
+  const minutes = Math.floor((duration % 3600) / 60)
+  const seconds = duration % 60
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`
+  } else if (minutes > 0) {
+    return `${minutes}m ${seconds}s`
+  } else {
+    return `${seconds}s`
+  }
+}
+
+const getAlertIcon = (type) => {
+  const iconMap = {
+    error: 'CircleClose',
+    warning: 'Warning',
+    success: 'SuccessFilled',
+    info: 'InfoFilled'
+  }
+  return iconMap[type] || 'InfoFilled'
+}
+
+const getAlertColor = (type) => {
+  const colorMap = {
+    error: '#F56C6C',
+    warning: '#E6A23C',
+    success: '#67C23A',
+    info: '#409EFF'
+  }
+  return colorMap[type] || '#409EFF'
+}
 </script>
 
 <style scoped>
-
-
-@media (width <= 992px) {
-  .chart-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* 响应式调整 */
-@media (width <= 768px) {
-  .dashboard-cards {
-    grid-template-columns: 1fr;
-  }
-
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .page-actions {
-    width: 100%;
-    justify-content: flex-end;
-  }
-}
-
 .dashboard-container {
-  min-height: calc(100vh - 60px);
-  padding: 16px;
-  background-color: #F5F7FA;
+  padding: 20px;
+  background-color: #f5f5f5;
+  min-height: calc(100vh - 50px);
 }
 
-/* 页面标题栏 */
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
+.stats-section {
+  margin-bottom: 20px;
 }
 
-.page-title {
-  font-size: 18px;
-  font-weight: bold;
-  color: #212121;
+.content-section {
+  margin-top: 20px;
 }
 
-.page-actions {
-  display: flex;
-  align-items: center;
-}
-
-.date-picker {
-  display: flex;
-  align-items: center;
-}
-
-/* 统计卡片样式 */
-.dashboard-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.dashboard-card {
-  height: 100%;
-  padding: 16px;
-  background-color: white;
+.content-card {
+  margin-bottom: 20px;
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
-  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
-.dashboard-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 4px 12px rgb(0 0 0 / 8%);
+.content-card:last-child {
+  margin-bottom: 0;
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
 }
 
-.card-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #212121;
-}
-
-.card-icon {
+.header-title {
   display: flex;
-  width: 36px;
-  height: 36px;
+  align-items: center;
+  gap: 8px;
   font-size: 16px;
-  color: white;
-  border-radius: 6px;
-  align-items: center;
-  justify-content: center;
+  font-weight: 600;
+  color: #303133;
 }
 
-.bg-blue {
-  background-color: #1976D2;
+.header-title .el-icon {
+  font-size: 20px;
+  color: #409eff;
 }
 
-.bg-green {
-  background-color: #4CAF50;
-}
-
-.bg-orange {
-  background-color: #FF9800;
-}
-
-.bg-red {
-  background-color: #F44336;
-}
-
-.card-value {
-  margin-bottom: 4px;
-  font-size: 24px;
-  font-weight: bold;
-  color: #212121;
-}
-
-.card-description {
-  display: flex;
-  font-size: 12px;
-  color: #757575;
-  align-items: center;
-}
-
-.text-success {
-  color: #4CAF50;
-}
-
-.text-danger {
-  color: #F44336;
-}
-
-/* 图表区域样式 */
-.chart-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
+/* Chart styles */
 .chart-card {
-  border-radius: 8px;
-}
-
-.chart-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.chart-actions {
-  display: flex;
-  gap: 4px;
+  margin-top: 20px;
 }
 
 .chart-container {
-  position: relative;
-  width: 100%;
-  height: 320px;
+  padding: 20px 0;
 }
 
-.trend-legend {
+/* Quick actions */
+.quick-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 12px;
-  margin-top: 8px;
 }
 
-.legend-item {
+.action-item {
   display: flex;
   align-items: center;
-  font-size: 12px;
-}
-
-.legend-color {
-  width: 12px;
-  height: 12px;
-  margin-right: 5px;
-  border-radius: 2px;
-}
-
-/* 表格样式 */
-.table-card {
+  gap: 12px;
+  padding: 16px;
+  background-color: #f8f9fa;
   border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
-.card-header-flex {
+.action-item:hover {
+  background-color: #e9ecef;
+  transform: translateX(4px);
+}
+
+.action-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+}
+
+.action-content {
+  flex: 1;
+}
+
+.action-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 4px;
+}
+
+.action-desc {
+  font-size: 13px;
+  color: #909399;
+}
+
+.action-arrow {
+  font-size: 16px;
+  color: #c0c4cc;
+}
+
+/* Alerts */
+.alert-badge {
+  margin-left: 8px;
+}
+
+.alerts-container {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.alert-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.alert-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.alert-item:hover {
+  background-color: #e9ecef;
+}
+
+.alert-item.unread {
+  background-color: #ecf5ff;
+}
+
+.alert-item.unread:hover {
+  background-color: #d9ecff;
+}
+
+.alert-icon {
+  font-size: 20px;
+  margin-top: 2px;
+}
+
+.alert-content {
+  flex: 1;
+}
+
+.alert-title {
+  font-size: 14px;
+  color: #303133;
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+.alert-time {
+  font-size: 12px;
+  color: #909399;
+}
+
+/* Data distribution */
+.data-distribution {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.distribution-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.distribution-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  font-size: 14px;
 }
 
-.table-container {
-  overflow-x: auto;
+.distribution-label {
+  color: #606266;
 }
 
-.pagination-container {
-  display: flex;
-  margin-top: 16px;
-  justify-content: center;
+.distribution-value {
+  font-weight: 600;
+  color: #303133;
+}
+
+/* Table styles */
+:deep(.el-table) {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+:deep(.el-table th) {
+  background-color: #fafafa;
+  color: #606266;
+  font-weight: 600;
+}
+
+:deep(.el-progress) {
+  line-height: 1;
+}
+
+:deep(.el-progress__text) {
+  font-size: 12px !important;
+}
+
+/* Responsive design */
+@media (max-width: 1200px) {
+  .content-section {
+    margin-top: 0;
+  }
+
+  .content-section .el-col-lg-16,
+  .content-section .el-col-lg-8 {
+    margin-bottom: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 10px;
+  }
+
+  .stats-section .el-col {
+    margin-bottom: 12px;
+  }
+
+  .card-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .action-item {
+    padding: 12px;
+  }
+
+  .action-icon {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* Loading states */
+:deep(.el-loading-mask) {
+  background-color: rgba(255, 255, 255, 0.8);
+}
+
+/* Empty state */
+:deep(.el-empty) {
+  padding: 20px 0;
+}
+
+:deep(.el-empty__description) {
+  margin-top: 8px;
 }
 </style>

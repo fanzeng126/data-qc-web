@@ -5,7 +5,7 @@
 </template>
 
 <script lang="ts" setup>
-import * as MpAccountApi from '@/api/mp/account'
+import * as MpAccountApi from '@/mp/account'
 import { useTagsViewStore } from '@/store/modules/tagsView'
 
 const message = useMessage() // 消息弹窗

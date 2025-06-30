@@ -92,7 +92,7 @@ import VideoTable from './components/VideoTable.vue'
 import UploadFile from './components/UploadFile.vue'
 import UploadVideo from './components/UploadVideo.vue'
 import { UploadType } from './components/upload'
-import * as MpMaterialApi from '@/api/mp/material'
+import * as MpMaterialApi from '@/mp/material'
 const message = useMessage() // 消息
 
 const type = ref<UploadType>(UploadType.Image) // 素材类型

@@ -1,12 +1,7 @@
 <template>
   <Dialog v-model="dialogVisible" title="药品使用数据导入" width="600px">
     <!-- 导入说明 -->
-    <el-alert
-      title="导入说明"
-      type="info"
-      :closable="false"
-      class="mb-4"
-    >
+    <el-alert title="导入说明" type="info" :closable="false" class="mb-4">
       <template #default>
         <div class="import-tips">
           <p>1. 请下载并使用标准模板进行数据录入</p>
@@ -95,10 +90,7 @@
         </el-table-column>
         <el-table-column label="状态" width="80" align="center">
           <template #default="scope">
-            <el-tag
-              :type="scope.row._hasError ? 'danger' : 'success'"
-              size="small"
-            >
+            <el-tag :type="scope.row._hasError ? 'danger' : 'success'" size="small">
               {{ scope.row._hasError ? '错误' : '正常' }}
             </el-tag>
           </template>
@@ -115,11 +107,7 @@
         </span>
       </template>
       <div class="error-list">
-        <div
-          v-for="(error, index) in errorMessages.slice(0, 10)"
-          :key="index"
-          class="error-item"
-        >
+        <div v-for="(error, index) in errorMessages.slice(0, 10)" :key="index" class="error-item">
           <el-tag type="danger" size="small">第{{ error.row }}行</el-tag>
           <span class="error-msg">{{ error.message }}</span>
         </div>
@@ -134,18 +122,12 @@
       <template #header>
         <span>导入进度</span>
       </template>
-      <el-progress
-        :percentage="importProgress"
-        :status="importStatus"
-        class="import-progress"
-      />
+      <el-progress :percentage="importProgress" :status="importStatus" class="import-progress" />
       <p class="progress-text">{{ progressText }}</p>
     </el-card>
 
     <template #footer>
-      <el-button @click="dialogVisible = false" :disabled="importing">
-        取 消
-      </el-button>
+      <el-button @click="dialogVisible = false" :disabled="importing"> 取 消 </el-button>
       <el-button
         type="primary"
         @click="handleImport"
@@ -184,7 +166,7 @@ const errorMessages = ref<{ row: number; message: string }[]>([])
 
 // 计算属性
 const hasErrors = computed(() => {
-  return previewData.value.some(item => item._hasError) || errorMessages.value.length > 0
+  return previewData.value.some((item) => item._hasError) || errorMessages.value.length > 0
 })
 
 /** 打开对话框 */
@@ -213,25 +195,25 @@ const downloadTemplate = async () => {
     const templateData = [
       {
         '药品编码*': 'YP001',
-        '产品名称': '示例药品名称',
+        产品名称: '示例药品名称',
         '销售数量*': 10,
         '销售单价*': 25.5,
         '科室代码*': 'KS001',
-        '科室名称': '内科',
+        科室名称: '内科',
         '医生代码*': 'DOC001',
-        '医生姓名': '张医生',
+        医生姓名: '张医生',
         '患者类型*': 1,
         '销售日期*': '20240301',
-        '处方编号': 'CF20240301001',
-        '处方类型': 'NORMAL',
-        '用法用量': '口服，一次1片',
-        '给药频次': 'TID',
-        '患者编号': 'HZ001',
-        '患者姓名': '张三',
-        '患者年龄': 35,
-        '患者性别': 'M',
-        '支付方式': 'INSURANCE',
-        '备注': '示例备注信息'
+        处方编号: 'CF20240301001',
+        处方类型: 'NORMAL',
+        用法用量: '口服，一次1片',
+        给药频次: 'TID',
+        患者编号: 'HZ001',
+        患者姓名: '张三',
+        患者年龄: 35,
+        患者性别: 'M',
+        支付方式: 'INSURANCE',
+        备注: '示例备注信息'
       }
     ]
 
@@ -260,7 +242,7 @@ const downloadTemplate = async () => {
       { wch: 10 }, // 患者年龄
       { wch: 10 }, // 患者性别
       { wch: 12 }, // 支付方式
-      { wch: 20 }  // 备注
+      { wch: 20 } // 备注
     ]
     ws['!cols'] = colWidths
 
@@ -270,7 +252,7 @@ const downloadTemplate = async () => {
     const fileName = `药品使用数据导入模板.xlsx`
     XLSX.writeFile(wb, fileName)
 
-    message.success('模板下载成功')
+    message.success('模板开始下载')
   } catch (error) {
     console.error('下载模板失败', error)
     message.error('下载模板失败')
@@ -320,7 +302,7 @@ const parseExcelFile = async (file: File) => {
     const rows = jsonData.slice(1) as any[]
 
     const processedData = rows
-      .filter(row => row.some(cell => cell !== null && cell !== undefined && cell !== ''))
+      .filter((row) => row.some((cell) => cell !== null && cell !== undefined && cell !== ''))
       .map((row, index) => {
         const rowData: any = {}
         headers.forEach((header, headerIndex) => {
@@ -340,7 +322,6 @@ const parseExcelFile = async (file: File) => {
     errorMessages.value = errors
 
     message.success(`解析成功，共${validData.length}条数据`)
-
   } catch (error) {
     console.error('解析文件失败', error)
     message.error('解析文件失败，请检查文件格式')
@@ -350,26 +331,26 @@ const parseExcelFile = async (file: File) => {
 /** 映射表头到字段 */
 const mapHeaderToField = (header: string): string | null => {
   const fieldMap: Record<string, string> = {
-    '药品编码': 'hosDrugId',
-    '产品名称': 'productName',
-    '销售数量': 'sellPackQuantity',
-    '销售单价': 'sellPackPrice',
-    '科室代码': 'departmentCode',
-    '科室名称': 'departmentName',
-    '医生代码': 'doctorCode',
-    '医生姓名': 'doctorName',
-    '患者类型': 'patientType',
-    '销售日期': 'sellDate',
-    '处方编号': 'prescriptionNo',
-    '处方类型': 'prescriptionType',
-    '用法用量': 'usage',
-    '给药频次': 'frequency',
-    '患者编号': 'patientId',
-    '患者姓名': 'patientName',
-    '患者年龄': 'patientAge',
-    '患者性别': 'patientGender',
-    '支付方式': 'paymentMethod',
-    '备注': 'remark'
+    药品编码: 'hosDrugId',
+    产品名称: 'productName',
+    销售数量: 'sellPackQuantity',
+    销售单价: 'sellPackPrice',
+    科室代码: 'departmentCode',
+    科室名称: 'departmentName',
+    医生代码: 'doctorCode',
+    医生姓名: 'doctorName',
+    患者类型: 'patientType',
+    销售日期: 'sellDate',
+    处方编号: 'prescriptionNo',
+    处方类型: 'prescriptionType',
+    用法用量: 'usage',
+    给药频次: 'frequency',
+    患者编号: 'patientId',
+    患者姓名: 'patientName',
+    患者年龄: 'patientAge',
+    患者性别: 'patientGender',
+    支付方式: 'paymentMethod',
+    备注: 'remark'
   }
 
   // 移除*号和空格
@@ -380,7 +361,7 @@ const mapHeaderToField = (header: string): string | null => {
 /** 校验导入数据 */
 const validateImportData = (data: any[]) => {
   const errors: { row: number; message: string }[] = []
-  const validData = data.map(item => {
+  const validData = data.map((item) => {
     const errors_for_item: string[] = []
 
     // 必填字段校验
@@ -455,15 +436,11 @@ const handleImport = async () => {
   }
 
   try {
-    await ElMessageBox.confirm(
-      `确认导入 ${previewData.value.length} 条使用记录？`,
-      '导入确认',
-      {
-        confirmButtonText: '确认导入',
-        cancelButtonText: '取消',
-        type: 'warning',
-      }
-    )
+    await ElMessageBox.confirm(`确认导入 ${previewData.value.length} 条使用记录？`, '导入确认', {
+      confirmButtonText: '确认导入',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
 
     importing.value = true
     importProgress.value = 0
@@ -492,7 +469,7 @@ const handleImport = async () => {
         failCount += batch.length
       }
 
-      importProgress.value = Math.round((i + 1) / batches.length * 100)
+      importProgress.value = Math.round(((i + 1) / batches.length) * 100)
     }
 
     // 导入完成
@@ -511,7 +488,6 @@ const handleImport = async () => {
       dialogVisible.value = false
       emit('success')
     }, 2000)
-
   } catch (error) {
     if (error !== 'cancel') {
       console.error('导入失败', error)

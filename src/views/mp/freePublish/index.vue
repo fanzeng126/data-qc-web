@@ -49,7 +49,7 @@
 </template>
 
 <script lang="ts" setup>
-import * as FreePublishApi from '@/api/mp/freePublish'
+import * as FreePublishApi from '@/mp/freePublish'
 import WxNews from '@/views/mp/components/wx-news'
 import WxAccountSelect from '@/views/mp/components/wx-account-select'
 

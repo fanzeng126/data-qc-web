@@ -10,7 +10,7 @@
         <p class="system-description">
           基于智能规则处理的病案首页质量控制平台，帮助医疗机构提高数据质量，支持精确决策。
         </p>
-        
+
         <div class="login-features">
           <div class="feature-item">
             <div class="feature-icon">✓</div>
@@ -30,7 +30,7 @@
           </div>
         </div>
       </div>
-      
+
       <!-- 右侧登录表单区 -->
       <div class="login-right">
         <!-- 右上角的主题、语言选择 -->
@@ -38,16 +38,16 @@
           <ThemeSwitch />
           <LocaleDropdown />
         </div> -->
-        
+
         <!-- 登录表单 -->
         <div class="login-form-wrapper">
           <LoginForm />
         </div>
-        
+
         <!-- 版权信息 -->
-        <div class="login-footer">
-          © 2025 陕西方立云科技有限公司 版权所有
-        </div>
+        <!--        <div class="login-footer">-->
+        <!--          © 2025 陕西方立云科技有限公司 版权所有-->
+        <!--        </div>-->
       </div>
     </div>
   </div>
@@ -86,19 +86,20 @@ $prefix-cls: #{$namespace}-login;
     height: auto;
     min-height: 500px;
   }
-  
-  .login-left, .login-right {
+
+  .login-left,
+  .login-right {
     padding: 2rem;
   }
-  
+
   .login-left {
     .system-description {
       margin-bottom: 1rem;
     }
-    
+
     .login-features {
       margin-top: 1rem;
-      
+
       .feature-item {
         margin-bottom: 0.5rem;
         font-size: 13px;
@@ -112,11 +113,12 @@ $prefix-cls: #{$namespace}-login;
     width: 95%;
     margin: 10px;
   }
-  
-  .login-left, .login-right {
+
+  .login-left,
+  .login-right {
     padding: 1.5rem;
   }
-  
+
   .logo-section {
     .system-title {
       font-size: 20px;
@@ -132,7 +134,7 @@ $prefix-cls: #{$namespace}-login;
   display: flex;
   height: 100vh;
   overflow: hidden;
-  background-color: #F5F7FA;
+  background-color: #f5f7fa;
   justify-content: center;
   align-items: center;
 }
@@ -152,11 +154,11 @@ $prefix-cls: #{$namespace}-login;
   display: flex;
   padding: 3rem;
   color: white;
-  background-color: #1976D2;
+  background-color: #1976d2;
   flex: 1;
   flex-direction: column;
   justify-content: center;
-  
+
   &::before {
     position: absolute;
     top: 0;
@@ -171,7 +173,7 @@ $prefix-cls: #{$namespace}-login;
     content: '';
     opacity: 0.1;
   }
-  
+
   > * {
     position: relative;
     z-index: 1;
@@ -182,13 +184,13 @@ $prefix-cls: #{$namespace}-login;
   display: flex;
   align-items: center;
   margin-bottom: 1rem;
-  
+
   .logo-img {
     width: 48px;
     height: 48px;
     margin-right: 12px;
   }
-  
+
   .system-title {
     margin: 0;
     font-size: 24px;
@@ -212,7 +214,7 @@ $prefix-cls: #{$namespace}-login;
   align-items: center;
   margin-bottom: 1rem;
   font-size: 14px;
-  
+
   .feature-icon {
     display: flex;
     width: 24px;
@@ -249,58 +251,59 @@ $prefix-cls: #{$namespace}-login;
   display: flex;
   align-items: center;
   justify-content: center;
-  
+
   :deep(.login-form) {
     width: 100%;
     max-width: 320px;
     margin: 0 auto;
-    
+
     .el-form {
       .el-form-item {
         margin-bottom: 20px;
-        
+
         .el-form-item__label {
           padding-bottom: 5px;
           font-size: 14px;
           color: #757575;
         }
-        
+
         .el-input {
           .el-input__wrapper {
             padding: 12px 15px;
-            border: 1px solid #E0E0E0;
+            border: 1px solid #e0e0e0;
             border-radius: 5px;
             transition: border-color 0.3s;
-            
-            &:hover, &.is-focus {
-              border-color: #1976D2;
+
+            &:hover,
+            &.is-focus {
+              border-color: #1976d2;
             }
           }
-          
+
           .el-input__inner {
             font-size: 14px;
           }
         }
       }
-      
+
       .el-button {
         width: 100%;
         padding: 12px;
         font-size: 14px;
         border-radius: 5px;
-        
+
         &.el-button--primary {
-          background-color: #1976D2;
-          border-color: #1976D2;
-          
+          background-color: #1976d2;
+          border-color: #1976d2;
+
           &:hover {
-            background-color: #0D47A1;
-            border-color: #0D47A1;
+            background-color: #0d47a1;
+            border-color: #0d47a1;
           }
         }
       }
     }
-    
+
     .login-form-title {
       margin-bottom: 2rem;
       font-size: 20px;
@@ -308,7 +311,7 @@ $prefix-cls: #{$namespace}-login;
       color: #212121;
       text-align: center;
     }
-    
+
     .remember-forgot {
       display: flex;
       margin-bottom: 1.5rem;
@@ -316,19 +319,19 @@ $prefix-cls: #{$namespace}-login;
       color: #757575;
       justify-content: space-between;
       align-items: center;
-      
+
       .el-checkbox {
         .el-checkbox__label {
           font-size: 12px;
           color: #757575;
         }
       }
-      
+
       a {
         font-size: 12px;
-        color: #1976D2;
+        color: #1976d2;
         text-decoration: none;
-        
+
         &:hover {
           text-decoration: underline;
         }
@@ -340,7 +343,7 @@ $prefix-cls: #{$namespace}-login;
 .login-footer {
   margin-top: 1rem;
   font-size: 12px;
-  color: #9E9E9E;
+  color: #9e9e9e;
   text-align: center;
 }
 </style>
@@ -351,30 +354,31 @@ $prefix-cls: #{$namespace}-login;
   .login-container {
     background-color: var(--el-bg-color);
   }
-  
+
   .login-right {
     background-color: var(--el-bg-color);
   }
-  
+
   .login-footer {
     color: var(--el-text-color-regular);
   }
-  
+
   :deep(.login-form) {
     .login-form-title {
       color: var(--el-text-color-primary);
     }
-    
+
     .el-form-item__label {
       color: var(--el-text-color-regular) !important;
     }
-    
+
     .remember-forgot {
       color: var(--el-text-color-regular);
-      
+
       .el-checkbox__label {
         color: var(--el-text-color-regular) !important;
       }
     }
   }
-}</style>
+}
+</style>

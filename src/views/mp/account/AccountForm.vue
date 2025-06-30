@@ -69,7 +69,7 @@
   </Dialog>
 </template>
 <script lang="ts" setup>
-import * as AccountApi from '@/api/mp/account'
+import * as AccountApi from '@/mp/account'
 
 defineOptions({ name: 'MpAccountForm' })
 

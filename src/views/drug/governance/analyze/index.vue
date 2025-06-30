@@ -1,658 +1,605 @@
+<!-- src/views/drug/governance/analyze/index.vue -->
 <template>
-  <div class="anomaly-analyze-page">
+  <div class="anomaly-analyze-container">
     <!-- 页面头部 -->
-    <PageHeader
-      title="异常数据分析"
-      content="自动识别和分析数据异常，包括格式错误、逻辑错误、数据缺失等问题"
-    >
+    <PageHeader title="异常数据分析" content="识别和分类药品数据中的异常情况，为数据修复提供依据">
       <template #extra>
-        <el-button type="primary" @click="startAnalysis">
-          <el-icon><Search /></el-icon>
-          开始分析
+        <el-button @click="handleRefresh" :loading="refreshing">
+          <el-icon><Refresh /></el-icon>
+          刷新
         </el-button>
-        <el-button @click="exportAnomalies">
+        <el-button type="success" @click="handleExport" :loading="exportLoading">
           <el-icon><Download /></el-icon>
-          导出异常
+          导出异常数据
         </el-button>
       </template>
     </PageHeader>
 
-    <!-- 分析配置 -->
-    <el-card class="config-card" shadow="never">
-      <template #header>
-        <span>分析配置</span>
-      </template>
+    <!-- 统计概览 -->
+    <div class="stats-overview">
+      <el-row :gutter="16">
+        <el-col :xs="12" :sm="6" :md="6" :lg="6">
+          <StatCard
+            title="异常数据总数"
+            :value="statistics.totalAnomalies"
+            icon="Warning"
+            color="#f56c6c"
+            :description="`今日新增: ${statistics.todayFixed || 0}`"
+          />
+        </el-col>
+        <el-col :xs="12" :sm="6" :md="6" :lg="6">
+          <StatCard
+            title="YPID相关错误"
+            :value="statistics.ypidErrors"
+            icon="Key"
+            color="#e6a23c"
+            :rate="calculateRate(statistics.ypidErrors, statistics.totalAnomalies)"
+          />
+        </el-col>
+        <el-col :xs="12" :sm="6" :md="6" :lg="6">
+          <StatCard
+            title="数值异常"
+            :value="statistics.valueErrors"
+            icon="DataLine"
+            color="#409eff"
+            :rate="calculateRate(statistics.valueErrors, statistics.totalAnomalies)"
+          />
+        </el-col>
+        <el-col :xs="12" :sm="6" :md="6" :lg="6">
+          <StatCard
+            title="逻辑错误"
+            :value="statistics.logicErrors"
+            icon="Connection"
+            color="#909399"
+            :rate="calculateRate(statistics.logicErrors, statistics.totalAnomalies)"
+          />
+        </el-col>
+      </el-row>
+    </div>
 
-      <el-form :inline="true">
-        <el-form-item label="选择任务">
+    <!-- 搜索条件 -->
+    <el-card class="search-card" shadow="never">
+      <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="80px">
+        <el-form-item label="任务编号" prop="taskNo">
+          <el-input
+            v-model="queryParams.taskNo"
+            placeholder="请输入任务编号"
+            clearable
+            style="width: 200px"
+          />
+        </el-form-item>
+
+        <el-form-item label="表类型" prop="tableType">
           <el-select
-            v-model="analysisConfig.taskId"
-            placeholder="请选择要分析的任务"
-            style="width: 300px"
-            filterable
+            v-model="queryParams.tableType"
+            placeholder="请选择表类型"
+            clearable
+            style="width: 150px"
           >
+            <el-option label="全部" value="" />
             <el-option
-              v-for="task in taskList"
-              :key="task.id"
-              :label="`${task.taskNo} - ${task.taskName}`"
-              :value="task.id"
+              v-for="dict in getIntDictOptions(DICT_TYPE.DRUG_TABLE_TYPE)"
+              :key="dict.value"
+              :label="dict.label"
+              :value="dict.value"
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="分析范围">
-          <el-checkbox-group v-model="analysisConfig.tableTypes">
-            <el-checkbox :label="1">机构信息</el-checkbox>
-            <el-checkbox :label="2">药品目录</el-checkbox>
-            <el-checkbox :label="3">入库情况</el-checkbox>
-            <el-checkbox :label="4">出库情况</el-checkbox>
-            <el-checkbox :label="5">使用情况</el-checkbox>
-          </el-checkbox-group>
+
+        <el-form-item label="异常类型" prop="anomalyType">
+          <el-select
+            v-model="queryParams.anomalyType"
+            placeholder="请选择异常类型"
+            clearable
+            style="width: 150px"
+          >
+            <el-option label="全部" value="" />
+            <el-option label="YPID未比对" value="YPID_EMPTY" />
+            <el-option label="YPID比对错误" value="YPID_ERROR" />
+            <el-option label="金额异常" value="AMOUNT_ERROR" />
+            <el-option label="数量异常" value="QUANTITY_ERROR" />
+            <el-option label="逻辑错误" value="LOGIC_ERROR" />
+            <el-option label="格式错误" value="FORMAT_ERROR" />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="处理状态" prop="status">
+          <el-select
+            v-model="queryParams.status"
+            placeholder="请选择状态"
+            clearable
+            style="width: 120px"
+          >
+            <el-option label="全部" value="" />
+            <el-option label="待处理" :value="0" />
+            <el-option label="修复中" :value="1" />
+            <el-option label="已修复" :value="2" />
+            <el-option label="已忽略" :value="3" />
+            <el-option label="修复失败" :value="4" />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="医院名称" prop="hospitalName">
+          <el-input
+            v-model="queryParams.hospitalName"
+            placeholder="请输入医院名称"
+            clearable
+            style="width: 200px"
+          />
+        </el-form-item>
+
+        <el-form-item>
+          <el-button type="primary" @click="handleQuery">
+            <el-icon><Search /></el-icon>
+            搜索
+          </el-button>
+          <el-button @click="resetQuery">
+            <el-icon><Refresh /></el-icon>
+            重置
+          </el-button>
         </el-form-item>
       </el-form>
     </el-card>
 
-    <!-- 分析结果概览 -->
-    <template v-if="analysisResult">
-      <el-row :gutter="20" class="stat-cards">
-        <el-col :span="6">
-          <el-card class="stat-card">
-            <el-statistic title="异常记录总数" :value="analysisResult.totalAnomalies">
-              <template #suffix>
-                <span style="font-size: 14px">条</span>
-              </template>
-            </el-statistic>
-          </el-card>
-        </el-col>
-        <el-col :span="6">
-          <el-card class="stat-card danger">
-            <el-statistic title="严重异常" :value="analysisResult.criticalCount">
-              <template #suffix>
-                <span style="font-size: 14px">条</span>
-              </template>
-            </el-statistic>
-          </el-card>
-        </el-col>
-        <el-col :span="6">
-          <el-card class="stat-card warning">
-            <el-statistic title="一般异常" :value="analysisResult.warningCount">
-              <template #suffix>
-                <span style="font-size: 14px">条</span>
-              </template>
-            </el-statistic>
-          </el-card>
-        </el-col>
-        <el-col :span="6">
-          <el-card class="stat-card info">
-            <el-statistic title="提示信息" :value="analysisResult.infoCount">
-              <template #suffix>
-                <span style="font-size: 14px">条</span>
-              </template>
-            </el-statistic>
-          </el-card>
-        </el-col>
-      </el-row>
-
-      <!-- 异常类型分布 -->
-      <el-card class="chart-card" shadow="hover">
-        <template #header>
-          <span>异常类型分布</span>
-        </template>
-        <div id="anomalyTypeChart" style="height: 300px"></div>
-      </el-card>
-
-      <!-- 异常详情列表 -->
-      <el-card class="detail-card" shadow="hover">
-        <template #header>
-          <div class="card-header">
-            <span>异常详情</span>
-            <div class="header-actions">
-              <el-input
-                v-model="searchKeyword"
-                placeholder="搜索异常信息"
-                style="width: 200px"
-                clearable
-                @clear="handleSearch"
-                @keyup.enter="handleSearch"
-              >
-                <template #prefix>
-                  <el-icon><Search /></el-icon>
-                </template>
-              </el-input>
-              <el-select
-                v-model="filterConfig.severity"
-                placeholder="严重程度"
-                style="width: 120px"
-                clearable
-                @change="handleFilter"
-              >
-                <el-option label="严重" value="critical" />
-                <el-option label="警告" value="warning" />
-                <el-option label="提示" value="info" />
-              </el-select>
-              <el-select
-                v-model="filterConfig.type"
-                placeholder="异常类型"
-                style="width: 150px"
-                clearable
-                @change="handleFilter"
-              >
-                <el-option label="格式错误" value="format" />
-                <el-option label="数据缺失" value="missing" />
-                <el-option label="逻辑错误" value="logic" />
-                <el-option label="范围异常" value="range" />
-                <el-option label="关联错误" value="relation" />
-              </el-select>
-            </div>
+    <!-- 异常数据列表 -->
+    <el-card class="table-card" shadow="never">
+      <template #header>
+        <div class="table-header">
+          <span class="table-title">异常数据明细</span>
+          <div class="table-actions">
+            <el-button
+              type="primary"
+              size="small"
+              :disabled="multipleSelection.length === 0"
+              @click="handleBatchAutoFix"
+            >
+              <el-icon><Tools /></el-icon>
+              批量自动修复
+            </el-button>
+            <el-button
+              type="warning"
+              size="small"
+              :disabled="multipleSelection.length === 0"
+              @click="handleBatchManualFix"
+            >
+              <el-icon><Edit /></el-icon>
+              批量手动修复
+            </el-button>
           </div>
-        </template>
+        </div>
+      </template>
 
-        <el-table
-          v-loading="loading"
-          :data="anomalyList"
-          stripe
-          border
-          style="width: 100%"
-          @selection-change="handleSelectionChange"
-        >
-          <el-table-column type="selection" width="55" />
-          <el-table-column prop="id" label="序号" width="80" />
-          <el-table-column prop="tableName" label="数据表" width="120" />
-          <el-table-column prop="recordId" label="记录ID" width="100" />
-          <el-table-column prop="fieldName" label="字段名" width="120" />
-          <el-table-column prop="fieldValue" label="异常值" width="150" show-overflow-tooltip />
-          <el-table-column prop="anomalyType" label="异常类型" width="100" align="center">
-            <template #default="{ row }">
-              <el-tag size="small">{{ getAnomalyTypeName(row.anomalyType) }}</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="severity" label="严重程度" width="100" align="center">
-            <template #default="{ row }">
-              <el-tag :type="getSeverityType(row.severity)">
-                {{ getSeverityName(row.severity) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="description" label="异常描述" min-width="200" show-overflow-tooltip />
-          <el-table-column prop="suggestion" label="修复建议" min-width="200" show-overflow-tooltip />
-          <el-table-column label="操作" width="150" fixed="right" align="center">
-            <template #default="{ row }">
-              <el-button type="primary" link size="small" @click="handleAutoFix(row)">
+      <el-table
+        v-loading="loading"
+        :data="anomalyList"
+        stripe
+        border
+        @selection-change="handleSelectionChange"
+      >
+        <el-table-column type="selection" width="55" />
+
+        <el-table-column prop="taskNo" label="任务编号" width="150" fixed="left" />
+
+        <el-table-column prop="tableName" label="数据表" width="120">
+          <template #default="{ row }">
+            <el-tag size="small">
+              {{ getDictLabel(DICT_TYPE.DRUG_TABLE_TYPE, row.tableType) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+
+        <el-table-column prop="anomalyType" label="异常类型" width="140">
+          <template #default="{ row }">
+            <el-tag :type="getAnomalyTypeTag(row.anomalyType)" size="small">
+              {{ getAnomalyTypeLabel(row.anomalyType) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+
+        <el-table-column
+          prop="hospitalName"
+          label="医院名称"
+          min-width="180"
+          show-overflow-tooltip
+        />
+
+        <el-table-column prop="drugName" label="药品名称" min-width="150" show-overflow-tooltip />
+
+        <el-table-column prop="fieldName" label="异常字段" width="120" />
+
+        <el-table-column prop="originalValue" label="原始值" width="120" show-overflow-tooltip />
+
+        <el-table-column prop="expectedValue" label="期望值" width="120" show-overflow-tooltip />
+
+        <el-table-column
+          prop="errorMessage"
+          label="错误描述"
+          min-width="200"
+          show-overflow-tooltip
+        />
+
+        <el-table-column prop="fixStrategy" label="建议策略" width="140">
+          <template #default="{ row }">
+            <div v-if="row.fixCode" class="fix-strategy">
+              <el-tag size="small" type="success">{{ row.fixCode }}</el-tag>
+              <span class="confidence"> 置信度: {{ row.confidence || 0 }}% </span>
+            </div>
+            <span v-else class="text-muted">需人工处理</span>
+          </template>
+        </el-table-column>
+
+        <el-table-column prop="status" label="状态" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag :type="getStatusTag(row.status)" size="small">
+              {{ getStatusLabel(row.status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+
+        <el-table-column
+          prop="createTime"
+          label="发现时间"
+          width="150"
+          :formatter="dateFormatter"
+        />
+
+        <el-table-column label="操作" width="180" fixed="right">
+          <template #default="{ row }">
+            <div class="action-buttons">
+              <el-button type="primary" link size="small" @click="handleView(row)">
+                <el-icon><View /></el-icon>
+                查看
+              </el-button>
+              <el-button
+                v-if="row.status === 0 && row.fixCode"
+                type="success"
+                link
+                size="small"
+                @click="handleAutoFix(row)"
+              >
+                <el-icon><Tools /></el-icon>
                 自动修复
               </el-button>
-              <el-button type="warning" link size="small" @click="handleManualFix(row)">
+              <el-button
+                v-if="row.status === 0"
+                type="warning"
+                link
+                size="small"
+                @click="handleManualFix(row)"
+              >
+                <el-icon><Edit /></el-icon>
                 手动修复
               </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
+              <el-button
+                v-if="row.status === 0"
+                type="info"
+                link
+                size="small"
+                @click="handleIgnore(row)"
+              >
+                <el-icon><Close /></el-icon>
+                忽略
+              </el-button>
+            </div>
+          </template>
+        </el-table-column>
+      </el-table>
 
-        <!-- 批量操作 -->
-        <div class="batch-actions">
-          <el-button
-            type="primary"
-            :disabled="selectedRows.length === 0"
-            @click="handleBatchAutoFix"
-          >
-            批量自动修复
-          </el-button>
-          <el-button
-            type="warning"
-            :disabled="selectedRows.length === 0"
-            @click="handleBatchManualFix"
-          >
-            批量手动修复
-          </el-button>
-          <span class="selection-info">
-            已选择 {{ selectedRows.length }} 条记录
-          </span>
-        </div>
+      <Pagination
+        :total="total"
+        v-model:page="queryParams.pageNo"
+        v-model:limit="queryParams.pageSize"
+        @pagination="loadAnomalyList"
+      />
+    </el-card>
 
-        <!-- 分页 -->
-        <div class="pagination-wrapper">
-          <el-pagination
-            v-model:current-page="pageConfig.pageNo"
-            v-model:page-size="pageConfig.pageSize"
-            :page-sizes="[10, 20, 50, 100]"
-            :total="total"
-            layout="total, sizes, prev, pager, next, jumper"
-            @size-change="loadAnomalyList"
-            @current-change="loadAnomalyList"
-          />
-        </div>
-      </el-card>
-    </template>
-
-    <!-- 空状态 -->
-    <el-empty v-else description="请选择任务并开始分析" />
-
-    <!-- 手动修复对话框 -->
-    <el-dialog
-      v-model="fixDialogVisible"
-      :title="`手动修复 - ${currentAnomaly?.fieldName}`"
-      width="600px"
-    >
-      <el-form label-width="100px">
-        <el-form-item label="数据表">
-          {{ currentAnomaly?.tableName }}
-        </el-form-item>
-        <el-form-item label="记录ID">
-          {{ currentAnomaly?.recordId }}
-        </el-form-item>
-        <el-form-item label="字段名">
-          {{ currentAnomaly?.fieldName }}
-        </el-form-item>
-        <el-form-item label="当前值">
-          <el-tag type="danger">{{ currentAnomaly?.fieldValue }}</el-tag>
-        </el-form-item>
-        <el-form-item label="异常描述">
-          {{ currentAnomaly?.description }}
-        </el-form-item>
-        <el-form-item label="修复建议">
-          <el-alert :title="currentAnomaly?.suggestion" type="info" :closable="false" />
-        </el-form-item>
-        <el-form-item label="修复值" required>
-          <el-input
-            v-model="fixValue"
-            placeholder="请输入修复后的值"
-            clearable
-          />
-        </el-form-item>
-        <el-form-item label="修复说明">
-          <el-input
-            v-model="fixRemark"
-            type="textarea"
-            :rows="3"
-            placeholder="请输入修复说明"
-          />
-        </el-form-item>
-      </el-form>
-
-      <template #footer>
-        <el-button @click="fixDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="confirmManualFix">确认修复</el-button>
-      </template>
-    </el-dialog>
+    <!-- 异常详情对话框 -->
+    <AnomalyDetailModal v-model="detailVisible" :anomaly-id="selectedAnomalyId" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, nextTick } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Download } from '@element-plus/icons-vue'
-import * as echarts from 'echarts'
+import { useRouter } from 'vue-router'
+import { Refresh, Download, Search, Tools, Edit, View, Close } from '@element-plus/icons-vue'
+import { dateFormatter } from '@/utils/formatTime'
+import { DICT_TYPE, getDictLabel, getIntDictOptions } from '@/utils/dict'
+import {
+  DataGovernanceApi,
+  type AnomalyDataVO,
+  type AnomalyQueryVO,
+  type AnomalyStatisticsVO
+} from '@/api/drug/governance'
+
+// 导入组件
 import PageHeader from '@/components/PageHeader/index.vue'
-import { DrugGovernanceApi } from '@/api/drug/governance'
-import { DrugBatchImportApi } from '@/api/drug/task'
+import StatCard from '@/components/StatCard/index.vue'
+import AnomalyDetailModal from './components/AnomalyDetailModal.vue'
 
-/** 页面名称 */
-defineOptions({ name: 'AnomalyAnalyze' })
+defineOptions({ name: 'AnomalyAnalyzeIndex' })
 
-// 响应式数据
+// ========================= 响应式数据 =========================
+
+const router = useRouter()
 const loading = ref(false)
-const taskList = ref([])
-const analysisResult = ref(null)
-const anomalyList = ref([])
-const total = ref(0)
-const selectedRows = ref([])
+const refreshing = ref(false)
+const exportLoading = ref(false)
 
-const analysisConfig = reactive({
-  taskId: undefined,
-  tableTypes: [1, 2, 3, 4, 5]
-})
-
-const filterConfig = reactive({
-  severity: undefined,
-  type: undefined
-})
-
-const pageConfig = reactive({
+const queryParams = reactive<AnomalyQueryVO>({
   pageNo: 1,
-  pageSize: 20
+  pageSize: 20,
+  taskNo: undefined,
+  tableType: undefined,
+  anomalyType: undefined,
+  status: undefined,
+  hospitalName: undefined
 })
 
-const searchKeyword = ref('')
-const fixDialogVisible = ref(false)
-const currentAnomaly = ref(null)
-const fixValue = ref('')
-const fixRemark = ref('')
+const anomalyList = ref<AnomalyDataVO[]>([])
+const total = ref(0)
+const multipleSelection = ref<AnomalyDataVO[]>([])
 
-let chartInstance = null
+const statistics = reactive<AnomalyStatisticsVO>({
+  totalAnomalies: 0,
+  ypidErrors: 0,
+  valueErrors: 0,
+  logicErrors: 0,
+  formatErrors: 0,
+  pendingAutoFix: 0,
+  pendingManualFix: 0,
+  todayFixed: 0,
+  fixRate: 0,
+  fixRateTrend: 0
+})
 
-// 生命周期
+const detailVisible = ref(false)
+const selectedAnomalyId = ref<number>()
+
+// ========================= 生命周期 =========================
+
 onMounted(() => {
-  loadTaskList()
+  initPage()
 })
 
-// 方法
-const loadTaskList = async () => {
-  try {
-    const { list } = await DrugBatchImportApi.getTaskPage({
-      pageNo: 1,
-      pageSize: 100,
-      status: 4
-    })
-    taskList.value = list
-  } catch (error) {
-    ElMessage.error('加载任务列表失败')
-  }
-}
+// ========================= 方法 =========================
 
-const startAnalysis = async () => {
-  if (!analysisConfig.taskId) {
-    ElMessage.warning('请选择要分析的任务')
-    return
-  }
-
-  if (analysisConfig.tableTypes.length === 0) {
-    ElMessage.warning('请选择分析范围')
-    return
-  }
-
-  loading.value = true
-  try {
-    const result = await DrugGovernanceApi.analyzeAnomalies({
-      taskId: analysisConfig.taskId,
-      tableTypes: analysisConfig.tableTypes
-    })
-
-    analysisResult.value = result
-    await nextTick()
-    renderChart(result.typeDistribution)
-
-    // 加载异常列表
-    loadAnomalyList()
-  } catch (error) {
-    ElMessage.error('分析失败')
-  } finally {
-    loading.value = false
-  }
+const initPage = async () => {
+  await Promise.all([loadAnomalyList(), loadStatistics()])
 }
 
 const loadAnomalyList = async () => {
-  if (!analysisConfig.taskId) return
-
   loading.value = true
   try {
-    const params = {
-      taskId: analysisConfig.taskId,
-      ...pageConfig,
-      severity: filterConfig.severity,
-      type: filterConfig.type,
-      keyword: searchKeyword.value
-    }
-
-    const { list, total: totalCount } = await DrugGovernanceApi.getAnomalyList(params)
-    anomalyList.value = list
-    total.value = totalCount
+    const { list, total: totalCount } = await DataGovernanceApi.getAnomalyPage(queryParams)
+    anomalyList.value = list || []
+    total.value = totalCount || 0
   } catch (error) {
-    ElMessage.error('加载异常列表失败')
+    console.error('加载异常数据失败:', error)
   } finally {
     loading.value = false
   }
 }
 
-const renderChart = (data: any) => {
-  const chartDom = document.getElementById('anomalyTypeChart')
-  if (!chartDom) return
-
-  if (chartInstance) {
-    chartInstance.dispose()
+const loadStatistics = async () => {
+  try {
+    const data = await DataGovernanceApi.getAnomalyStatistics()
+    Object.assign(statistics, data)
+  } catch (error) {
+    console.error('加载统计数据失败:', error)
   }
-
-  chartInstance = echarts.init(chartDom)
-
-  const option = {
-    tooltip: {
-      trigger: 'item',
-      formatter: '{a} <br/>{b}: {c} ({d}%)'
-    },
-    legend: {
-      orient: 'vertical',
-      left: 'left'
-    },
-    series: [
-      {
-        name: '异常类型',
-        type: 'pie',
-        radius: ['40%', '70%'],
-        avoidLabelOverlap: false,
-        itemStyle: {
-          borderRadius: 10,
-          borderColor: '#fff',
-          borderWidth: 2
-        },
-        label: {
-          show: false,
-          position: 'center'
-        },
-        emphasis: {
-          label: {
-            show: true,
-            fontSize: '20',
-            fontWeight: 'bold'
-          }
-        },
-        labelLine: {
-          show: false
-        },
-        data: data
-      }
-    ]
-  }
-
-  chartInstance.setOption(option)
 }
 
-const handleSearch = () => {
-  pageConfig.pageNo = 1
+const handleQuery = () => {
+  queryParams.pageNo = 1
   loadAnomalyList()
 }
 
-const handleFilter = () => {
-  pageConfig.pageNo = 1
-  loadAnomalyList()
+const resetQuery = () => {
+  Object.assign(queryParams, {
+    pageNo: 1,
+    pageSize: 20,
+    taskNo: undefined,
+    tableType: undefined,
+    anomalyType: undefined,
+    status: undefined,
+    hospitalName: undefined
+  })
+  handleQuery()
 }
 
-const handleSelectionChange = (rows: any[]) => {
-  selectedRows.value = rows
-}
-
-const handleAutoFix = async (row: any) => {
+const handleRefresh = async () => {
+  refreshing.value = true
   try {
-    await ElMessageBox.confirm(
-      '确认自动修复该异常数据？系统将按照建议值进行修复。',
-      '确认修复',
-      { type: 'warning' }
-    )
+    await initPage()
+    ElMessage.success('刷新成功')
+  } finally {
+    refreshing.value = false
+  }
+}
 
-    await DrugGovernanceApi.autoFix({
-      anomalyIds: [row.id],
-      strategy: 'default'
-    })
-
-    ElMessage.success('修复成功')
-    loadAnomalyList()
+const handleExport = async () => {
+  try {
+    await ElMessageBox.confirm('确认导出当前查询条件下的异常数据？', '确认导出')
+    exportLoading.value = true
+    await DataGovernanceApi.exportAnomalyData(queryParams)
+    ElMessage.success('导出成功')
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('修复失败')
+      ElMessage.error('导出失败')
     }
+  } finally {
+    exportLoading.value = false
   }
 }
 
-const handleManualFix = (row: any) => {
-  currentAnomaly.value = row
-  fixValue.value = ''
-  fixRemark.value = ''
-  fixDialogVisible.value = true
+const handleSelectionChange = (selection: AnomalyDataVO[]) => {
+  multipleSelection.value = selection
 }
 
-const handleBatchAutoFix = async () => {
-  if (selectedRows.value.length === 0) {
-    ElMessage.warning('请选择要修复的记录')
-    return
-  }
+const handleView = (row: AnomalyDataVO) => {
+  selectedAnomalyId.value = row.id
+  detailVisible.value = true
+}
 
-  try {
-    await ElMessageBox.confirm(
-      `确认批量自动修复${selectedRows.value.length}条异常数据？`,
-      '确认批量修复',
-      { type: 'warning' }
-    )
+const handleAutoFix = (row: AnomalyDataVO) => {
+  router.push({
+    name: 'DataGovernanceAutoFix',
+    query: { anomalyId: row.id }
+  })
+}
 
-    const anomalyIds = selectedRows.value.map(row => row.id)
-    await DrugGovernanceApi.autoFix({
-      anomalyIds,
-      strategy: 'default'
-    })
+const handleManualFix = (row: AnomalyDataVO) => {
+  router.push({
+    name: 'DataGovernanceManualFix',
+    query: { anomalyId: row.id }
+  })
+}
 
-    ElMessage.success('批量修复成功')
-    loadAnomalyList()
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('批量修复失败')
-    }
-  }
+const handleBatchAutoFix = () => {
+  const ids = multipleSelection.value.map((item) => item.id)
+  router.push({
+    name: 'DataGovernanceAutoFix',
+    query: { anomalyIds: ids.join(',') }
+  })
 }
 
 const handleBatchManualFix = () => {
-  ElMessage.info('批量手动修复功能开发中')
+  const ids = multipleSelection.value.map((item) => item.id)
+  router.push({
+    name: 'DataGovernanceManualFix',
+    query: { anomalyIds: ids.join(',') }
+  })
 }
 
-const confirmManualFix = async () => {
-  if (!fixValue.value) {
-    ElMessage.warning('请输入修复值')
-    return
-  }
-
+const handleIgnore = async (row: AnomalyDataVO) => {
   try {
-    await DrugGovernanceApi.manualFix({
-      anomalyId: currentAnomaly.value.id,
-      fixValue: fixValue.value,
-      remark: fixRemark.value
+    const { value: reason } = await ElMessageBox.prompt('请输入忽略原因', '忽略异常', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      inputPattern: /.+/,
+      inputErrorMessage: '请输入忽略原因'
     })
 
-    ElMessage.success('修复成功')
-    fixDialogVisible.value = false
+    await DataGovernanceApi.ignoreAnomaly(row.id, reason)
+    ElMessage.success('已忽略该异常')
     loadAnomalyList()
   } catch (error) {
-    ElMessage.error('修复失败')
+    if (error !== 'cancel') {
+      ElMessage.error('操作失败')
+    }
   }
 }
 
-const exportAnomalies = async () => {
-  if (!analysisResult.value) {
-    ElMessage.warning('暂无分析结果')
-    return
-  }
+// ========================= 工具方法 =========================
 
-  try {
-    await DrugGovernanceApi.exportAnomalies({
-      taskId: analysisConfig.taskId,
-      ...filterConfig
-    })
-    ElMessage.success('导出成功')
-  } catch (error) {
-    ElMessage.error('导出失败')
-  }
+const calculateRate = (value: number, total: number) => {
+  if (total === 0) return 0
+  return Math.round((value / total) * 100)
 }
 
-// 工具函数
-const getAnomalyTypeName = (type: string) => {
-  const names = {
-    format: '格式错误',
-    missing: '数据缺失',
-    logic: '逻辑错误',
-    range: '范围异常',
-    relation: '关联错误'
+const getAnomalyTypeLabel = (type: string) => {
+  const typeMap = {
+    YPID_EMPTY: 'YPID未比对',
+    YPID_ERROR: 'YPID比对错误',
+    AMOUNT_ERROR: '金额异常',
+    QUANTITY_ERROR: '数量异常',
+    LOGIC_ERROR: '逻辑错误',
+    FORMAT_ERROR: '格式错误'
   }
-  return names[type] || '未知'
+  return typeMap[type] || type
 }
 
-const getSeverityType = (severity: string) => {
-  const types = {
-    critical: 'danger',
-    warning: 'warning',
-    info: 'info'
+const getAnomalyTypeTag = (type: string) => {
+  const tagMap = {
+    YPID_EMPTY: 'warning',
+    YPID_ERROR: 'danger',
+    AMOUNT_ERROR: 'primary',
+    QUANTITY_ERROR: 'info',
+    LOGIC_ERROR: 'danger',
+    FORMAT_ERROR: 'warning'
   }
-  return types[severity] || 'info'
+  return tagMap[type] || 'info'
 }
 
-const getSeverityName = (severity: string) => {
-  const names = {
-    critical: '严重',
-    warning: '警告',
-    info: '提示'
+const getStatusLabel = (status: number) => {
+  const statusMap = {
+    0: '待处理',
+    1: '修复中',
+    2: '已修复',
+    3: '已忽略',
+    4: '修复失败'
   }
-  return names[severity] || '未知'
+  return statusMap[status] || '未知'
+}
+
+const getStatusTag = (status: number) => {
+  const tagMap = {
+    0: 'warning',
+    1: 'primary',
+    2: 'success',
+    3: 'info',
+    4: 'danger'
+  }
+  return tagMap[status] || 'info'
 }
 </script>
 
 <style scoped>
-.anomaly-analyze-page {
+.anomaly-analyze-container {
   padding: 20px;
   background-color: #f5f5f5;
   min-height: calc(100vh - 50px);
 }
 
-.config-card {
+.stats-overview {
+  margin-bottom: 20px;
+}
+
+.search-card {
   margin-bottom: 20px;
   border-radius: 8px;
 }
 
-.stat-cards {
-  margin-bottom: 20px;
-}
-
-.stat-card {
-  text-align: center;
+.table-card {
   border-radius: 8px;
 }
 
-.stat-card.danger :deep(.el-statistic__content) {
-  color: #f56c6c;
-}
-
-.stat-card.warning :deep(.el-statistic__content) {
-  color: #e6a23c;
-}
-
-.stat-card.info :deep(.el-statistic__content) {
-  color: #909399;
-}
-
-.chart-card,
-.detail-card {
-  margin-bottom: 20px;
-  border-radius: 8px;
-}
-
-.card-header {
+.table-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.header-actions {
-  display: flex;
-  gap: 12px;
+.table-title {
+  font-size: 16px;
+  font-weight: 600;
 }
 
-.batch-actions {
-  margin-top: 20px;
+.table-actions {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
-.selection-info {
-  margin-left: auto;
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.fix-strategy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.confidence {
+  font-size: 12px;
   color: #909399;
-  font-size: 14px;
 }
 
-.pagination-wrapper {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 20px;
+.text-muted {
+  color: #909399;
+  font-style: italic;
 }
 </style>

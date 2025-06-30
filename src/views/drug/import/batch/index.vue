@@ -365,7 +365,7 @@
 
                   <!-- 数据预览 -->
                   <div class="data-preview" style="margin-top: 20px">
-                    <h4>数据预览 (前{{ Math.min(fileInfo.previewData?.length || 0, 5) }}行)</h4>
+                    <h4>数据预览 (前{{ Math.min(fileInfo.previewData?.length || 0) }}行)</h4>
                     <el-table
                       v-if="fileInfo.previewData?.length > 0"
                       :data="fileInfo.previewData"
@@ -792,7 +792,7 @@ const downloadTemplate = async () => {
   link.click()
   document.body.removeChild(link)
 
-  ElMessage.success('模板下载成功')
+  ElMessage.success('模板开始下载')
 }
 
 /** 返回上一页 */

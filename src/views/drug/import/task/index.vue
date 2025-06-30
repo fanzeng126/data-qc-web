@@ -362,7 +362,7 @@ import { DICT_TYPE, getDictLabel, getDictColorType, getIntDictOptions } from '@/
 
 // 导入组件
 import PageHeader from '@/components/PageHeader/index.vue'
-import StatCard from './components/StatCard.vue'
+import StatCard from '@/components/StatCard/index.vue'
 import BatchImportModal from './components/BatchImportModal.vue'
 import ProgressMonitorModal from './components/ProgressMonitorModal.vue'
 import TaskDetailModal from './components/TaskDetailModal.vue'
@@ -643,7 +643,7 @@ const downloadTemplate = () => {
   link.click()
   document.body.removeChild(link)
 
-  ElMessage.success('模板下载成功')
+  ElMessage.success('模板开始下载')
 }
 
 // ========================= 工具方法 =========================

@@ -431,7 +431,7 @@ const startImport = async () => {
 const downloadTemplate = async () => {
   try {
     await DrugBatchImportApi.downloadTemplate('STANDARD')
-    ElMessage.success('模板下载成功')
+    ElMessage.success('模板开始下载')
   } catch (error) {
     ElMessage.error('模板下载失败')
     console.error('下载模板失败:', error)

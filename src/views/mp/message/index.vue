@@ -80,7 +80,7 @@
   </el-dialog>
 </template>
 <script lang="ts" setup>
-import * as MpMessageApi from '@/api/mp/message'
+import * as MpMessageApi from '@/mp/message'
 import WxMsg from '@/views/mp/components/wx-msg'
 import WxAccountSelect from '@/views/mp/components/wx-account-select'
 import MessageTable from './MessageTable.vue'
