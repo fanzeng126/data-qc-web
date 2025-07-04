@@ -1,4 +1,3 @@
-<!-- 修复统计数据初始化和显示问题 -->
 <template>
   <div class="qc-rule-container">
     <!-- 页面头部 -->
@@ -129,6 +128,16 @@
           </el-select>
         </el-form-item>
 
+        <el-form-item label="字段名称" prop="fieldName">
+          <el-input
+            v-model="queryParams.fieldName"
+            clearable
+            placeholder="请输入字段名称"
+            style="width: 150px"
+            @keyup.enter="handleQuery"
+          />
+        </el-form-item>
+
         <el-form-item label="启用状态" prop="enabled">
           <el-select
             v-model="queryParams.enabled"
@@ -214,16 +223,94 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="tableType" label="适用表" width="100" align="center">
+        <el-table-column align="center" label="适用表" prop="tableType" width="150">
           <template #default="{ row }">
-            <span v-if="row.tableType">
-              {{ getDictLabel(DICT_TYPE.DRUG_QC_TABLE_TYPE, row.tableType) }}
-            </span>
-            <span v-else class="text-muted">全部表</span>
+            <div v-if="row.tableType">
+              <!-- 解析逗号分隔的字符串格式 -->
+              <div v-if="row.tableType === '0'" class="table-all">
+                <el-tag size="small" type="info">全部表</el-tag>
+              </div>
+              <div v-else>
+                <div v-if="parseTableTypes(row.tableType).length <= 2" class="table-tags">
+                  <el-tag
+                    v-for="tableType in parseTableTypes(row.tableType)"
+                    :key="tableType"
+                    class="table-tag"
+                    size="small"
+                  >
+                    {{ getDictLabel(DICT_TYPE.DRUG_QC_TABLE_TYPE, tableType) }}
+                  </el-tag>
+                </div>
+                <el-popover v-else placement="top" trigger="hover" width="200">
+                  <template #default>
+                    <div class="table-types-popover">
+                      <el-tag
+                        v-for="tableType in parseTableTypes(row.tableType)"
+                        :key="tableType"
+                        class="table-tag-popup"
+                        size="small"
+                      >
+                        {{ getDictLabel(DICT_TYPE.DRUG_QC_TABLE_TYPE, tableType) }}
+                      </el-tag>
+                    </div>
+                  </template>
+                  <template #reference>
+                    <el-tag size="small" type="primary">
+                      {{ parseTableTypes(row.tableType).length }}个表
+                    </el-tag>
+                  </template>
+                </el-popover>
+              </div>
+            </div>
+            <span v-else class="text-muted">未配置</span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="fieldName" label="检查字段" width="120" show-overflow-tooltip />
+        <el-table-column align="center" label="检查字段" prop="fieldName" width="150">
+          <template #default="{ row }">
+            <div v-if="row.fieldName">
+              <!-- 解析逗号分隔的字段名字符串 -->
+              <div v-if="parseFieldNames(row.fieldName).length === 1" class="field-single">
+                <el-tag size="small" type="success">
+                  {{ parseFieldNames(row.fieldName)[0] }}
+                </el-tag>
+              </div>
+              <div v-else-if="parseFieldNames(row.fieldName).length <= 2" class="field-tags">
+                <el-tag
+                  v-for="fieldName in parseFieldNames(row.fieldName)"
+                  :key="fieldName"
+                  class="field-tag"
+                  size="small"
+                  type="success"
+                >
+                  {{ fieldName }}
+                </el-tag>
+              </div>
+              <el-popover v-else placement="top" trigger="hover" width="250">
+                <template #default>
+                  <div class="field-names-popover">
+                    <div class="popover-title">检查字段列表：</div>
+                    <el-tag
+                      v-for="fieldName in parseFieldNames(row.fieldName)"
+                      :key="fieldName"
+                      class="field-tag-popup"
+                      size="small"
+                      type="success"
+                    >
+                      {{ fieldName }}
+                    </el-tag>
+                  </div>
+                </template>
+                <template #reference>
+                  <el-tag size="small" type="warning">
+                    {{ parseFieldNames(row.fieldName).length }}个字段
+                  </el-tag>
+                </template>
+              </el-popover>
+            </div>
+            <span v-else class="text-muted">无字段</span>
+          </template>
+        </el-table-column>
 
         <el-table-column prop="errorLevel" label="错误级别" width="100" align="center">
           <template #default="{ row }">
@@ -325,28 +412,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
+import type { FormInstance } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  Plus,
-  Upload,
-  Download,
-  Search,
-  Refresh,
-  View,
-  Edit,
-  Connection,
-  MoreFilled,
-  CopyDocument,
   Clock,
-  Delete
+  Connection,
+  CopyDocument,
+  Delete,
+  Download,
+  Edit,
+  MoreFilled,
+  Plus,
+  Refresh,
+  Search,
+  Upload,
+  View
 } from '@element-plus/icons-vue'
-import type { FormInstance } from 'element-plus'
 import { dateFormatter } from '@/utils/formatTime'
 import {
   QcRuleApi,
-  type QcRuleRespVO,
   type QcRulePageReqVO,
+  type QcRuleRespVO,
   type QcRuleStatisticsVO
 } from '@/api/drug/qc/rule'
 import { DICT_TYPE, getDictLabel, getIntDictOptions } from '@/utils/dict'
@@ -379,6 +466,7 @@ const queryParams = reactive<QcRulePageReqVO>({
   ruleType: undefined,
   ruleCategory: undefined,
   tableType: undefined,
+  fieldName: undefined, // 添加字段名搜索
   enabled: undefined
 })
 
@@ -602,6 +690,30 @@ const handleDeleteRule = async (row: QcRuleRespVO) => {
 const handleImport = () => {
   ElMessage.info('导入功能开发中...')
 }
+
+// ========================= 工具方法 =========================
+
+/** 解析表类型字符串为数组 */
+const parseTableTypes = (tableTypeStr: string): number[] => {
+  if (!tableTypeStr || tableTypeStr === '0') {
+    return []
+  }
+  return tableTypeStr
+    .split(',')
+    .map((t) => parseInt(t.trim()))
+    .filter((t) => !isNaN(t))
+}
+
+/** 解析字段名字符串为数组 */
+const parseFieldNames = (fieldNameStr: string): string[] => {
+  if (!fieldNameStr) {
+    return []
+  }
+  return fieldNameStr
+    .split(',')
+    .map((f) => f.trim())
+    .filter((f) => f.length > 0)
+}
 </script>
 
 <style scoped>
@@ -715,5 +827,61 @@ const handleImport = () => {
 :deep(.el-card__header) {
   border-bottom: 1px solid #f0f0f0;
   background-color: #fafafa;
+}
+
+/* 表类型标签样式 */
+.table-tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.table-tag {
+  margin-bottom: 2px;
+}
+
+.table-types-popover {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.table-tag-popup {
+  margin: 2px;
+}
+
+/* 字段标签样式 */
+.field-tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.field-tag {
+  margin-bottom: 2px;
+}
+
+.field-names-popover {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.popover-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #303133;
+  font-size: 13px;
+}
+
+.field-tag-popup {
+  margin: 2px;
+  display: inline-block;
+}
+
+.field-single {
+  display: flex;
+  justify-content: center;
 }
 </style>

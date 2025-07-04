@@ -66,15 +66,34 @@
               </el-col>
               <el-col :span="8">
                 <el-form-item label="适用表" prop="tableType">
-                  <el-select v-model="formData.tableType" placeholder="请选择适用表" clearable>
-                    <el-option label="全部表" value="" />
-                    <el-option
-                      v-for="dict in tableTypeOptions"
-                      :key="dict.value"
-                      :label="dict.label"
-                      :value="parseInt(dict.value)"
-                    />
-                  </el-select>
+                  <div class="table-type-container">
+                    <el-checkbox
+                      v-model="isAllTables"
+                      class="all-tables-checkbox"
+                      @change="handleAllTablesChange"
+                    >
+                      全部表
+                    </el-checkbox>
+                    <el-select
+                      v-model="selectedTableTypes"
+                      :disabled="isAllTables"
+                      clearable
+                      collapse-tags
+                      collapse-tags-tooltip
+                      multiple
+                      placeholder="请选择适用表类型"
+                      style="width: 100%"
+                      @change="handleTableTypesChange"
+                    >
+                      <el-option
+                        v-for="dict in tableTypeOptions"
+                        :key="dict.value"
+                        :label="dict.label"
+                        :value="parseInt(dict.value)"
+                      />
+                    </el-select>
+                    <div class="form-tip">选择"全部表"或选择具体的表类型</div>
+                  </div>
                 </el-form-item>
               </el-col>
             </el-row>
@@ -82,7 +101,33 @@
             <el-row :gutter="20">
               <el-col :span="8">
                 <el-form-item label="检查字段" prop="fieldName">
-                  <el-input v-model="formData.fieldName" placeholder="请输入检查字段名" clearable />
+                  <div class="field-input-container">
+                    <div class="field-input-group">
+                      <el-input
+                        v-model="newFieldName"
+                        clearable
+                        placeholder="输入字段名，按回车添加"
+                        @keyup.enter="addFieldName"
+                      />
+                      <el-button size="small" type="primary" @click="addFieldName">添加</el-button>
+                    </div>
+                    <div v-if="selectedFieldNames.length > 0" class="field-tags-container">
+                      <el-tag
+                        v-for="(field, index) in selectedFieldNames"
+                        :key="index"
+                        class="field-tag"
+                        closable
+                        size="small"
+                        type="success"
+                        @close="removeFieldName(index)"
+                      >
+                        {{ field }}
+                      </el-tag>
+                    </div>
+                    <div class="form-tip"
+                      >添加需要检查的字段名称，支持多个字段，将以逗号分隔保存</div
+                    >
+                  </div>
                 </el-form-item>
               </el-col>
               <el-col :span="8">
@@ -225,7 +270,7 @@
 
 <script setup lang="ts">
 import { QcRuleApi, QcRuleVO } from '@/api/drug/qc/rule'
-import { getDictOptions, DICT_TYPE } from '@/utils/dict'
+import { DICT_TYPE, getDictOptions } from '@/utils/dict'
 import ExpressionHelp from './components/ExpressionHelp.vue'
 import RuleTestModal from './components/RuleTestModal.vue'
 
@@ -244,6 +289,12 @@ const ruleCodePrefix = ref('PRE_QC') // 规则编码前缀
 // 测试相关状态 - 新增
 const testVisible = ref(false)
 const currentTestRule = ref<any>(null)
+const newFieldName = ref('') // 新字段名输入
+
+// 表单控制变量
+const isAllTables = ref(false) // 是否选择全部表
+const selectedTableTypes = ref<number[]>([]) // 选中的表类型数组
+const selectedFieldNames = ref<string[]>([]) // 选中的字段名数组
 
 // 表单数据
 const formData = ref<QcRuleVO>({
@@ -251,8 +302,8 @@ const formData = ref<QcRuleVO>({
   ruleName: '',
   ruleType: 1,
   ruleCategory: 'FIELD',
-  tableType: undefined,
-  fieldName: '',
+  tableType: undefined, // 后端字段，字符串格式
+  fieldName: '', // 后端字段，字符串格式
   ruleExpression: '',
   errorMessage: '',
   errorLevel: 1,
@@ -319,6 +370,9 @@ const open = async (type: string, id?: number, copyData?: QcRuleVO) => {
       const data = await QcRuleApi.getQcRule(id)
       Object.assign(formData.value, data)
 
+      // 解析表类型数据
+      parseFormData(data)
+
       // 设置规则编码前缀
       if (data.ruleCode.startsWith('PRE_QC_')) {
         ruleCodePrefix.value = 'PRE_QC'
@@ -350,10 +404,17 @@ const submitForm = async () => {
     }
   }
 
-  // 提交请求
+  // 转换数据格式并提交请求
   formLoading.value = true
   try {
     const data = { ...formData.value }
+
+    // 转换表类型数据
+    data.tableType = isAllTables.value ? '0' : selectedTableTypes.value.join(',')
+
+    // 转换字段名数据
+    data.fieldName = selectedFieldNames.value.join(',')
+
     if (formType.value === 'create') {
       await QcRuleApi.createQcRule(data)
       message.success(t('common.createSuccess'))
@@ -386,7 +447,69 @@ const resetForm = () => {
     enabled: true,
     description: ''
   }
+
+  // 重置控制变量
+  newFieldName.value = ''
+  isAllTables.value = false
+  selectedTableTypes.value = []
+  selectedFieldNames.value = []
+
   formRef.value?.resetFields()
+}
+
+/** 添加字段名 */
+const addFieldName = () => {
+  if (newFieldName.value.trim() && !selectedFieldNames.value.includes(newFieldName.value.trim())) {
+    selectedFieldNames.value.push(newFieldName.value.trim())
+    newFieldName.value = ''
+  }
+}
+
+/** 移除字段名 */
+const removeFieldName = (index: number) => {
+  selectedFieldNames.value.splice(index, 1)
+}
+
+/** 全部表变化处理 */
+const handleAllTablesChange = (value: boolean) => {
+  if (value) {
+    selectedTableTypes.value = []
+  }
+}
+
+/** 表类型选择变化处理 */
+const handleTableTypesChange = (value: number[]) => {
+  if (value.length > 0) {
+    isAllTables.value = false
+  }
+}
+
+/** 解析表单数据 */
+const parseFormData = (data: any) => {
+  // 解析表类型数据
+  if (data.tableType === '0') {
+    isAllTables.value = true
+    selectedTableTypes.value = []
+  } else if (data.tableType) {
+    isAllTables.value = false
+    selectedTableTypes.value = data.tableType
+      .split(',')
+      .map((t: string) => parseInt(t.trim()))
+      .filter((t: number) => !isNaN(t))
+  } else {
+    isAllTables.value = false
+    selectedTableTypes.value = []
+  }
+
+  // 解析字段名数据
+  if (data.fieldName) {
+    selectedFieldNames.value = data.fieldName
+      .split(',')
+      .map((f: string) => f.trim())
+      .filter((f: string) => f.length > 0)
+  } else {
+    selectedFieldNames.value = []
+  }
 }
 
 /** 规则类型变化处理 */
@@ -510,6 +633,54 @@ const testExpression = () => {
   font-size: 12px;
   color: #999;
   margin-top: 4px;
+}
+
+.form-tip {
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* 字段输入组样式 */
+.field-input-container {
+  width: 100%;
+}
+
+.field-input-group {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.field-input-group .el-input {
+  flex: 1;
+}
+
+.field-tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+  min-height: 24px;
+  padding: 4px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  background-color: #fafafa;
+}
+
+.field-tag {
+  margin: 0;
+}
+
+/* 表类型容器样式 */
+.table-type-container {
+  width: 100%;
+}
+
+.all-tables-checkbox {
+  margin-bottom: 8px;
+  font-weight: 500;
 }
 
 :deep(.el-form-item__label) {
