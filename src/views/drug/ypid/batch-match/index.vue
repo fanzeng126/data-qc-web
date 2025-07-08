@@ -1,566 +1,1024 @@
 <template>
-  <div class="batch-match-container">
+  <div class="ypid-batch-match-page">
     <!-- 页面头部 -->
-    <PageHeader title="YPID批量匹配" content="自动匹配未编码的药品数据，提高药品编码标准化效率">
-      <template #extra>
-        <el-button @click="handleRefresh" :loading="refreshing">
-          <el-icon><Refresh /></el-icon>
-          刷新
-        </el-button>
-      </template>
-    </PageHeader>
+    <PageHeader
+      :title="pageTitle"
+      :content="pageDescription"
+      :icon="OperationIcon"
+      :tag="statusTag"
+      :tag-type="statusTagType"
+      :meta="metaInfo"
+      show-back-button
+      back-button-text="返回任务列表"
+      :tabs="tabList"
+      :default-tab="activeTab"
+      :actions="headerActions"
+      @back-click="handleBackClick"
+      @tab-change="handleTabChange"
+      @action-click="handleHeaderAction"
+    />
 
-    <!-- 匹配任务选择 -->
-    <el-card class="task-card" shadow="never">
-      <template #header>
-        <span class="card-title">选择匹配任务</span>
-      </template>
-
-      <el-form :model="taskForm" label-width="100px">
-        <el-row :gutter="20">
-          <el-col :span="8">
-            <el-form-item label="任务选择">
-              <el-select
-                v-model="taskForm.taskId"
-                placeholder="请选择任务"
-                @change="handleTaskChange"
-                style="width: 100%"
+    <!-- 主要内容区域 -->
+    <div class="match-content" v-loading="loading">
+      <!-- 匹配配置面板 - 仅在待匹配tab显示 -->
+      <el-card v-if="activeTab === 'pending'" class="config-card" shadow="never">
+        <template #header>
+          <div class="config-header">
+            <div class="header-left">
+              <el-icon class="header-icon">
+                <Setting />
+              </el-icon>
+              <span class="header-title">匹配配置</span>
+            </div>
+            <div class="header-right">
+              <el-button
+                v-if="statistics.pending > 0"
+                type="primary"
+                :loading="loading"
+                @click="startBatchMatch"
               >
-                <el-option
-                  v-for="task in taskList"
-                  :key="task.id"
-                  :label="`${task.taskNo} - ${task.hospitalName}`"
-                  :value="task.id"
-                />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="匹配策略">
-              <el-select
-                v-model="taskForm.matchStrategy"
-                placeholder="请选择策略"
-                style="width: 100%"
-              >
-                <el-option label="精确匹配" value="exact" />
-                <el-option label="模糊匹配" value="fuzzy" />
-                <el-option label="智能匹配（推荐）" value="smart" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="置信度阈值">
-              <el-slider
-                v-model="taskForm.minConfidence"
-                :min="0"
-                :max="100"
-                :marks="{ 0: '0%', 50: '50%', 80: '80%', 100: '100%' }"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
-      </el-form>
+                <el-icon><Operation /></el-icon>
+                开始批量匹配
+              </el-button>
+            </div>
+          </div>
+        </template>
 
-      <div v-if="taskInfo" class="task-info">
-        <el-descriptions :column="4" border>
-          <el-descriptions-item label="医院名称">
-            {{ taskInfo.hospitalName }}
-          </el-descriptions-item>
-          <el-descriptions-item label="待匹配数">
-            <span class="highlight">{{ taskInfo.unmatchedCount }}</span>
-          </el-descriptions-item>
-          <el-descriptions-item label="已匹配数">
-            {{ taskInfo.matchedCount }}
-          </el-descriptions-item>
-          <el-descriptions-item label="匹配率">
-            <el-progress
-              :percentage="taskInfo.matchRate"
-              :stroke-width="10"
-              :text-inside="true"
-              style="width: 100px"
+        <el-form :model="matchConfig" label-width="140px">
+          <el-form-item label="自动应用高分匹配">
+            <el-switch v-model="matchConfig.autoApplyEnabled" />
+            <span class="ml-10px text-gray">匹配分数达到阈值时自动确认，无需人工审核</span>
+          </el-form-item>
+          <el-form-item v-if="matchConfig.autoApplyEnabled" label="自动应用阈值">
+            <el-slider
+              v-model="matchConfig.autoApplyThreshold"
+              :min="80"
+              :max="100"
+              :step="5"
+              :marks="{ 80: '80%', 90: '90%', 95: '95%', 100: '100%' }"
+              show-input
+              class="w-400px"
             />
-          </el-descriptions-item>
-        </el-descriptions>
-      </div>
-    </el-card>
+          </el-form-item>
+        </el-form>
+      </el-card>
 
-    <!-- 待匹配列表 -->
-    <el-card class="unmatched-card" shadow="never">
-      <template #header>
-        <div class="card-header">
-          <span class="card-title">待匹配药品列表</span>
-          <div class="header-actions">
-            <el-checkbox v-model="selectAll" @change="handleSelectAll"> 全选 </el-checkbox>
-            <el-button
-              type="primary"
-              size="small"
-              :disabled="selectedDrugs.length === 0"
-              @click="handleStartMatch"
-            >
-              <el-icon><MagicStick /></el-icon>
-              开始匹配 ({{ selectedDrugs.length }})
+      <!-- 数据列表 -->
+      <el-card class="data-card" shadow="never">
+        <!-- 批量操作栏 -->
+        <div v-if="activeTab === 'needConfirm'" class="batch-actions">
+          <el-alert title="待确认项操作" type="info" :closable="false" class="batch-alert">
+            <template #default>
+              <span>当前有 {{ statistics.needConfirm }} 条数据需要确认，</span>
+              <span>批量确认将选择匹配度最高的候选项</span>
+            </template>
+          </el-alert>
+          <div class="batch-buttons">
+            <el-button type="success" @click="batchConfirm" :disabled="selectedRows.length === 0">
+              <el-icon><Check /></el-icon>
+              批量确认选中项 ({{ selectedRows.length }})
+            </el-button>
+            <el-button type="primary" @click="confirmAll" :disabled="statistics.needConfirm === 0">
+              <el-icon><CircleCheck /></el-icon>
+              确认所有待确认项
             </el-button>
           </div>
         </div>
-      </template>
 
-      <el-table
-        v-loading="loading"
-        :data="unmatchedList"
-        stripe
-        @selection-change="handleSelectionChange"
-      >
-        <el-table-column type="selection" width="55" />
+        <!-- 数据表格 -->
+        <el-table :data="dataList" v-loading="loading" @selection-change="handleSelectionChange">
+          <el-table-column v-if="showSelection" type="selection" width="50" />
+          <el-table-column prop="hospitalDrugCode" label="院内编码" width="120" />
+          <el-table-column
+            prop="productName"
+            label="产品名称"
+            min-width="180"
+            show-overflow-tooltip
+          />
+          <el-table-column prop="spec" label="规格" width="100" />
+          <el-table-column
+            prop="manufacturer"
+            label="生产企业"
+            min-width="180"
+            show-overflow-tooltip
+          />
+          <el-table-column label="匹配结果" width="200">
+            <template #default="{ row }">
+              <div v-if="row.matchedYpid" class="match-result">
+                <el-tag type="success" size="small">
+                  {{ row.matchedYpid }}
+                </el-tag>
+                <el-progress
+                  :percentage="row.matchScore"
+                  :color="getScoreColor(row.matchScore)"
+                  :stroke-width="6"
+                  class="mt-5px"
+                />
+              </div>
+              <el-tag v-else type="info" size="small">未匹配</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column v-if="activeTab === 'confirmed'" label="确认信息" width="180">
+            <template #default="{ row }">
+              <div v-if="row.matchStatus === 2" class="confirm-info">
+                <div class="confirm-user">
+                  <el-icon><User /></el-icon>
+                  {{ row.confirmUser || '未知' }}
+                </div>
+                <div class="confirm-time">
+                  {{ dateFormatter(row.confirmTime) }}
+                </div>
+                <el-tag
+                  v-if="row.matchMethod"
+                  size="small"
+                  :type="row.matchMethod === 'AUTO' ? 'success' : 'warning'"
+                >
+                  {{ row.matchMethod === 'AUTO' ? '自动' : '手动' }}
+                </el-tag>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="200" fixed="right">
+            <template #default="{ row }">
+              <div class="action-buttons">
+                <!-- 待确认状态：确认和手动匹配 -->
+                <template v-if="row.matchStatus === 1">
+                  <el-button size="small" type="success" @click="confirmSingle(row)">
+                    <el-icon><Check /></el-icon>
+                    确认
+                  </el-button>
+                  <el-button size="small" type="primary" @click="openManualMatch(row)">
+                    <el-icon><Edit /></el-icon>
+                    手动匹配
+                  </el-button>
+                </template>
+                
+                <!-- 已确认状态：撤销匹配和查看历史 -->
+                <template v-else-if="row.matchStatus === 2">
+                  <el-button size="small" type="warning" @click="revokeMatch(row)">
+                    <el-icon><RefreshLeft /></el-icon>
+                    撤销匹配
+                  </el-button>
+                  <el-button size="small" type="info" @click="viewHistory(row)">
+                    <el-icon><Clock /></el-icon>
+                    查看历史
+                  </el-button>
+                </template>
+                
+                <!-- 其他状态：手动匹配 -->
+                <template v-else>
+                  <el-button size="small" type="primary" @click="openManualMatch(row)">
+                    <el-icon><Edit /></el-icon>
+                    手动匹配
+                  </el-button>
+                </template>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
 
-        <el-table-column prop="hospitalDrugId" label="院内编码" width="120" />
-
-        <el-table-column
-          prop="hospitalDrugName"
-          label="院内药品名称"
-          min-width="200"
-          show-overflow-tooltip
+        <Pagination
+          v-model:page="queryParams.pageNo"
+          v-model:limit="queryParams.pageSize"
+          :total="total"
+          @pagination="getDataList"
         />
+      </el-card>
+    </div>
 
-        <el-table-column prop="specification" label="规格" width="120" show-overflow-tooltip />
-
-        <el-table-column prop="dosageForm" label="剂型" width="100" />
-
-        <el-table-column
-          prop="manufacturer"
-          label="生产企业"
-          min-width="180"
-          show-overflow-tooltip
-        />
-
-        <el-table-column prop="approvalNumber" label="批准文号" width="150" show-overflow-tooltip />
-
-        <el-table-column prop="sourceTable" label="来源表" width="100">
-          <template #default="{ row }">
-            <el-tag size="small">{{ getTableLabel(row.sourceTable) }}</el-tag>
-          </template>
-        </el-table-column>
-
-        <el-table-column prop="matchStatus" label="匹配状态" width="100" align="center">
-          <template #default="{ row }">
-            <el-tag :type="getMatchStatusTag(row.matchStatus)" size="small">
-              {{ getMatchStatusLabel(row.matchStatus) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="操作" width="150" fixed="right">
-          <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="handlePreviewMatch(row)">
-              <el-icon><View /></el-icon>
-              预览匹配
-            </el-button>
-            <el-button type="warning" link size="small" @click="handleManualMatch(row)">
-              <el-icon><Edit /></el-icon>
-              手动匹配
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <Pagination
-        :total="total"
-        v-model:page="queryParams.pageNo"
-        v-model:limit="queryParams.pageSize"
-        @pagination="loadUnmatchedList"
-      />
-    </el-card>
-
-    <!-- 匹配进度对话框 -->
+    <!-- 批量匹配进度对话框 -->
     <el-dialog
       v-model="progressVisible"
       title="批量匹配进度"
-      width="700px"
+      width="500px"
       :close-on-click-modal="false"
-      :close-on-press-escape="false"
     >
-      <div class="match-progress">
-        <el-progress
-          :percentage="progressInfo.percentage"
-          :status="progressInfo.status"
-          :stroke-width="20"
-        />
-
-        <div class="progress-stats">
-          <el-row :gutter="20">
-            <el-col :span="6">
-              <div class="stat-item">
-                <div class="stat-label">总数</div>
-                <div class="stat-value">{{ progressInfo.totalCount }}</div>
-              </div>
-            </el-col>
-            <el-col :span="6">
-              <div class="stat-item">
-                <div class="stat-label">成功</div>
-                <div class="stat-value success">{{ progressInfo.successCount }}</div>
-              </div>
-            </el-col>
-            <el-col :span="6">
-              <div class="stat-item">
-                <div class="stat-label">失败</div>
-                <div class="stat-value danger">{{ progressInfo.failureCount }}</div>
-              </div>
-            </el-col>
-            <el-col :span="6">
-              <div class="stat-item">
-                <div class="stat-label">待确认</div>
-                <div class="stat-value warning">{{ progressInfo.pendingCount }}</div>
-              </div>
-            </el-col>
-          </el-row>
-        </div>
-
-        <div v-if="progressInfo.currentItem" class="current-processing">
-          正在处理：{{ progressInfo.currentItem }}
+      <div class="progress-content">
+        <el-progress :percentage="matchProgress.percentage" :status="matchProgress.status" />
+        <div class="progress-info mt-20px">
+          <p>总数：{{ matchProgress.total }}</p>
+          <p>已处理：{{ matchProgress.processed }}</p>
+          <p>匹配成功：{{ matchProgress.success }}</p>
+          <p>需要确认：{{ matchProgress.needConfirm }}</p>
+          <p>匹配失败：{{ matchProgress.failed }}</p>
         </div>
       </div>
+    </el-dialog>
 
+    <!-- 手动匹配对话框 -->
+    <el-dialog
+      v-model="manualMatchVisible"
+      title="手动匹配"
+      width="900px"
+      :close-on-click-modal="false"
+    >
+      <ManualMatchPanel
+        v-if="manualMatchVisible && currentMatchRow"
+        :pending-data="currentMatchRow"
+        :task-id="taskId"
+        @confirm="handleManualConfirm"
+        @cancel="manualMatchVisible = false"
+      />
+    </el-dialog>
+
+    <!-- 撤销匹配对话框 -->
+    <el-dialog
+      v-model="revokeVisible"
+      title="撤销匹配"
+      width="500px"
+      :close-on-click-modal="false"
+    >
+      <div class="revoke-content">
+        <el-alert
+          title="撤销操作"
+          type="warning"
+          :closable="false"
+          class="mb-20px"
+        >
+          <template #default>
+            撤销后该数据将回到待匹配状态，需要重新进行匹配确认
+          </template>
+        </el-alert>
+        
+        <el-form :model="revokeForm" label-width="80px">
+          <el-form-item label="撤销原因" required>
+            <el-input
+              v-model="revokeForm.reason"
+              type="textarea"
+              :rows="3"
+              placeholder="请输入撤销原因"
+              maxlength="200"
+              show-word-limit
+            />
+          </el-form-item>
+        </el-form>
+      </div>
+      
       <template #footer>
-        <el-button v-if="!progressInfo.completed" @click="handleCancelMatch"> 取消 </el-button>
-        <el-button v-else type="primary" @click="handleViewResult"> 查看结果 </el-button>
+        <el-button @click="revokeVisible = false">取消</el-button>
+        <el-button type="warning" @click="confirmRevoke" :loading="revokeLoading">
+          确认撤销
+        </el-button>
       </template>
     </el-dialog>
 
-    <!-- 匹配预览对话框 -->
-    <MatchPreviewModal
-      v-model="previewVisible"
-      :unmatched-drug="selectedDrug"
-      @confirm="handleConfirmMatch"
-    />
+    <!-- 匹配历史对话框 -->
+    <el-dialog
+      v-model="historyVisible"
+      title="匹配历史"
+      width="800px"
+      :close-on-click-modal="false"
+    >
+      <el-timeline v-loading="historyLoading">
+        <el-timeline-item
+          v-for="(item, index) in matchHistory"
+          :key="index"
+          :timestamp="dateFormatter(item.operateTime)"
+          :type="getHistoryType(item.actionType)"
+        >
+          <div class="history-item">
+            <div class="history-action">
+              {{ getActionText(item.actionType) }}
+            </div>
+            <div class="history-detail" v-if="item.beforeYpid || item.afterYpid">
+              <span v-if="item.beforeYpid">原YPID: {{ item.beforeYpid }}</span>
+              <span v-if="item.afterYpid">→ 新YPID: {{ item.afterYpid }}</span>
+              <span v-if="item.matchScore">(匹配度: {{ item.matchScore }}%)</span>
+            </div>
+            <div class="history-operator">
+              操作人: {{ item.operator || '系统' }}
+              <span v-if="item.matchMethod">({{ item.matchMethod === 'AUTO' ? '自动' : '手动' }})</span>
+            </div>
+            <div v-if="item.remark" class="history-remark">
+              备注: {{ item.remark }}
+            </div>
+          </div>
+        </el-timeline-item>
+      </el-timeline>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { Refresh, MagicStick, View, Edit } from '@element-plus/icons-vue'
-import { YpidApi, type UnmatchedDrugVO, type BatchMatchRequestVO } from '@/api/drug/ypid'
-
-// 导入组件
+import { ref, reactive, onMounted, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  Operation as OperationIcon,
+  Operation,
+  Setting,
+  Check,
+  CircleCheck,
+  Edit,
+  User,
+  RefreshLeft,
+  Clock
+} from '@element-plus/icons-vue'
 import PageHeader from '@/components/PageHeader/index.vue'
-import MatchPreviewModal from './components/MatchPreviewModal.vue'
+import ManualMatchPanel from './components/ManualMatchPanel.vue'
+import { YpidApi, type UnmatchedDrugVO, type BatchMatchRequestVO } from '@/api/drug/ypid'
+import { YpidMatchTaskApi } from '@/api/drug/ypid/task'
+import { dateFormatter } from '@/utils/formatTime'
 
 defineOptions({ name: 'YpidBatchMatchIndex' })
 
-// ========================= 响应式数据 =========================
-
 const router = useRouter()
+const route = useRoute()
 const loading = ref(false)
-const refreshing = ref(false)
 const progressVisible = ref(false)
-const previewVisible = ref(false)
 
-const taskForm = reactive({
-  taskId: undefined as number | undefined,
-  matchStrategy: 'smart',
-  minConfidence: 80
+// 任务信息
+const taskId = ref<number>()
+const taskInfo = reactive({
+  taskNo: '',
+  taskName: '',
+  status: 0
 })
 
+// 手动匹配相关
+const manualMatchVisible = ref(false)
+const currentMatchRow = ref<any>(null)
+
+// 撤销匹配相关
+const revokeVisible = ref(false)
+const revokeLoading = ref(false)
+const currentRevokeRow = ref<any>(null)
+const revokeForm = reactive({
+  reason: ''
+})
+
+// 匹配历史相关
+const historyVisible = ref(false)
+const historyLoading = ref(false)
+const matchHistory = ref<any[]>([])
+
+// 统计数据
+const statistics = reactive({
+  pending: 0,
+  needConfirm: 0,
+  confirmed: 0,
+  failed: 0
+})
+
+// 匹配配置
+const matchConfig = reactive({
+  autoApplyEnabled: true,
+  autoApplyThreshold: 90
+})
+
+// 页面参数
+const activeTab = ref('pending')
 const queryParams = reactive({
   pageNo: 1,
   pageSize: 20,
-  taskId: undefined as number | undefined
+  matchTaskId: undefined as number | undefined,
+  matchStatus: undefined as number | undefined
 })
 
-const taskList = ref<any[]>([])
-const taskInfo = ref<any>()
-const unmatchedList = ref<UnmatchedDrugVO[]>([])
-const total = ref(0)
-const selectAll = ref(false)
-const selectedDrugs = ref<UnmatchedDrugVO[]>([])
-const selectedDrug = ref<UnmatchedDrugVO>()
+// 页面状态
+const pageTitle = computed(() => `YPID批量匹配 - ${taskInfo.taskName || '加载中...'}`)
+const pageDescription = computed(() => `任务编号：${taskInfo.taskNo || '未知'}`)
+const statusTag = computed(() => {
+  const statusMap = {
+    0: '待开始',
+    1: '进行中',
+    2: '已完成',
+    3: '已失败'
+  }
+  return statusMap[taskInfo.status] || '未知'
+})
+const statusTagType = computed(() => {
+  const typeMap = {
+    0: 'info',
+    1: 'warning',
+    2: 'success',
+    3: 'danger'
+  }
+  return typeMap[taskInfo.status] || 'info'
+})
 
-const progressInfo = reactive({
+// 头部元数据
+const metaInfo = computed(() => [
+  { label: '待匹配', value: statistics.pending },
+  { label: '待确认', value: statistics.needConfirm },
+  { label: '已确认', value: statistics.confirmed },
+  { label: '无法匹配', value: statistics.failed }
+])
+
+// 标签页配置
+const tabList = computed(() => [
+  { key: 'pending', label: '待匹配', badge: statistics.pending },
+  { key: 'needConfirm', label: '待确认', badge: statistics.needConfirm },
+  { key: 'confirmed', label: '已确认', badge: statistics.confirmed },
+  { key: 'failed', label: '无法匹配', badge: statistics.failed }
+])
+
+// 头部操作按钮（已移动到配置卡片）
+const headerActions = computed(() => {
+  return []
+})
+
+const dataList = ref<any[]>([])
+
+// 示例数据
+const generateMockData = () => {
+  const mockData = [
+    // 待匹配数据 (status: 0)
+    {
+      id: 1,
+      hospitalDrugCode: 'HD001',
+      productName: '布洛芬缓释胶囊',
+      genericName: '布洛芬',
+      spec: '0.3g*20粒',
+      manufacturer: '中美天津史克制药有限公司',
+      matchedYpid: null,
+      matchScore: 0,
+      matchStatus: 0,
+      matchDetail: JSON.stringify({
+        candidates: [
+          { ypid: '12345678901234', score: 95.5 },
+          { ypid: '12345678901235', score: 88.2 },
+          { ypid: '12345678901236', score: 82.1 }
+        ]
+      })
+    },
+    // 待确认数据 (status: 1)
+    {
+      id: 2,
+      hospitalDrugCode: 'HD002',
+      productName: '阿莫西林胶囊',
+      genericName: '阿莫西林',
+      spec: '0.25g*24粒',
+      manufacturer: '石药集团中诺药业（石家庄）有限公司',
+      matchedYpid: 'YPID001234567890',
+      matchScore: 95,
+      matchStatus: 1,
+      matchDetail: JSON.stringify({
+        candidates: [
+          { ypid: 'YPID001234567890', score: 95.0 },
+          { ypid: 'YPID001234567891', score: 89.5 },
+          { ypid: 'YPID001234567892', score: 83.2 }
+        ]
+      })
+    },
+    {
+      id: 3,
+      hospitalDrugCode: 'HD003',
+      productName: '头孢克肟胶囊',
+      genericName: '头孢克肟',
+      spec: '0.1g*6粒',
+      manufacturer: '齐鲁制药有限公司',
+      matchedYpid: 'YPID001234567891',
+      matchScore: 88,
+      matchStatus: 1,
+      matchDetail: JSON.stringify({
+        candidates: [
+          { ypid: 'YPID001234567891', score: 88.0 },
+          { ypid: 'YPID001234567893', score: 85.5 },
+          { ypid: 'YPID001234567894', score: 80.1 }
+        ]
+      })
+    },
+    // 已确认数据 (status: 2)
+    {
+      id: 4,
+      hospitalDrugCode: 'HD004',
+      productName: '复方甘草片',
+      genericName: '复方甘草',
+      spec: '100片',
+      manufacturer: '北京同仁堂股份有限公司',
+      matchedYpid: 'YPID001234567892',
+      matchScore: 92,
+      matchStatus: 2,
+      matchMethod: 'AUTO',
+      confirmTime: new Date().toISOString(),
+      confirmUser: '管理员'
+    },
+    {
+      id: 5,
+      hospitalDrugCode: 'HD005',
+      productName: '阿司匹林肠溶片',
+      genericName: '阿司匹林',
+      spec: '100mg*30片',
+      manufacturer: '拜耳医药保健有限公司',
+      matchedYpid: 'YPID001234567893',
+      matchScore: 96,
+      matchStatus: 2,
+      matchMethod: 'MANUAL',
+      confirmTime: new Date(Date.now() - 3600000).toISOString(),
+      confirmUser: '质控员'
+    },
+    {
+      id: 6,
+      hospitalDrugCode: 'HD006',
+      productName: '盐酸二甲双胍片',
+      genericName: '二甲双胍',
+      spec: '0.5g*50片',
+      manufacturer: '中美上海施贵宝制药有限公司',
+      matchedYpid: 'YPID001234567894',
+      matchScore: 94,
+      matchStatus: 2,
+      matchMethod: 'AUTO',
+      confirmTime: new Date(Date.now() - 7200000).toISOString(),
+      confirmUser: '系统自动'
+    },
+    // 无法匹配数据 (status: 3)
+    {
+      id: 7,
+      hospitalDrugCode: 'HD007',
+      productName: '盐酸左氧氟沙星胶囊',
+      genericName: '左氧氟沙星',
+      spec: '0.1g*10粒',
+      manufacturer: '扬子江药业集团有限公司',
+      matchedYpid: null,
+      matchScore: 0,
+      matchStatus: 3,
+      remark: '无匹配的YPID标准'
+    }
+  ]
+  return mockData
+}
+const total = ref(0)
+const selectedRows = ref<any[]>([])
+
+// 批量匹配进度
+const matchProgress = reactive({
   percentage: 0,
   status: '',
-  totalCount: 0,
-  successCount: 0,
-  failureCount: 0,
-  pendingCount: 0,
-  currentItem: '',
-  completed: false,
-  batchNo: ''
+  total: 0,
+  processed: 0,
+  success: 0,
+  needConfirm: 0,
+  failed: 0
 })
 
-// ========================= 生命周期 =========================
+// 计算属性
+const showSelection = computed(() => {
+  return activeTab.value === 'needConfirm'
+})
 
+// 生命周期
 onMounted(() => {
-  loadTaskList()
+  initPage()
 })
 
-// ========================= 方法 =========================
-
-const loadTaskList = async () => {
-  // 模拟加载任务列表
-  taskList.value = [
-    { id: 1, taskNo: 'DRUG_20240529_000001', hospitalName: '北京协和医院' },
-    { id: 2, taskNo: 'DRUG_20240529_000002', hospitalName: '上海瑞金医院' }
-  ]
-}
-
-const handleTaskChange = async (taskId: number) => {
-  queryParams.taskId = taskId
-
-  // 加载任务信息
-  taskInfo.value = {
-    hospitalName: taskList.value.find((t) => t.id === taskId)?.hospitalName,
-    unmatchedCount: 156,
-    matchedCount: 844,
-    matchRate: 84
+// 初始化页面
+const initPage = async () => {
+  // 从路由获取任务ID
+  taskId.value = Number(route.query.taskId)
+  if (!taskId.value) {
+    ElMessage.error('缺少任务ID参数')
+    router.back()
+    return
   }
 
-  await loadUnmatchedList()
+  queryParams.taskId = taskId.value
+  await loadTaskInfo()
+  await getDataList()
 }
 
-const loadUnmatchedList = async () => {
+// 加载任务信息
+const loadTaskInfo = async () => {
+  try {
+    // 使用示例数据进行测试
+    Object.assign(taskInfo, {
+      taskNo: 'BATCH-20241207-001',
+      taskName: '2024年12月药品批量匹配任务',
+      status: 1
+    })
+
+    // 更新统计数据
+    Object.assign(statistics, {
+      pending: 1,
+      needConfirm: 2,
+      confirmed: 0,
+      failed: 1
+    })
+
+    // 生产环境使用真实API
+    // const task = await YpidMatchTaskApi.getYpidMatchTask(taskId.value!)
+    // Object.assign(taskInfo, {
+    //   taskNo: task.taskNo,
+    //   taskName: task.taskName,
+    //   status: task.status
+    // })
+    // Object.assign(statistics, {
+    //   pending: task.totalCount - task.matchedCount - task.failedCount,
+    //   needConfirm: task.matchedCount - task.confirmedCount,
+    //   confirmed: task.confirmedCount,
+    //   failed: task.failedCount
+    // })
+  } catch (error) {
+    ElMessage.error('加载任务信息失败')
+  }
+}
+
+// 获取数据列表方法更新
+const getDataList = async () => {
+  const statusMap = {
+    pending: 0,
+    needConfirm: 1,
+    confirmed: 2,
+    failed: 3
+  }
+  queryParams.matchStatus = statusMap[activeTab.value]
+
   loading.value = true
   try {
-    const { list, total: totalCount } = await YpidApi.getUnmatchedList(queryParams)
-    unmatchedList.value = list || []
-    total.value = totalCount || 0
+    // 使用示例数据进行测试
+    const mockData = generateMockData()
+    const filteredData = mockData.filter((item) => item.matchStatus === statusMap[activeTab.value])
+    dataList.value = filteredData
+    total.value = filteredData.length
+
+    // 生产环境使用真实API
+    // const { list, total: totalCount } = await YpidApi.getBatchMatchList(queryParams)
+    // dataList.value = list || []
+    // total.value = totalCount || 0
   } catch (error) {
-    console.error('加载待匹配列表失败:', error)
+    ElMessage.error('加载数据失败')
   } finally {
     loading.value = false
   }
 }
 
-const handleRefresh = async () => {
-  refreshing.value = true
-  try {
-    await loadUnmatchedList()
-    ElMessage.success('刷新成功')
-  } finally {
-    refreshing.value = false
-  }
-}
-
-const handleSelectAll = (checked: boolean) => {
-  if (checked) {
-    selectedDrugs.value = [...unmatchedList.value]
-  } else {
-    selectedDrugs.value = []
-  }
-}
-
-const handleSelectionChange = (selection: UnmatchedDrugVO[]) => {
-  selectedDrugs.value = selection
-  selectAll.value = selection.length === unmatchedList.value.length
-}
-
-const handleStartMatch = async () => {
-  if (!taskForm.taskId) {
-    ElMessage.warning('请先选择任务')
-    return
-  }
-
+// 开始批量匹配
+const startBatchMatch = async () => {
   progressVisible.value = true
 
   // 重置进度信息
-  Object.assign(progressInfo, {
+  Object.assign(matchProgress, {
     percentage: 0,
     status: '',
-    totalCount: selectedDrugs.value.length,
-    successCount: 0,
-    failureCount: 0,
-    pendingCount: 0,
-    currentItem: '',
-    completed: false,
-    batchNo: ''
+    total: statistics.pending,
+    processed: 0,
+    success: 0,
+    needConfirm: 0,
+    failed: 0
   })
 
   try {
     const params: BatchMatchRequestVO = {
-      taskId: taskForm.taskId,
-      unmatchedIds: selectedDrugs.value.map((d) => d.id),
-      matchStrategy: taskForm.matchStrategy,
+      taskId: taskId.value,
+      matchStrategy: 'smart',
       options: {
-        minConfidence: taskForm.minConfidence,
-        autoApprove: taskForm.minConfidence >= 90
+        autoApprove: matchConfig.autoApplyEnabled,
+        minConfidence: matchConfig.autoApplyThreshold
       }
     }
 
     const result = await YpidApi.executeBatchMatch(params)
 
     // 更新进度信息
-    progressInfo.batchNo = result.batchNo
-    progressInfo.successCount = result.successCount
-    progressInfo.failureCount = result.failureCount
-    progressInfo.pendingCount = result.pendingCount
-    progressInfo.percentage = 100
-    progressInfo.status = result.failureCount > 0 ? 'warning' : 'success'
-    progressInfo.completed = true
+    matchProgress.processed = result.totalCount
+    matchProgress.success = result.successCount
+    matchProgress.needConfirm = result.pendingCount
+    matchProgress.failed = result.failureCount
+    matchProgress.percentage = 100
+    matchProgress.status = result.failureCount > 0 ? 'warning' : 'success'
 
     ElMessage.success(`匹配完成：成功 ${result.successCount} 条`)
 
-    // 刷新列表
-    await loadUnmatchedList()
+    // 刷新数据
+    await loadTaskInfo()
+    await getDataList()
   } catch (error) {
-    progressInfo.status = 'exception'
+    matchProgress.status = 'exception'
     ElMessage.error('批量匹配失败')
   }
 }
 
-const handleCancelMatch = () => {
-  progressVisible.value = false
+// 选择变化
+const handleSelectionChange = (selection: any[]) => {
+  selectedRows.value = selection
 }
 
-const handleViewResult = () => {
-  progressVisible.value = false
-  router.push({
-    name: 'YpidReport',
-    query: { batchNo: progressInfo.batchNo }
-  })
-}
-
-const handlePreviewMatch = async (row: UnmatchedDrugVO) => {
-  selectedDrug.value = row
-  previewVisible.value = true
-}
-
-const handleManualMatch = (row: UnmatchedDrugVO) => {
-  router.push({
-    name: 'YpidManualMatch',
-    query: { unmatchedId: row.id }
-  })
-}
-
-const handleConfirmMatch = async (ypid: string) => {
-  // 确认匹配
-  await YpidApi.submitManualMatch({
-    unmatchedId: selectedDrug.value!.id,
-    ypid,
-    matchReason: '预览确认匹配'
-  })
-
-  ElMessage.success('匹配成功')
-  previewVisible.value = false
-  await loadUnmatchedList()
-}
-
-// ========================= 工具方法 =========================
-
-const getTableLabel = (table: string) => {
-  const tableMap = {
-    catalog: '药品目录',
-    inbound: '入库情况',
-    outbound: '出库情况',
-    usage: '使用情况'
+// 批量确认
+const batchConfirm = async () => {
+  if (selectedRows.value.length === 0) {
+    ElMessage.warning('请选择要确认的项目')
+    return
   }
-  return tableMap[table] || table
+
+  try {
+    await YpidApi.batchConfirm({
+      taskId: taskId.value!,
+      pendingIds: selectedRows.value.map((row) => row.id)
+    })
+    ElMessage.success('批量确认成功')
+    await getDataList()
+  } catch (error) {
+    ElMessage.error('批量确认失败')
+  }
 }
 
-const getMatchStatusLabel = (status: number) => {
-  const statusMap = {
-    0: '未匹配',
-    1: '已匹配',
-    2: '匹配失败'
+// 确认所有
+const confirmAll = async () => {
+  try {
+    await YpidApi.batchConfirm({
+      taskId: taskId.value!
+    })
+    ElMessage.success('确认所有待确认项成功')
+    await getDataList()
+  } catch (error) {
+    ElMessage.error('确认失败')
   }
-  return statusMap[status] || '未知'
 }
 
-const getMatchStatusTag = (status: number) => {
-  const tagMap = {
-    0: 'warning',
-    1: 'success',
-    2: 'danger'
+// 单个确认
+const confirmSingle = async (row: any) => {
+  try {
+    await YpidApi.confirmMatch(row.id)
+    ElMessage.success('确认成功')
+    await getDataList()
+  } catch (error) {
+    ElMessage.error('确认失败')
   }
-  return tagMap[status] || 'info'
+}
+
+// 打开手动匹配对话框
+const openManualMatch = (row: any) => {
+  currentMatchRow.value = row
+  manualMatchVisible.value = true
+}
+
+// 处理手动匹配确认
+const handleManualConfirm = async () => {
+  manualMatchVisible.value = false
+  currentMatchRow.value = null
+  ElMessage.success('手动匹配成功')
+  await getDataList()
+  await loadTaskInfo()
+}
+
+// 返回按钮点击
+const handleBackClick = () => {
+  router.push('/drug-ypid/ypid-match-task')
+}
+
+// 标签页切换
+const handleTabChange = (tabKey: string) => {
+  activeTab.value = tabKey
+  queryParams.pageNo = 1
+  getDataList()
+}
+
+// 头部操作点击
+const handleHeaderAction = (action: any) => {
+  if (action.handler) {
+    action.handler()
+  }
+}
+
+// 撤销匹配
+const revokeMatch = (row: any) => {
+  currentRevokeRow.value = row
+  revokeForm.reason = ''
+  revokeVisible.value = true
+}
+
+// 确认撤销
+const confirmRevoke = async () => {
+  if (!revokeForm.reason.trim()) {
+    ElMessage.warning('请输入撤销原因')
+    return
+  }
+
+  revokeLoading.value = true
+  try {
+    await YpidApi.revokeMatch(currentRevokeRow.value.id, revokeForm.reason)
+    ElMessage.success('撤销成功')
+    revokeVisible.value = false
+    currentRevokeRow.value = null
+    await getDataList()
+    await loadTaskInfo()
+  } catch (error) {
+    ElMessage.error('撤销失败')
+  } finally {
+    revokeLoading.value = false
+  }
+}
+
+// 查看历史
+const viewHistory = async (row: any) => {
+  historyVisible.value = true
+  historyLoading.value = true
+  
+  try {
+    const history = await YpidApi.getMatchHistory(row.id)
+    matchHistory.value = history || []
+    
+    // 如果没有历史数据，生成示例数据
+    if (matchHistory.value.length === 0) {
+      matchHistory.value = [
+        {
+          actionType: 'CONFIRM',
+          beforeYpid: null,
+          afterYpid: row.matchedYpid,
+          matchScore: row.matchScore,
+          matchMethod: row.matchMethod,
+          operator: row.confirmUser || '系统',
+          operateTime: row.confirmTime || new Date().toISOString(),
+          remark: row.matchMethod === 'AUTO' ? '自动匹配确认' : '手动匹配确认'
+        },
+        {
+          actionType: 'MATCH',
+          beforeYpid: null,
+          afterYpid: row.matchedYpid,
+          matchScore: row.matchScore,
+          matchMethod: row.matchMethod,
+          operator: '匹配系统',
+          operateTime: new Date(Date.now() - 3600000).toISOString(),
+          remark: '执行匹配算法'
+        }
+      ]
+    }
+  } catch (error) {
+    ElMessage.error('加载历史失败')
+    matchHistory.value = []
+  } finally {
+    historyLoading.value = false
+  }
+}
+
+// 获取历史记录类型
+const getHistoryType = (actionType: string) => {
+  switch (actionType) {
+    case 'MATCH': return 'primary'
+    case 'CONFIRM': return 'success'
+    case 'REVOKE': return 'warning'
+    default: return 'info'
+  }
+}
+
+// 获取操作文本
+const getActionText = (actionType: string) => {
+  switch (actionType) {
+    case 'MATCH': return '执行匹配'
+    case 'CONFIRM': return '确认匹配'
+    case 'REVOKE': return '撤销匹配'
+    default: return '未知操作'
+  }
+}
+
+// 获取分数颜色
+const getScoreColor = (score: number) => {
+  if (score >= 90) return '#67c23a'
+  if (score >= 70) return '#e6a23c'
+  return '#f56c6c'
 }
 </script>
 
 <style scoped>
-.batch-match-container {
+.ypid-batch-match-page {
   padding: 20px;
-  background-color: #f5f5f5;
-  min-height: calc(100vh - 50px);
 }
 
-.task-card,
-.unmatched-card {
+.match-content {
+  margin-top: 20px;
+}
+
+.config-card,
+.data-card {
   margin-bottom: 20px;
-  border-radius: 8px;
 }
 
-.card-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.card-header {
+.config-header {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
+  width: 100%;
 }
 
-.header-actions {
+.header-left {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 8px;
 }
 
-.task-info {
-  margin-top: 20px;
-  padding: 16px;
-  background-color: #f5f7fa;
-  border-radius: 4px;
+.header-right {
+  display: flex;
+  align-items: center;
 }
 
-.highlight {
-  color: #f56c6c;
-  font-weight: 600;
+.header-icon {
   font-size: 16px;
+  color: #409eff;
 }
 
-.match-progress {
-  padding: 20px 0;
-}
-
-.progress-stats {
-  margin-top: 30px;
-  padding: 20px;
-  background-color: #f5f7fa;
-  border-radius: 4px;
-}
-
-.stat-item {
-  text-align: center;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: #909399;
-  margin-bottom: 8px;
-}
-
-.stat-value {
-  font-size: 24px;
+.header-title {
+  font-size: 16px;
   font-weight: 600;
-  color: #303133;
 }
 
-.stat-value.success {
-  color: #67c23a;
+.batch-actions {
+  margin: 16px 0;
+  padding: 16px;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
 }
 
-.stat-value.danger {
-  color: #f56c6c;
+.batch-alert {
+  margin-bottom: 12px;
 }
 
-.stat-value.warning {
-  color: #e6a23c;
+.batch-buttons {
+  display: flex;
+  gap: 12px;
+  align-items: center;
 }
 
-.current-processing {
-  text-align: center;
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.match-result {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.confirm-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.confirm-user {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #606266;
+}
+
+.confirm-time {
+  color: #909399;
+  font-size: 11px;
+}
+
+.progress-info p {
+  margin: 4px 0;
+  font-size: 14px;
+}
+
+.mt-20px {
   margin-top: 20px;
+}
+
+.mt-5px {
+  margin-top: 5px;
+}
+
+.ml-10px {
+  margin-left: 10px;
+}
+
+.text-gray {
+  color: #909399;
+  font-size: 13px;
+}
+
+.w-400px {
+  width: 400px;
+}
+
+.mb-20px {
+  margin-bottom: 20px;
+}
+
+.revoke-content {
+  padding: 10px 0;
+}
+
+.history-item {
+  padding: 10px 0;
+}
+
+.history-action {
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 4px;
+}
+
+.history-detail {
   font-size: 14px;
   color: #606266;
+  margin-bottom: 4px;
+}
+
+.history-operator {
+  font-size: 13px;
+  color: #909399;
+  margin-bottom: 4px;
+}
+
+.history-remark {
+  font-size: 12px;
+  color: #b0b0b0;
+  font-style: italic;
 }
 </style>

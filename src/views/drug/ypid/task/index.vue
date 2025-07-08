@@ -1,0 +1,512 @@
+<template>
+  <div class="ypid-task-container">
+    <!-- 页面头部 -->
+    <PageHeader
+      title="YPID匹配任务"
+      content="管理YPID药品编码匹配任务，支持从质控结果创建和模板导入创建，实现药品编码的智能匹配"
+      tagType="primary"
+    />
+
+    <!-- 统计概览 -->
+    <div class="stats-overview">
+      <el-row :gutter="16">
+        <el-col :xs="12" :sm="6" :md="6" :lg="6">
+          <StatCard title="总任务数" :value="statistics.total" icon="Files" color="#409eff" />
+        </el-col>
+        <el-col :xs="12" :sm="6" :md="6" :lg="6">
+          <StatCard
+            title="进行中"
+            :value="statistics.processing"
+            icon="Clock"
+            color="#e6a23c"
+            :rate="calculateRate(statistics.processing, statistics.total)"
+          />
+        </el-col>
+        <el-col :xs="12" :sm="6" :md="6" :lg="6">
+          <StatCard
+            title="已完成"
+            :value="statistics.completed"
+            icon="CircleCheck"
+            color="#67c23a"
+            :rate="calculateRate(statistics.completed, statistics.total)"
+          />
+        </el-col>
+        <el-col :xs="12" :sm="6" :md="6" :lg="6">
+          <StatCard
+            title="平均匹配率"
+            :value="statistics.avgMatchRate"
+            suffix="%"
+            icon="DataLine"
+            color="#909399"
+            :trend="statistics.matchRateTrend"
+          />
+        </el-col>
+      </el-row>
+    </div>
+
+    <!-- 操作区域 -->
+    <el-card class="filter-card" shadow="never">
+      <el-row :gutter="20">
+        <el-col :span="16">
+          <!-- 创建任务按钮组 -->
+          <el-button type="primary" @click="createFromQc">
+            <Icon icon="ep:circle-check" />
+            从质控结果创建
+          </el-button>
+          <el-button type="success" @click="createFromTemplate">
+            <Icon icon="ep:upload" />
+            从模板导入创建
+          </el-button>
+          <el-button @click="downloadTemplate">
+            <Icon icon="ep:download" />
+            下载导入模板
+          </el-button>
+        </el-col>
+        <el-col :span="8" class="text-right">
+          <!-- 查询条件 -->
+          <el-input
+            v-model="queryParams.keyword"
+            placeholder="任务编号/名称"
+            clearable
+            class="w-200px"
+            @keyup.enter="handleQuery"
+          />
+          <el-button @click="handleQuery">
+            <Icon icon="ep:search" class="mr-5px" />
+            搜索
+          </el-button>
+          <el-button @click="resetQuery">
+            <Icon icon="ep:refresh" class="mr-5px" />
+            重置
+          </el-button>
+        </el-col>
+      </el-row>
+    </el-card>
+
+    <!-- 任务列表 -->
+    <el-card class="result-card" shadow="never">
+      <template #header>
+        <div class="card-header">
+          <span class="card-title">任务列表</span>
+          <span class="result-count">共 {{ total }} 个任务</span>
+        </div>
+      </template>
+
+      <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
+        <el-table-column prop="taskNo" label="任务编号" width="200" />
+        <el-table-column prop="taskName" label="任务名称" min-width="200" />
+        <el-table-column prop="taskType" label="来源类型" width="120">
+          <template #default="{ row }">
+            <el-tag :type="row.taskType === 1 ? 'warning' : 'success'">
+              {{ row.taskType === 1 ? '质控导入' : '模板导入' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="匹配进度" width="250">
+          <template #default="{ row }">
+            <div class="progress-wrapper">
+              <el-progress
+                :percentage="getMatchProgress(row)"
+                :status="row.status === 2 ? 'success' : ''"
+              />
+              <span class="progress-text"> {{ row.confirmedCount }}/{{ row.totalCount }} </span>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column
+          prop="createTime"
+          label="创建时间"
+          width="160"
+          :formatter="dateFormatter"
+        />
+        <el-table-column label="操作" width="240" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="gotoBatchMatch(row)"> 批量匹配 </el-button>
+            <el-button link type="primary" @click="viewReport(row)"> 查看报告 </el-button>
+            <el-button link type="success" @click="exportResult(row)"> 导出结果 </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <Pagination
+        v-model:page="queryParams.pageNo"
+        v-model:limit="queryParams.pageSize"
+        :total="total"
+        @pagination="getList"
+      />
+    </el-card>
+
+    <!-- 从质控结果创建对话框 -->
+    <el-dialog v-model="qcCreateVisible" title="从质控结果创建YPID匹配任务" width="800px">
+      <el-form :model="qcCreateForm" label-width="120px">
+        <el-form-item label="选择质控任务">
+          <el-select
+            v-model="qcCreateForm.sourceId"
+            placeholder="请选择质控任务"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="task in qcTaskList"
+              :key="task.id"
+              :label="`${task.taskNo} - ${task.hospitalName}`"
+              :value="task.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="任务名称">
+          <el-input v-model="qcCreateForm.taskName" placeholder="请输入任务名称" />
+        </el-form-item>
+        <el-form-item label="自动应用">
+          <el-switch v-model="qcCreateForm.autoApplyEnabled" />
+        </el-form-item>
+        <el-form-item v-if="qcCreateForm.autoApplyEnabled" label="自动应用阈值">
+          <el-slider
+            v-model="qcCreateForm.autoApplyThreshold"
+            :min="80"
+            :max="100"
+            :step="5"
+            show-input
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="qcCreateVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleQcCreate" :loading="qcCreateLoading">
+          创建任务
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 从模板导入创建对话框 -->
+    <el-dialog v-model="templateCreateVisible" title="从模板导入创建YPID匹配任务" width="600px">
+      <el-form :model="templateCreateForm" label-width="120px">
+        <el-form-item label="任务名称">
+          <el-input v-model="templateCreateForm.taskName" placeholder="请输入任务名称" />
+        </el-form-item>
+        <el-form-item label="上传文件">
+          <el-upload
+            ref="uploadRef"
+            :auto-upload="false"
+            :limit="1"
+            accept=".xlsx,.xls"
+            :on-change="handleFileChange"
+          >
+            <el-button type="primary">
+              <Icon icon="ep:upload" />
+              选择Excel文件
+            </el-button>
+            <template #tip>
+              <div class="el-upload__tip">只支持xlsx/xls格式文件</div>
+            </template>
+          </el-upload>
+        </el-form-item>
+        <el-form-item label="自动应用">
+          <el-switch v-model="templateCreateForm.autoApplyEnabled" />
+        </el-form-item>
+        <el-form-item v-if="templateCreateForm.autoApplyEnabled" label="自动应用阈值">
+          <el-slider
+            v-model="templateCreateForm.autoApplyThreshold"
+            :min="80"
+            :max="100"
+            :step="5"
+            show-input
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="templateCreateVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleTemplateCreate" :loading="templateCreateLoading">
+          创建任务
+        </el-button>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, reactive, onMounted } from 'vue'
+import { dateFormatter } from '@/utils/formatTime'
+import download from '@/utils/download'
+import { YpidMatchTaskApi, YpidMatchTaskVO } from '@/api/drug/ypid/task'
+import { YpidApi } from '@/api/drug/ypid'
+import { useRouter } from 'vue-router'
+import { ElMessage, ElLoading } from 'element-plus'
+
+// 导入组件
+import PageHeader from '@/components/PageHeader/index.vue'
+import StatCard from '@/components/StatCard/index.vue'
+
+defineOptions({ name: 'YpidMatchTask' })
+
+const router = useRouter()
+const message = useMessage()
+const { t } = useI18n()
+
+const loading = ref(true)
+const list = ref<YpidMatchTaskVO[]>([])
+const total = ref(0)
+const exportLoading = ref(false)
+
+// 查询参数
+const queryParams = reactive({
+  pageNo: 1,
+  pageSize: 10,
+  keyword: undefined as string | undefined
+})
+
+// 统计数据
+const statistics = reactive({
+  total: 0,
+  processing: 0,
+  completed: 0,
+  avgMatchRate: 0,
+  matchRateTrend: 0 // 新增趋势数据
+})
+
+// 从质控结果创建相关
+const qcCreateVisible = ref(false)
+const qcCreateLoading = ref(false)
+const qcTaskList = ref<any[]>([])
+const qcCreateForm = reactive({
+  sourceId: undefined as number | undefined,
+  taskName: '',
+  autoApplyEnabled: true,
+  autoApplyThreshold: 90
+})
+
+// 从模板导入创建相关
+const templateCreateVisible = ref(false)
+const templateCreateLoading = ref(false)
+const uploadRef = ref()
+const uploadedFile = ref<File>()
+const templateCreateForm = reactive({
+  taskName: '',
+  autoApplyEnabled: true,
+  autoApplyThreshold: 90
+})
+
+// ========================= 方法 =========================
+
+// 查询列表
+const getList = async () => {
+  loading.value = true
+  try {
+    const data = await YpidMatchTaskApi.getYpidMatchTaskPage(queryParams)
+    list.value = data.list
+    total.value = data.total
+
+    // 更新统计数据
+    statistics.total = data.total
+    statistics.processing = data.list.filter((item) => item.status === 1).length
+    statistics.completed = data.list.filter((item) => item.status === 2).length
+    statistics.avgMatchRate = Math.round(
+      data.list.reduce((sum, item) => sum + getMatchProgress(item), 0) / (data.list.length || 1)
+    )
+
+    // 模拟趋势数据（实际项目中应该从API获取）
+    statistics.matchRateTrend = Math.floor(Math.random() * 10) - 5 // -5到5的随机数
+  } finally {
+    loading.value = false
+  }
+}
+
+// 搜索按钮操作
+const handleQuery = () => {
+  queryParams.pageNo = 1
+  getList()
+}
+
+// 重置按钮操作
+const resetQuery = () => {
+  queryParams.keyword = undefined
+  handleQuery()
+}
+
+// 计算匹配进度
+const getMatchProgress = (row: YpidMatchTaskVO) => {
+  if (row.totalCount === 0) return 0
+  return Math.round((row.confirmedCount / row.totalCount) * 100)
+}
+
+// 计算比率
+const calculateRate = (value: number, total: number) => {
+  if (total === 0) return 0
+  return Math.round((value / total) * 100)
+}
+
+// 跳转到批量匹配页面
+const gotoBatchMatch = (row: YpidMatchTaskVO) => {
+  router.push({
+    path: '/drug/ypid/batch-match',
+    query: { taskId: row.id }
+  })
+}
+
+// 查看报告
+const viewReport = async (row: YpidMatchTaskVO) => {
+  try {
+    // 先获取任务的报告ID
+    const reportResult = await YpidApi.getTaskReport(row.id)
+    if (reportResult && reportResult.reportId) {
+      // 跳转到报告详情页
+      router.push({
+        path: `/drug/ypid/report/detail/${reportResult.reportId}`,
+        query: { taskId: row.id }
+      })
+    } else {
+      ElMessage.warning('该任务还没有生成匹配报告')
+    }
+  } catch (error) {
+    console.error('获取报告信息失败:', error)
+    ElMessage.error('获取报告信息失败')
+  }
+}
+
+// 导出匹配结果
+const exportResult = async (row: YpidMatchTaskVO) => {
+  const loading = ElLoading.service({ text: '正在导出...' })
+  try {
+    const data = await YpidApi.exportMatchResult(row.id)
+    download.excel(data, `${row.taskName}_匹配结果.xlsx`)
+    ElMessage.success('导出成功')
+  } finally {
+    loading.close()
+  }
+}
+
+// 从质控结果创建
+const createFromQc = async () => {
+  qcCreateVisible.value = true
+  // 加载质控任务列表
+  qcTaskList.value = [
+    { id: 1, taskNo: 'QC_20240101_001', hospitalName: '北京协和医院' },
+    { id: 2, taskNo: 'QC_20240101_002', hospitalName: '上海瑞金医院' }
+  ]
+}
+
+// 处理质控创建
+const handleQcCreate = async () => {
+  if (!qcCreateForm.sourceId || !qcCreateForm.taskName) {
+    ElMessage.warning('请填写必要信息')
+    return
+  }
+
+  qcCreateLoading.value = true
+  try {
+    await YpidMatchTaskApi.createYpidMatchTask({
+      ...qcCreateForm,
+      taskType: 1
+    } as any)
+    ElMessage.success('任务创建成功')
+    qcCreateVisible.value = false
+    getList()
+  } finally {
+    qcCreateLoading.value = false
+  }
+}
+
+// 从模板导入创建
+const createFromTemplate = () => {
+  templateCreateVisible.value = true
+}
+
+// 处理文件选择
+const handleFileChange = (file: any) => {
+  uploadedFile.value = file.raw
+}
+
+// 处理模板创建
+const handleTemplateCreate = async () => {
+  if (!templateCreateForm.taskName || !uploadedFile.value) {
+    ElMessage.warning('请填写任务名称并选择文件')
+    return
+  }
+
+  templateCreateLoading.value = true
+  try {
+    await YpidMatchTaskApi.createYpidMatchTask({
+      ...templateCreateForm,
+      taskType: 2,
+      sourceFile: uploadedFile.value.name
+    } as any)
+    ElMessage.success('任务创建成功')
+    templateCreateVisible.value = false
+    getList()
+  } finally {
+    templateCreateLoading.value = false
+  }
+}
+
+// 下载导入模板
+const downloadTemplate = () => {
+  const templateUrl = '/templates/ypid_import_template.xlsx'
+  const link = document.createElement('a')
+  link.href = templateUrl
+  link.download = 'YPID导入模板.xlsx'
+  link.click()
+}
+
+// 初始化
+onMounted(() => {
+  getList()
+})
+</script>
+
+<style scoped>
+.ypid-task-container {
+  padding: 20px;
+  background-color: #f5f5f5;
+  min-height: calc(100vh - 50px);
+}
+
+.stats-overview {
+  margin-bottom: 20px;
+}
+
+.filter-card,
+.result-card {
+  margin-bottom: 20px;
+  border-radius: 8px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.result-count {
+  font-size: 14px;
+  color: #909399;
+}
+
+.progress-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.progress-text {
+  font-size: 12px;
+  color: #666;
+  min-width: 50px;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.w-200px {
+  width: 200px;
+}
+
+.mr-5px {
+  margin-right: 5px;
+}
+</style>

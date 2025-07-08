@@ -200,7 +200,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { YpidApi, type UnmatchedDrugVO, type YpidDrugVO } from '@/api/drug/ypid'
@@ -230,24 +230,46 @@ const searchForm = reactive({
 // ========================= 生命周期 =========================
 
 onMounted(() => {
-  loadPendingList()
+  initPage()
 })
 
-// ========================= 方法 =========================
+// 初始化页面
+const initPage = async () => {
+  const route = useRoute()
+  const taskId = Number(route.query.taskId)
+  const pendingId = Number(route.query.pendingId)
+  
+  if (taskId) {
+    await loadPendingList(taskId)
+  } else {
+    await loadPendingList()
+  }
+  
+  // 如果指定了待匹配项ID，自动选中
+  if (pendingId && pendingList.value.length > 0) {
+    const targetItem = pendingList.value.find(item => item.id === pendingId)
+    if (targetItem) {
+      handleSelectDrug(targetItem)
+    }
+  } else if (pendingList.value.length > 0) {
+    handleSelectDrug(pendingList.value[0])
+  }
+}
 
-const loadPendingList = async () => {
+const loadPendingList = async (taskId?: number) => {
   try {
-    const { list } = await YpidApi.getManualMatchList({
+    const params: any = {
       pageNo: 1,
       pageSize: 100,
       priority: 'high'
-    })
-    pendingList.value = list || []
-
-    // 自动选中第一个
-    if (pendingList.value.length > 0) {
-      handleSelectDrug(pendingList.value[0])
     }
+    
+    if (taskId) {
+      params.taskId = taskId
+    }
+    
+    const { list } = await YpidApi.getManualMatchList(params)
+    pendingList.value = list || []
   } catch (error) {
     console.error('加载待匹配列表失败:', error)
   }

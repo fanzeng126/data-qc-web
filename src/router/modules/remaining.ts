@@ -394,6 +394,64 @@ const remainingRouter: AppRouteRecordRaw[] = [
         }
       }
     ]
+  },
+  {
+    path: '/drug/ypid',
+    component: Layout,
+    name: 'DrugYpidCenter',
+    meta: {
+      hidden: true
+    },
+    children: [
+      {
+        path: 'batch-match',
+        name: 'DrugYpidBatchMatch',
+        component: () => import('@/views/drug/ypid/batch-match/index.vue'),
+        meta: {
+          title: '批量匹配',
+          icon: 'ep:operation',
+          noCache: true,
+          canTo: true,
+          hidden: true
+        }
+      },
+      {
+        path: 'manual-match',
+        name: 'DrugYpidManualMatch',
+        component: () => import('@/views/drug/ypid/manual-match/index.vue'),
+        meta: {
+          title: '手动匹配',
+          icon: 'ep:edit',
+          noCache: true,
+          canTo: true,
+          hidden: true
+        }
+      },
+      {
+        path: 'report',
+        name: 'DrugYpidReport',
+        component: () => import('@/views/drug/ypid/report/index.vue'),
+        meta: {
+          title: '匹配报告',
+          icon: 'ep:document',
+          noCache: true,
+          canTo: true,
+          hidden: true
+        }
+      },
+      {
+        path: 'report/detail/:reportId',
+        name: 'DrugYpidReportDetail',
+        component: () => import('@/views/drug/ypid/report/detail.vue'),
+        meta: {
+          title: '报告详情',
+          icon: 'ep:view',
+          noCache: true,
+          canTo: true,
+          hidden: true
+        }
+      }
+    ]
   }
 ]
 

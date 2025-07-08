@@ -174,7 +174,7 @@ export const YpidApi = {
    */
   async getStatistics(taskId?: number): Promise<YpidStatisticsVO> {
     return request.get({
-      url: '/drug/ypid/statistics',
+      url: '/drug/ypid/search/statistics',
       params: { taskId }
     })
   },
@@ -186,7 +186,7 @@ export const YpidApi = {
    */
   async searchYpid(params: YpidSearchVO) {
     return request.get({
-      url: '/drug/ypid/search',
+      url: '/drug/ypid/search/standard',
       params
     })
   },
@@ -196,8 +196,7 @@ export const YpidApi = {
    */
   async getYpidDetail(ypid: string): Promise<YpidDrugVO> {
     return request.get({
-      url: '/drug/ypid/detail',
-      params: { ypid }
+      url: `/drug/ypid/search/detail/${ypid}`
     })
   },
 
@@ -206,7 +205,7 @@ export const YpidApi = {
    */
   async fuzzySearch(keyword: string, limit: number = 10): Promise<YpidDrugVO[]> {
     return request.get({
-      url: '/drug/ypid/fuzzy-search',
+      url: '/drug/ypid/search/fuzzy',
       params: { keyword, limit }
     })
   },
@@ -230,11 +229,35 @@ export const YpidApi = {
   },
 
   /**
+   * 获取批量匹配列表（按状态分类）
+   */
+  async getBatchMatchList(params: {
+    pageNo: number
+    pageSize: number
+    matchTaskId: number
+    matchStatus?: number
+  }) {
+    return request.get({
+      url: '/drug/ypid-pending-batch/page',
+      params
+    })
+  },
+
+  /**
+   * 获取匹配统计
+   */
+  async getMatchStatistics(taskId: number) {
+    return request.get({
+      url: `/drug/ypid-pending-batch/statistics/${taskId}`
+    })
+  },
+
+  /**
    * 执行批量匹配
    */
   async executeBatchMatch(params: BatchMatchRequestVO): Promise<BatchMatchResponseVO> {
     return request.post({
-      url: '/drug/ypid/batch-match',
+      url: '/drug/ypid-pending-batch/match',
       data: params
     })
   },
@@ -242,20 +265,38 @@ export const YpidApi = {
   /**
    * 获取批量匹配进度
    */
-  async getMatchProgress(batchNo: string) {
+  async getMatchProgress(taskId: number) {
     return request.get({
-      url: '/drug/ypid/match-progress',
-      params: { batchNo }
+      url: `/drug/ypid-pending-batch/progress/${taskId}`
     })
   },
 
   /**
-   * 审批匹配结果
+   * 批量确认
    */
-  async approveMatchResults(resultIds: number[], approved: boolean): Promise<boolean> {
+  async batchConfirm(params: { taskId: number; pendingIds?: number[] }): Promise<boolean> {
     return request.post({
-      url: '/drug/ypid/approve-match',
-      data: { resultIds, approved }
+      url: '/drug/ypid-pending-batch/confirm',
+      data: params
+    })
+  },
+
+  /**
+   * 单个确认
+   */
+  async confirmMatch(pendingId: number): Promise<boolean> {
+    return request.post({
+      url: '/drug/ypid-pending-batch/confirm-single',
+      data: { pendingId }
+    })
+  },
+
+  /**
+   * 导出匹配结果
+   */
+  async exportMatchResult(taskId: number): Promise<any> {
+    return request.download({
+      url: `/drug/ypid-match-task/${taskId}/export`
     })
   },
 
@@ -271,7 +312,7 @@ export const YpidApi = {
     priority?: string
   }) {
     return request.get({
-      url: '/drug/ypid/manual-match-list',
+      url: '/drug/ypid-pending-batch/match-list',
       params
     })
   },
@@ -281,7 +322,7 @@ export const YpidApi = {
    */
   async submitManualMatch(params: ManualMatchRequestVO): Promise<boolean> {
     return request.post({
-      url: '/drug/ypid/manual-match',
+      url: '/drug/ypid-pending-batch/confirm',
       data: params
     })
   },
@@ -289,10 +330,19 @@ export const YpidApi = {
   /**
    * 获取匹配候选项
    */
-  async getMatchCandidates(unmatchedId: number): Promise<MatchResultVO> {
+  async getMatchCandidates(id: number): Promise<MatchResultVO> {
     return request.get({
-      url: '/drug/ypid/match-candidates',
-      params: { unmatchedId }
+      url: '/drug/ypid-pending-batch/search-candidates',
+      params: { id }
+    })
+  },
+
+  /**
+   * 获取任务报告信息
+   */
+  async getTaskReport(taskId: number) {
+    return request.get({
+      url: `/drug/ypid-match-task/${taskId}/report`
     })
   },
 
@@ -303,7 +353,7 @@ export const YpidApi = {
    */
   async generateReport(taskId: number): Promise<MatchReportVO> {
     return request.post({
-      url: '/drug/ypid/generate-report',
+      url: '/drug/ypid/report/generate',
       data: { taskId }
     })
   },
@@ -320,7 +370,7 @@ export const YpidApi = {
     endTime?: string
   }) {
     return request.get({
-      url: '/drug/ypid/report-list',
+      url: '/drug/ypid/report/list',
       params
     })
   },
@@ -330,8 +380,7 @@ export const YpidApi = {
    */
   async getReportDetail(reportId: string): Promise<MatchReportVO> {
     return request.get({
-      url: '/drug/ypid/report-detail',
-      params: { reportId }
+      url: `/drug/ypid/report/detail/${reportId}`
     })
   },
 
@@ -340,8 +389,32 @@ export const YpidApi = {
    */
   async exportReport(reportId: string): Promise<void> {
     return request.download({
-      url: '/drug/ypid/export-report',
-      params: { reportId }
+      url: `/drug/ypid/report/export/${reportId}`
+    })
+  },
+
+  /**
+   * 导出报告Excel
+   */
+  async exportReportExcel(reportId: string): Promise<void> {
+    return request.download({
+      url: `/drug/ypid/report/export-excel/${reportId}`
+    })
+  },
+
+  /**
+   * 获取报告匹配详情
+   */
+  async getReportMatchDetails(params: {
+    pageNo: number
+    pageSize: number
+    reportId: string
+    keyword?: string
+    matchStatus?: number
+  }) {
+    return request.get({
+      url: '/drug/ypid/report/match-details',
+      params
     })
   },
 
@@ -350,20 +423,19 @@ export const YpidApi = {
   /**
    * 获取匹配历史
    */
-  async getMatchHistory(unmatchedId: number): Promise<MatchHistoryVO[]> {
+  async getMatchHistory(pendingId: number): Promise<MatchHistoryVO[]> {
     return request.get({
-      url: '/drug/ypid/match-history',
-      params: { unmatchedId }
+      url: `/drug/ypid-match-history/list/${pendingId}`
     })
   },
 
   /**
    * 撤销匹配
    */
-  async revokeMatch(unmatchedId: number, reason: string): Promise<boolean> {
+  async revokeMatch(pendingId: number, reason: string): Promise<boolean> {
     return request.post({
-      url: '/drug/ypid/revoke-match',
-      data: { unmatchedId, reason }
+      url: '/drug/ypid-pending-batch/revoke',
+      params: { pendingId, reason }
     })
   }
 }

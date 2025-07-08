@@ -238,6 +238,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Download, Search, Refresh, View, Printer } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
@@ -274,10 +275,29 @@ const reasonChartRef = ref<HTMLElement>()
 // ========================= 生命周期 =========================
 
 onMounted(() => {
-  loadReportList()
+  initPage()
 })
 
-// ========================= 方法 =========================
+// 初始化页面
+const initPage = async () => {
+  const route = useRoute()
+  const taskId = Number(route.query.taskId)
+  const reportId = route.query.reportId as string
+  
+  if (taskId) {
+    queryParams.taskId = taskId
+  }
+  
+  await loadReportList()
+  
+  // 如果指定了报告ID，直接打开报告详情
+  if (reportId && reportList.value.length > 0) {
+    const targetReport = reportList.value.find(report => report.reportId === reportId)
+    if (targetReport) {
+      await handleViewDetail(targetReport)
+    }
+  }
+}
 
 const loadReportList = async () => {
   loading.value = true
