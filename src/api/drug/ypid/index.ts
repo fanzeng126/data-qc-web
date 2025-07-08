@@ -425,7 +425,7 @@ export const YpidApi = {
    */
   async getMatchHistory(pendingId: number): Promise<MatchHistoryVO[]> {
     return request.get({
-      url: `/drug/ypid-match-history/list/${pendingId}`
+      url: `/drug/ypid-pending-batch/history/${pendingId}`
     })
   },
 
