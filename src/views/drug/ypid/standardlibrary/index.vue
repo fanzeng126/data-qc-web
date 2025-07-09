@@ -1,102 +1,78 @@
 <template>
   <div class="app-container">
-    <!-- 版本管理区域 -->
-    <ContentWrap>
-      <el-card shadow="never" class="mb-4">
-        <template #header>
-          <div class="card-header">
-            <span>版本管理</span>
-            <div class="header-actions">
-              <el-button
-                type="primary"
-                @click="openImportDialog"
-                v-hasPermi="['drug:ypid-version:import']"
-              >
-                <Icon icon="ep:upload" class="mr-5px" /> 导入标准库
-              </el-button>
-              <el-button @click="downloadTemplate">
-                <Icon icon="ep:download" class="mr-5px" /> 下载模板
-              </el-button>
-            </div>
+    <!-- 页面头部 -->
+    <PageHeader
+      title="药品标准库管理"
+      :content="pageHeaderContent"
+      :tag="currentVersion ? `版本: ${currentVersion.versionCode}` : undefined"
+      :tag-type="currentVersion ? getVersionStatusType(currentVersion.status) : 'info'"
+      :meta="versionMeta"
+    >
+      <!-- 版本选择器和操作按钮 -->
+      <template #extra>
+        <div class="version-management">
+          <!-- 头部操作按钮 -->
+          <div class="header-actions-section">
+            <el-button
+              type="primary"
+              @click="openImportDialog"
+              v-hasPermi="['drug:ypid-version:import']"
+            >
+              <Icon icon="ep:upload" class="mr-5px" />
+              导入标准库
+            </el-button>
+            <el-button @click="downloadTemplate">
+              <Icon icon="ep:download" class="mr-5px" />
+              下载模板
+            </el-button>
           </div>
-        </template>
 
-        <el-row :gutter="20" class="version-info">
-          <el-col :span="8">
-            <div class="version-selector">
-              <label>当前版本：</label>
-              <el-select
-                v-model="currentVersionId"
-                placeholder="请选择版本"
-                @change="handleVersionChange"
-                class="w-full"
+          <!-- 版本选择器 -->
+          <div class="version-selector">
+            <label>当前版本：</label>
+            <el-select
+              v-model="currentVersionId"
+              placeholder="请选择版本"
+              @change="handleVersionChange"
+              style="width: 280px"
+            >
+              <el-option
+                v-for="version in versionList"
+                :key="version.id"
+                :label="`${version.versionCode} - ${version.versionName}`"
+                :value="version.id"
               >
-                <el-option
-                  v-for="version in versionList"
-                  :key="version.id"
-                  :label="`${version.versionCode} - ${version.versionName}`"
-                  :value="version.id"
-                >
-                  <div class="version-option">
-                    <span>{{ version.versionCode }} - {{ version.versionName }}</span>
-                    <el-tag :type="getVersionStatusType(version.status)" size="small" class="ml-2">
-                      {{ getVersionStatusText(version.status) }}
-                    </el-tag>
-                  </div>
-                </el-option>
-              </el-select>
-            </div>
-          </el-col>
-
-          <el-col :span="16">
-            <div class="version-details" v-if="currentVersion">
-              <el-descriptions :column="3" size="small">
-                <el-descriptions-item label="版本名称">
-                  {{ currentVersion.versionName }}
-                </el-descriptions-item>
-                <el-descriptions-item label="导入类型">
-                  <el-tag :type="currentVersion.importType === 1 ? 'success' : 'warning'">
-                    {{ currentVersion.importType === 1 ? '全量导入' : '增量导入' }}
+                <div class="version-option">
+                  <span>{{ version.versionCode }} - {{ version.versionName }}</span>
+                  <el-tag :type="getVersionStatusType(version.status)" size="small" class="ml-2">
+                    {{ getVersionStatusText(version.status) }}
                   </el-tag>
-                </el-descriptions-item>
-                <el-descriptions-item label="状态">
-                  <el-tag :type="getVersionStatusType(currentVersion.status)">
-                    {{ getVersionStatusText(currentVersion.status) }}
-                  </el-tag>
-                </el-descriptions-item>
-                <el-descriptions-item label="总记录数">
-                  {{ formatNumber(currentVersion.totalRecords) }}
-                </el-descriptions-item>
-                <el-descriptions-item label="新增记录">
-                  {{ formatNumber(currentVersion.newRecords) }}
-                </el-descriptions-item>
-                <el-descriptions-item label="更新记录">
-                  {{ formatNumber(currentVersion.updatedRecords) }}
-                </el-descriptions-item>
-              </el-descriptions>
+                </div>
+              </el-option>
+            </el-select>
+          </div>
 
-              <div class="version-actions mt-3">
-                <el-button
-                  v-if="currentVersion.status === 2"
-                  type="success"
-                  @click="publishVersion"
-                  v-hasPermi="['drug:ypid-version:publish']"
-                >
-                  发布版本
-                </el-button>
-                <el-button
-                  v-if="currentVersion.status === 2"
-                  @click="importToCurrentVersion"
-                  v-hasPermi="['drug:ypid-version:import']"
-                >
-                  继续导入
-                </el-button>
-              </div>
-            </div>
-          </el-col>
-        </el-row>
-      </el-card>
-    </ContentWrap>
+          <!-- 版本操作按钮 -->
+          <div class="version-actions" v-if="currentVersion">
+            <el-button
+              v-if="currentVersion.status !== 4"
+              type="success"
+              size="small"
+              @click="publishVersion"
+            >
+              发布版本
+            </el-button>
+            <el-button
+              v-if="currentVersion.status !== 4"
+              size="small"
+              @click="importToCurrentVersion"
+            >
+              继续导入
+            </el-button>
+          </div>
+        </div>
+      </template>
+    </PageHeader>
 
     <!-- 数据查询区域 -->
     <ContentWrap>
@@ -143,6 +119,21 @@
             class="!w-240px"
           />
         </el-form-item>
+        <el-form-item label="药品类别" prop="drugCategory">
+          <el-select
+            v-model="queryParams.drugCategory"
+            placeholder="请选择药品类别"
+            clearable
+            class="!w-240px"
+          >
+            <el-option
+              v-for="category in drugCategoryList"
+              :key="category"
+              :label="category"
+              :value="category"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-select
             v-model="queryParams.status"
@@ -159,7 +150,6 @@
           <el-button @click="resetQuery"><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button>
           <el-button
             type="primary"
-            plain
             @click="openForm('create')"
             v-hasPermi="['drug:standard-library:create']"
           >
@@ -167,7 +157,6 @@
           </el-button>
           <el-button
             type="success"
-            plain
             @click="handleExport"
             :loading="exportLoading"
             v-hasPermi="['drug:standard-library:export']"
@@ -180,8 +169,43 @@
 
     <!-- 数据列表 -->
     <ContentWrap>
+      <!-- 导入进度条 -->
+      <div v-if="isImporting" class="import-progress-container mb-4">
+        <div class="progress-header">
+          <div class="progress-info">
+            <span class="progress-title">{{ importProgressInfo.currentMessage || '正在导入数据...' }}</span>
+            <div class="progress-meta">
+              <span v-if="currentVersion?.importType" class="meta-item">
+                <Icon icon="ep:upload" class="mr-1" />
+                {{ currentVersion.importType === 1 ? '全量导入' : '增量导入' }}
+              </span>
+              <span v-if="currentVersion?.totalRecords" class="meta-item">
+                <Icon icon="ep:collection-tag" class="mr-1" />
+                共{{ formatNumber(currentVersion.totalRecords) }}条记录
+              </span>
+              <span v-if="currentVersion?.importStartTime" class="meta-item">
+                <Icon icon="ep:clock" class="mr-1" />
+                {{ formatDateTime(currentVersion.importStartTime) }}
+              </span>
+            </div>
+          </div>
+          <span class="progress-percentage">{{ importProgressInfo.overallProgress || 0 }}%</span>
+        </div>
+        <el-progress 
+          :percentage="importProgressInfo.overallProgress || 0" 
+          :status="getProgressStatus(importProgressInfo.overallStatus)"
+          :stroke-width="8"
+        />
+        <div class="progress-details" v-if="importProgressInfo.totalRecords">
+          已处理 {{ importProgressInfo.successRecords || 0 }} / {{ importProgressInfo.totalRecords }} 条记录
+          <span v-if="importProgressInfo.currentStage" class="ml-4">
+            当前阶段：{{ importProgressInfo.currentStage }}
+          </span>
+        </div>
+      </div>
+
       <el-table
-        v-loading="loading"
+        v-loading="loading && !isImporting"
         :data="list"
         :stripe="true"
         :show-overflow-tooltip="true"
@@ -204,23 +228,18 @@
           width="200"
           show-overflow-tooltip
         />
-        <el-table-column label="剂型" prop="dosageForm" width="100" />
         <el-table-column label="规格" prop="specification" width="120" />
+        <el-table-column label="规格标化" prop="standardSpecification" width="120" />
+        <el-table-column label="制剂单位" prop="dosageUnit" width="100" />
+        <el-table-column label="最小包装单位" prop="minPackageUnit" width="120" />
+        <el-table-column label="包装材质" prop="packagingMaterial" width="100" />
         <el-table-column label="转换系数" prop="conversionFactor" width="100" />
-        <el-table-column label="基药" width="60">
-          <template #default="scope">
-            <el-tag v-if="scope.row.isBasicDrug === 1" type="success" size="small">是</el-tag>
-            <el-tag v-else type="info" size="small">否</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="集采" width="60">
-          <template #default="scope">
-            <el-tag v-if="scope.row.isCentralizedProcurement === 1" type="success" size="small"
-              >是</el-tag
-            >
-            <el-tag v-else type="info" size="small">否</el-tag>
-          </template>
-        </el-table-column>
+        <el-table-column label="药品类别" prop="drugCategory" width="100" />
+        <el-table-column label="通用名（英文）" prop="genericNameEn" width="150" show-overflow-tooltip />
+        <el-table-column label="批准文号" prop="approvalNumber" width="150" show-overflow-tooltip />
+        <el-table-column label="剂型分类" prop="dosageForm" width="100" />
+        <el-table-column label="药理/功效分类" prop="pharmacologyCategory" width="150" show-overflow-tooltip />
+        <el-table-column label="国家医保药品编码" prop="medicalInsuranceCode" width="150" />
         <el-table-column label="状态" width="80">
           <template #default="scope">
             <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'" size="small">
@@ -276,10 +295,12 @@
 <script setup lang="ts">
 import { dateFormatter } from '@/utils/formatTime'
 import download from '@/utils/download'
+import dayjs from 'dayjs'
 import { StandardLibraryApi, StandardLibraryVO } from '@/api/drug/ypid/standardlibrary'
 import { YpidVersionApi, YpidVersionVO } from '@/api/drug/ypid/version'
 import StandardLibraryForm from './StandardLibraryForm.vue'
 import ImportDialog from './ImportDialog.vue'
+import PageHeader from '@/components/PageHeader/index.vue'
 
 defineOptions({ name: 'StandardLibraryIndex' })
 
@@ -292,11 +313,77 @@ const list = ref<StandardLibraryVO[]>([])
 const total = ref(0)
 const exportLoading = ref(false)
 const selectedRows = ref<StandardLibraryVO[]>([])
+const drugCategoryList = ref<string[]>([])
 
 // 版本相关
 const versionList = ref<YpidVersionVO[]>([])
 const currentVersionId = ref<number>()
 const currentVersion = ref<YpidVersionVO>()
+
+// 导入进度相关
+const isImporting = ref(false)
+const importProgressInfo = ref<any>({})
+const progressTimer = ref<NodeJS.Timeout | null>(null)
+
+// PageHeader相关数据
+const pageHeaderContent = computed(() => {
+  const baseContent = '管理和维护YPID标准库数据，包括版本管理、数据导入和质量控制'
+  if (currentVersion.value?.versionDescription) {
+    return `${baseContent} | ${currentVersion.value.versionDescription}`
+  }
+  return baseContent
+})
+
+const versionMeta = computed(() => {
+  if (!currentVersion.value) return []
+  const meta = [
+    {
+      label: '总记录数',
+      value: formatNumber(currentVersion.value.totalRecords),
+      icon: 'ep:collection-tag'
+    },
+    {
+      label: '新增记录',
+      value: formatNumber(currentVersion.value.newRecords),
+      icon: 'ep:plus'
+    },
+    {
+      label: '更新记录',
+      value: formatNumber(currentVersion.value.updatedRecords),
+      icon: 'ep:edit'
+    },
+    {
+      label: '导入类型',
+      value: currentVersion.value.importType === 1 ? '全量导入' : '增量导入',
+      icon: 'ep:upload'
+    },
+    {
+      label: '创建时间',
+      value: formatDateTime(currentVersion.value.createTime),
+      icon: 'ep:calendar'
+    }
+  ]
+  
+  // 如果有导入开始时间，显示导入时间
+  if (currentVersion.value.importStartTime) {
+    meta.push({
+      label: '导入时间',
+      value: formatDateTime(currentVersion.value.importStartTime),
+      icon: 'ep:clock'
+    })
+  }
+  
+  // 如果已发布，显示发布时间
+  if (currentVersion.value.publishTime) {
+    meta.push({
+      label: '发布时间',
+      value: formatDateTime(currentVersion.value.publishTime),
+      icon: 'ep:check'
+    })
+  }
+  
+  return meta
+})
 
 // 查询参数
 const queryParams = reactive({
@@ -307,6 +394,7 @@ const queryParams = reactive({
   productName: undefined,
   genericNameCn: undefined,
   manufacturerName: undefined,
+  drugCategory: undefined,
   status: undefined
 })
 
@@ -322,6 +410,9 @@ onMounted(async () => {
     const publishedVersion = versionList.value.find((v) => v.status === 4)
     currentVersionId.value = publishedVersion?.id || versionList.value[0].id
     await handleVersionChange(currentVersionId.value)
+  } else {
+    // 如果没有版本，也加载药品类别列表
+    await loadDrugCategories()
   }
 })
 
@@ -345,10 +436,27 @@ const handleVersionChange = async (versionId: number) => {
     // 更新查询参数
     queryParams.versionId = versionId
 
+    // 加载药品类别列表
+    await loadDrugCategories(versionId)
+
     // 刷新数据列表
     await getList()
+    
+    // 如果版本正在导入中，开始轮询进度
+    if (currentVersion.value?.status === 1) {
+      startProgressPolling(versionId)
+    }
   } catch (error) {
     console.error('获取版本详情失败:', error)
+  }
+}
+
+/** 加载药品类别列表 */
+const loadDrugCategories = async (versionId?: number) => {
+  try {
+    drugCategoryList.value = await StandardLibraryApi.getDrugCategories(versionId)
+  } catch (error) {
+    console.error('加载药品类别列表失败:', error)
   }
 }
 
@@ -368,6 +476,52 @@ const getList = async () => {
 const handleQuery = () => {
   queryParams.pageNo = 1
   getList()
+}
+
+/** 开始进度轮询 */
+const startProgressPolling = (versionId: number) => {
+  isImporting.value = true
+  importProgressInfo.value = { overallProgress: 5, currentMessage: '开始导入...' }
+  
+  progressTimer.value = setInterval(async () => {
+    try {
+      const progress = await YpidVersionApi.getImportProgress(versionId.toString())
+      importProgressInfo.value = progress
+      
+      // 如果完成或失败，停止轮询
+      if (progress.overallStatus === 2 || progress.overallStatus === 3) {
+        stopProgressPolling()
+        if (progress.overallStatus === 2) {
+          message.success('数据导入完成')
+        } else {
+          message.error('数据导入失败: ' + progress.errorMessage)
+        }
+        // 刷新数据
+        await getList()
+        await loadVersionDetails(versionId)
+      }
+    } catch (error) {
+      console.error('查询进度失败:', error)
+    }
+  }, 1000)
+}
+
+/** 停止进度轮询 */
+const stopProgressPolling = () => {
+  isImporting.value = false
+  if (progressTimer.value) {
+    clearInterval(progressTimer.value)
+    progressTimer.value = null
+  }
+}
+
+/** 获取进度状态 */
+const getProgressStatus = (status: number) => {
+  switch (status) {
+    case 2: return 'success'
+    case 3: return 'exception'
+    default: return undefined
+  }
 }
 
 /** 重置按钮操作 */
@@ -416,14 +570,32 @@ const openImportDialog = () => {
 }
 
 /** 导入成功回调 */
-const handleImportSuccess = async () => {
+const handleImportSuccess = async (result: YpidVersionVO) => {
   await loadVersionList()
-  await getList()
+  
+  // 如果是新创建的版本，切换到该版本
+  if (result && result.id) {
+    currentVersionId.value = result.id
+    await handleVersionChange(result.id)
+    
+    // 开始轮询进度
+    startProgressPolling(result.id)
+  } else {
+    await getList()
+  }
 }
 
 /** 继续导入到当前版本 */
 const importToCurrentVersion = () => {
   importDialogRef.value.openForVersion(currentVersionId.value)
+}
+
+/** 导入到现有版本成功回调 */
+const handleImportToExistingVersionSuccess = async () => {
+  if (currentVersionId.value) {
+    await loadVersionDetails(currentVersionId.value)
+    startProgressPolling(currentVersionId.value)
+  }
 }
 
 /** 发布版本 */
@@ -473,23 +645,94 @@ const getVersionStatusText = (status: number) => {
 const formatNumber = (num: number) => {
   return num ? num.toLocaleString() : 0
 }
+
+const formatDateTime = (dateTime: string | Date) => {
+  if (!dateTime) return '-'
+  return dayjs(dateTime).format('YYYY-MM-DD HH:mm:ss')
+}
+
+// 页面卸载时清理定时器
+onUnmounted(() => {
+  stopProgressPolling()
+})
 </script>
 
 <style scoped>
-.card-header {
+.import-progress-container {
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.progress-header {
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.progress-info {
+  flex: 1;
+}
+
+.progress-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 4px;
+}
+
+.progress-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.meta-item {
+  display: inline-flex;
   align-items: center;
 }
 
-.version-info {
-  margin-top: 16px;
+.progress-percentage {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2563eb;
+  flex-shrink: 0;
+}
+
+.progress-details {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #6b7280;
+  text-align: center;
+}
+
+.version-management {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.header-actions-section {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .version-selector {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.version-selector label {
+  font-size: 14px;
+  color: #606266;
+  white-space: nowrap;
 }
 
 .version-option {
@@ -499,13 +742,35 @@ const formatNumber = (num: number) => {
   width: 100%;
 }
 
-.version-details {
-  padding-left: 20px;
-  border-left: 1px solid #e4e7ed;
-}
-
 .version-actions {
   display: flex;
   gap: 8px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .version-management {
+    align-items: stretch;
+  }
+
+  .header-actions-section {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .version-selector {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  .version-selector label {
+    text-align: left;
+  }
+
+  .version-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
 }
 </style>

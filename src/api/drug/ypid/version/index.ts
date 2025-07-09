@@ -91,5 +91,10 @@ export const YpidVersionApi = {
   // 获取导入模板
   getImportTemplate: async () => {
     return await request.download({ url: `/drug/ypid-version/get-import-template` })
+  },
+
+  // 获取导入进度
+  getImportProgress: async (taskId: string) => {
+    return await request.get({ url: `/drug/ypid-version/import-progress/${taskId}` })
   }
 }

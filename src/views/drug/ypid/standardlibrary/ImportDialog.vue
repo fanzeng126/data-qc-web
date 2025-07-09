@@ -127,11 +127,10 @@
 </template>
 
 <script setup lang="ts">
+import { ElMessage } from 'element-plus'
 import { YpidVersionApi, YpidVersionVO } from '@/api/drug/ypid/version'
 
 defineOptions({ name: 'ImportDialog' })
-
-const message = useMessage()
 
 // 状态管理
 const dialogVisible = ref(false)
@@ -140,6 +139,8 @@ const importing = ref(false)
 const importProgress = ref(0)
 const importStatus = ref<'success' | 'warning' | 'danger'>('warning')
 const progressText = ref('')
+const progressTimer = ref<NodeJS.Timeout | null>(null)
+const currentVersionId = ref<number | null>(null)
 
 // 导入模式
 const importMode = ref<'new' | 'existing'>('new')
@@ -236,6 +237,8 @@ const resetForm = () => {
   importProgress.value = 0
   importResult.value = null
   progressText.value = ''
+  currentVersionId.value = null
+  stopProgressPolling()
 
   nextTick(() => {
     formRef.value?.resetFields()
@@ -260,6 +263,50 @@ const handleFileRemove = () => {
   formData.value.file = null
 }
 
+/** 开始进度轮询 */
+const startProgressPolling = (versionId: number) => {
+  currentVersionId.value = versionId
+  importProgress.value = 5
+  progressText.value = '开始导入...'
+  
+  // 每秒查询一次进度
+  progressTimer.value = setInterval(async () => {
+    try {
+      const progress = await YpidVersionApi.getImportProgress(versionId.toString())
+      
+      importProgress.value = progress.overallProgress || 0
+      progressText.value = progress.currentMessage || '处理中...'
+      
+      // 如果完成或失败，停止轮询
+      if (progress.overallStatus === 2) {
+        // 成功
+        stopProgressPolling()
+        handleImportComplete(true, '数据导入成功', {
+          totalRecords: progress.totalRecords,
+          newRecords: progress.successRecords,
+          updatedRecords: 0,
+          failedRecords: 0
+        })
+      } else if (progress.overallStatus === 3) {
+        // 失败
+        stopProgressPolling()
+        handleImportComplete(false, progress.errorMessage || '导入失败')
+      }
+    } catch (error) {
+      console.error('查询进度失败:', error)
+      // 如果查询失败，可能是网络问题，继续轮询
+    }
+  }, 1000)
+}
+
+/** 停止进度轮询 */
+const stopProgressPolling = () => {
+  if (progressTimer.value) {
+    clearInterval(progressTimer.value)
+    progressTimer.value = null
+  }
+}
+
 /** 开始导入 */
 const handleImport = async () => {
   try {
@@ -267,11 +314,11 @@ const handleImport = async () => {
     await formRef.value?.validate()
 
     importing.value = true
-    importProgress.value = 0
+    importProgress.value = 5
     importResult.value = null
     progressText.value = '准备导入...'
 
-    // 创建FormData
+    // 创建 FormData
     const formDataToSend = new FormData()
     formDataToSend.append('file', formData.value.file!)
 
@@ -291,60 +338,67 @@ const handleImport = async () => {
         new Blob([JSON.stringify(versionData)], { type: 'application/json' })
       )
 
-      progressText.value = '创建版本并导入数据...'
-      importProgress.value = 30
-
+      // 发起导入请求
       result = await YpidVersionApi.createVersionAndImport(formDataToSend)
+      
+      // 导入请求成功提交，立即关闭对话框并通知父组件
+      if (result && result.id) {
+        importing.value = false
+        dialogVisible.value = false
+        emit('success', result)
+        ElMessage.success(`导入任务已提交，共${result.totalRecords}条记录，请在页面上查看进度`)
+      } else {
+        throw new Error('无法获取版本ID')
+      }
     } else {
       // 导入到现有版本
-      progressText.value = '导入数据到指定版本...'
-      importProgress.value = 30
-
       result = await YpidVersionApi.importDataToVersion(
         formData.value.selectedVersionId!,
         formData.value.file!
       )
-    }
-
-    // 模拟进度更新
-    const progressInterval = setInterval(() => {
-      if (importProgress.value < 90) {
-        importProgress.value += 10
-        progressText.value = '正在处理数据...'
-      }
-    }, 200)
-
-    // 等待一段时间后完成
-    setTimeout(() => {
-      clearInterval(progressInterval)
-      importProgress.value = 100
-      importStatus.value = 'success'
-      progressText.value = '导入完成'
-
-      importResult.value = {
-        success: true,
-        message: '数据导入成功',
-        data: result
-      }
-
+      
+      // 导入请求成功提交，立即关闭对话框并通知父组件
       importing.value = false
-
-      // 通知父组件
+      dialogVisible.value = false
       emit('success', result)
-
-      message.success('数据导入成功')
-    }, 1000)
+      ElMessage.success(`导入任务已提交，共${result.totalRecords}条记录，请在页面上查看进度`)
+    }
+    
   } catch (error: any) {
-    importing.value = false
+    stopProgressPolling()
+    handleImportComplete(false, error.message || '导入过程中发生错误')
+  }
+}
+
+/** 处理导入完成 */
+const handleImportComplete = (success: boolean, message: string, data?: any) => {
+  importing.value = false
+  stopProgressPolling()
+
+  if (success) {
+    importProgress.value = 100
+    importStatus.value = 'success'
+    progressText.value = '导入完成'
+    
+    importResult.value = {
+      success: true,
+      message,
+      data
+    }
+    
+    // 通知父组件
+    emit('success', data)
+    ElMessage.success('数据导入成功')
+  } else {
     importStatus.value = 'danger'
     progressText.value = '导入失败'
-
+    
     importResult.value = {
       success: false,
-      message: error.message || '导入过程中发生错误'
+      message
     }
-
-    message.error('导入失败：' + (error.message || '未知错误'))
+    
+    ElMessage.error('导入失败：' + message)
   }
 }
 

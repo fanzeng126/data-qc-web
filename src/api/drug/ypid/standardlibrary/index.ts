@@ -23,6 +23,7 @@ export interface StandardLibraryVO {
   standardSpecification: string // 规格标化
   dosageUnit: string // 制剂单位
   minPackageUnit: string // 最小销售包装单位
+  packagingMaterial: string // 包装材质
   conversionFactor: number // 转换系数
   isBasicDrug: number // 是否基本药物:0-否,1-是
   drugCategory: string // 药品类别
@@ -68,4 +69,9 @@ export const StandardLibraryApi = {
   exportStandardLibrary: async (params) => {
     return await request.download({ url: `/drug/standard-library/export-excel`, params })
   },
+
+  // 获取药品类别去重列表
+  getDrugCategories: async (versionId?: number) => {
+    return await request.get({ url: `/drug/standard-library/drug-categories`, params: { versionId } })
+  }
 }

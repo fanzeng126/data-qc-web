@@ -35,13 +35,26 @@
 
       <el-row :gutter="20">
         <el-col :span="12">
-          <el-form-item label="通用名" prop="genericNameCn">
-            <el-input v-model="formData.genericNameCn" placeholder="请输入通用名" />
+          <el-form-item label="通用名（中文）" prop="genericNameCn">
+            <el-input v-model="formData.genericNameCn" placeholder="请输入通用名（中文）" />
           </el-form-item>
         </el-col>
         <el-col :span="12">
+          <el-form-item label="通用名（英文）" prop="genericNameEn">
+            <el-input v-model="formData.genericNameEn" placeholder="请输入通用名（英文）" />
+          </el-form-item>
+        </el-col>
+      </el-row>
+
+      <el-row :gutter="20">
+        <el-col :span="12">
           <el-form-item label="商品名" prop="tradeName">
             <el-input v-model="formData.tradeName" placeholder="请输入商品名" />
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="药理/功效分类" prop="pharmacologyCategory">
+            <el-input v-model="formData.pharmacologyCategory" placeholder="请输入药理/功效分类" />
           </el-form-item>
         </el-col>
       </el-row>
@@ -79,19 +92,31 @@
 
       <el-row :gutter="20">
         <el-col :span="8">
-          <el-form-item label="基本药物">
-            <el-radio-group v-model="formData.isBasicDrug">
-              <el-radio :value="0">否</el-radio>
-              <el-radio :value="1">是</el-radio>
-            </el-radio-group>
+          <el-form-item label="规格标化" prop="standardSpecification">
+            <el-input v-model="formData.standardSpecification" placeholder="请输入规格标化" />
           </el-form-item>
         </el-col>
         <el-col :span="8">
-          <el-form-item label="集中采购">
-            <el-radio-group v-model="formData.isCentralizedProcurement">
-              <el-radio :value="0">否</el-radio>
-              <el-radio :value="1">是</el-radio>
-            </el-radio-group>
+          <el-form-item label="制剂单位" prop="dosageUnit">
+            <el-input v-model="formData.dosageUnit" placeholder="请输入制剂单位" />
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="最小包装单位" prop="minPackageUnit">
+            <el-input v-model="formData.minPackageUnit" placeholder="请输入最小包装单位" />
+          </el-form-item>
+        </el-col>
+      </el-row>
+
+      <el-row :gutter="20">
+        <el-col :span="8">
+          <el-form-item label="包装材质" prop="packagingMaterial">
+            <el-input v-model="formData.packagingMaterial" placeholder="请输入包装材质" />
+          </el-form-item>
+        </el-col>
+        <el-col :span="8">
+          <el-form-item label="药品类别" prop="drugCategory">
+            <el-input v-model="formData.drugCategory" placeholder="请输入药品类别" />
           </el-form-item>
         </el-col>
         <el-col :span="8">
@@ -134,14 +159,19 @@ const formData = ref({
   productName: undefined,
   standardProductName: undefined,
   genericNameCn: undefined,
+  genericNameEn: undefined,
   tradeName: undefined,
   manufacturerName: undefined,
   approvalNumber: undefined,
   dosageForm: undefined,
   specification: undefined,
+  standardSpecification: undefined,
+  dosageUnit: undefined,
+  minPackageUnit: undefined,
+  packagingMaterial: undefined,
   conversionFactor: undefined,
-  isBasicDrug: 0,
-  isCentralizedProcurement: 0,
+  drugCategory: undefined,
+  pharmacologyCategory: undefined,
   status: 1
 })
 
@@ -214,14 +244,19 @@ const resetForm = () => {
     productName: undefined,
     standardProductName: undefined,
     genericNameCn: undefined,
+    genericNameEn: undefined,
     tradeName: undefined,
     manufacturerName: undefined,
     approvalNumber: undefined,
     dosageForm: undefined,
     specification: undefined,
+    standardSpecification: undefined,
+    dosageUnit: undefined,
+    minPackageUnit: undefined,
+    packagingMaterial: undefined,
     conversionFactor: undefined,
-    isBasicDrug: 0,
-    isCentralizedProcurement: 0,
+    drugCategory: undefined,
+    pharmacologyCategory: undefined,
     status: 1
   }
   formRef.value?.resetFields()
