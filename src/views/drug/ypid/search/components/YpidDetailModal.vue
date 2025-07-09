@@ -29,7 +29,7 @@
           </el-descriptions-item>
 
           <el-descriptions-item label="药品通用名">
-            {{ detailData.drugName || '-' }}
+            {{ detailData.genericNameCn || '-' }}
           </el-descriptions-item>
 
           <el-descriptions-item label="产品名称">
@@ -45,7 +45,7 @@
           </el-descriptions-item>
 
           <el-descriptions-item label="生产企业" :span="2">
-            {{ detailData.manufacturer || '-' }}
+            {{ detailData.manufacturerName || '-' }}
           </el-descriptions-item>
 
           <el-descriptions-item label="批准文号">
@@ -57,8 +57,8 @@
           </el-descriptions-item>
 
           <el-descriptions-item label="药品类别">
-            <el-tag :type="getCategoryTag(detailData.category)" size="small">
-              {{ getCategoryLabel(detailData.category) }}
+            <el-tag :type="getCategoryTag(detailData.drugCategory)" size="small">
+              {{ getCategoryLabel(detailData.drugCategory) }}
             </el-tag>
           </el-descriptions-item>
 
@@ -201,7 +201,7 @@ interface DrugImage {
 
 interface Props {
   modelValue: boolean
-  ypid?: string
+  ypid?: number
 }
 
 const props = withDefaults(defineProps<Props>(), {

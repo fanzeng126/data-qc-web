@@ -50,4 +50,8 @@ export const YpidMatchTaskApi = {
   exportYpidMatchTask: async (params) => {
     return await request.download({ url: `/drug/ypid-match-task/export-excel`, params })
   },
-}
+
+  importAndCreateYpidMatchTask: async (data:FormData) => {
+    return await request.upload({url: '/drug/ypid-match-task/importAndCreate', data: data})
+  }
+}

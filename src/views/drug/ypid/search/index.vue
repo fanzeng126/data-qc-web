@@ -146,7 +146,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="drugName" label="药品通用名" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="genericNameCn" label="药品通用名" min-width="150" show-overflow-tooltip />
 
         <el-table-column
           prop="productName"
@@ -160,7 +160,7 @@
         <el-table-column prop="dosageForm" label="剂型" width="100" />
 
         <el-table-column
-          prop="manufacturer"
+          prop="manufacturerName"
           label="生产企业"
           min-width="200"
           show-overflow-tooltip
@@ -170,10 +170,10 @@
 
         <el-table-column prop="conversionFactor" label="转换系数" width="100" align="center" />
 
-        <el-table-column prop="category" label="类别" width="100">
+        <el-table-column prop="drugCategory" label="类别" width="100">
           <template #default="{ row }">
-            <el-tag size="small" :type="getCategoryTag(row.category)">
-              {{ getCategoryLabel(row.category) }}
+            <el-tag size="small" :type="getCategoryTag(row.drugCategory)">
+              {{ getCategoryLabel(row.drugCategory  ) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -253,7 +253,7 @@ const statistics = reactive<YpidStatisticsVO>({
 })
 
 const detailVisible = ref(false)
-const selectedYpid = ref('')
+const selectedYpid = ref(0)
 
 // ========================= 生命周期 =========================
 
@@ -318,7 +318,7 @@ const handleExport = async () => {
 }
 
 const handleViewDetail = (row: YpidDrugVO) => {
-  selectedYpid.value = row.ypid
+  selectedYpid.value = row.id
   detailVisible.value = true
 }
 

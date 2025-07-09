@@ -186,10 +186,11 @@
         <el-form-item label="上传文件">
           <el-upload
             ref="uploadRef"
+            v-model:file-list="uploadedFile"
             :auto-upload="false"
             :limit="1"
             accept=".xlsx,.xls"
-            :on-change="handleFileChange"
+            action="none"
           >
             <el-button type="primary">
               <Icon icon="ep:upload" />
@@ -220,6 +221,8 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <TemplateDownloadDialog ref="downloadDialog"/>
   </div>
 </template>
 
@@ -231,10 +234,13 @@ import { YpidMatchTaskApi, YpidMatchTaskVO } from '@/api/drug/ypid/task'
 import { YpidApi } from '@/api/drug/ypid'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElLoading } from 'element-plus'
+import type { UploadUserFile } from 'element-plus'
+
 
 // 导入组件
 import PageHeader from '@/components/PageHeader/index.vue'
 import StatCard from '@/components/StatCard/index.vue'
+import TemplateDownloadDialog from '@/views/drug/import/template/components/TemplateDownloadDialog.vue'
 
 defineOptions({ name: 'YpidMatchTask' })
 
@@ -278,11 +284,13 @@ const qcCreateForm = reactive({
 const templateCreateVisible = ref(false)
 const templateCreateLoading = ref(false)
 const uploadRef = ref()
-const uploadedFile = ref<File>()
+const uploadedFile = ref<UploadUserFile[]>([])
 const templateCreateForm = reactive({
   taskName: '',
   autoApplyEnabled: true,
-  autoApplyThreshold: 90
+  autoApplyThreshold: 90,
+  taskNo:'',
+
 })
 
 // ========================= 方法 =========================
@@ -411,24 +419,40 @@ const createFromTemplate = () => {
 }
 
 // 处理文件选择
-const handleFileChange = (file: any) => {
-  uploadedFile.value = file.raw
+// const handleFileChange = (file: any) => {
+//   uploadedFile.value.raw = file.raw
+// }
+
+const getCurrentDateString = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0'); // 月份从0开始，需要+1
+    const day = String(now.getDate()).padStart(2, '0');
+
+    return `${year}${month}${day}`;
 }
 
 // 处理模板创建
 const handleTemplateCreate = async () => {
-  if (!templateCreateForm.taskName || !uploadedFile.value) {
+  if (!templateCreateForm.taskName || !(uploadedFile.value.length > 0)) {
     ElMessage.warning('请填写任务名称并选择文件')
     return
   }
-
   templateCreateLoading.value = true
   try {
-    await YpidMatchTaskApi.createYpidMatchTask({
+    const taskNo = 'YPID_' + getCurrentDateString() + '_' + Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+    const params = {
       ...templateCreateForm,
       taskType: 2,
-      sourceFile: uploadedFile.value.name
-    } as any)
+      sourceFile: uploadedFile.value[0].name,
+      status: 0,
+
+    } as any
+    params.taskNo = taskNo
+    const form = new FormData()
+    form.append('file', uploadedFile.value[0].raw as Blob)
+    form.append('params', JSON.stringify(params))
+    await YpidMatchTaskApi.importAndCreateYpidMatchTask(form)
     ElMessage.success('任务创建成功')
     templateCreateVisible.value = false
     getList()
@@ -437,13 +461,17 @@ const handleTemplateCreate = async () => {
   }
 }
 
+//定义下载模板模态框
+const downloadDialog = ref()
+
 // 下载导入模板
 const downloadTemplate = () => {
-  const templateUrl = '/templates/ypid_import_template.xlsx'
-  const link = document.createElement('a')
-  link.href = templateUrl
-  link.download = 'YPID导入模板.xlsx'
-  link.click()
+  // const templateUrl = '/templates/ypid_import_template.xlsx'
+  // const link = document.createElement('a')
+  // link.href = templateUrl
+  // link.download = 'YPID导入模板.xlsx'
+  // link.click()
+  downloadDialog.value.open(8)
 }
 
 // 初始化
