@@ -173,7 +173,9 @@
       <div v-if="isImporting" class="import-progress-container mb-4">
         <div class="progress-header">
           <div class="progress-info">
-            <span class="progress-title">{{ importProgressInfo.currentMessage || '正在导入数据...' }}</span>
+            <span class="progress-title">{{
+              importProgressInfo.currentMessage || '正在导入数据...'
+            }}</span>
             <div class="progress-meta">
               <span v-if="currentVersion?.importType" class="meta-item">
                 <Icon icon="ep:upload" class="mr-1" />
@@ -191,13 +193,14 @@
           </div>
           <span class="progress-percentage">{{ importProgressInfo.overallProgress || 0 }}%</span>
         </div>
-        <el-progress 
-          :percentage="importProgressInfo.overallProgress || 0" 
+        <el-progress
+          :percentage="importProgressInfo.overallProgress || 0"
           :status="getProgressStatus(importProgressInfo.overallStatus)"
           :stroke-width="8"
         />
         <div class="progress-details" v-if="importProgressInfo.totalRecords">
-          已处理 {{ importProgressInfo.successRecords || 0 }} / {{ importProgressInfo.totalRecords }} 条记录
+          已处理 {{ importProgressInfo.successRecords || 0 }} /
+          {{ importProgressInfo.totalRecords }} 条记录
           <span v-if="importProgressInfo.currentStage" class="ml-4">
             当前阶段：{{ importProgressInfo.currentStage }}
           </span>
@@ -235,10 +238,20 @@
         <el-table-column label="包装材质" prop="packagingMaterial" width="100" />
         <el-table-column label="转换系数" prop="conversionFactor" width="100" />
         <el-table-column label="药品类别" prop="drugCategory" width="100" />
-        <el-table-column label="通用名（英文）" prop="genericNameEn" width="150" show-overflow-tooltip />
+        <el-table-column
+          label="通用名（英文）"
+          prop="genericNameEn"
+          width="150"
+          show-overflow-tooltip
+        />
         <el-table-column label="批准文号" prop="approvalNumber" width="150" show-overflow-tooltip />
         <el-table-column label="剂型分类" prop="dosageForm" width="100" />
-        <el-table-column label="药理/功效分类" prop="pharmacologyCategory" width="150" show-overflow-tooltip />
+        <el-table-column
+          label="药理/功效分类"
+          prop="pharmacologyCategory"
+          width="150"
+          show-overflow-tooltip
+        />
         <el-table-column label="国家医保药品编码" prop="medicalInsuranceCode" width="150" />
         <el-table-column label="状态" width="80">
           <template #default="scope">
@@ -363,16 +376,7 @@ const versionMeta = computed(() => {
       icon: 'ep:calendar'
     }
   ]
-  
-  // 如果有导入开始时间，显示导入时间
-  if (currentVersion.value.importStartTime) {
-    meta.push({
-      label: '导入时间',
-      value: formatDateTime(currentVersion.value.importStartTime),
-      icon: 'ep:clock'
-    })
-  }
-  
+
   // 如果已发布，显示发布时间
   if (currentVersion.value.publishTime) {
     meta.push({
@@ -381,7 +385,7 @@ const versionMeta = computed(() => {
       icon: 'ep:check'
     })
   }
-  
+
   return meta
 })
 
@@ -441,7 +445,7 @@ const handleVersionChange = async (versionId: number) => {
 
     // 刷新数据列表
     await getList()
-    
+
     // 如果版本正在导入中，开始轮询进度
     if (currentVersion.value?.status === 1) {
       startProgressPolling(versionId)
@@ -482,12 +486,12 @@ const handleQuery = () => {
 const startProgressPolling = (versionId: number) => {
   isImporting.value = true
   importProgressInfo.value = { overallProgress: 5, currentMessage: '开始导入...' }
-  
+
   progressTimer.value = setInterval(async () => {
     try {
       const progress = await YpidVersionApi.getImportProgress(versionId.toString())
       importProgressInfo.value = progress
-      
+
       // 如果完成或失败，停止轮询
       if (progress.overallStatus === 2 || progress.overallStatus === 3) {
         stopProgressPolling()
@@ -518,9 +522,12 @@ const stopProgressPolling = () => {
 /** 获取进度状态 */
 const getProgressStatus = (status: number) => {
   switch (status) {
-    case 2: return 'success'
-    case 3: return 'exception'
-    default: return undefined
+    case 2:
+      return 'success'
+    case 3:
+      return 'exception'
+    default:
+      return undefined
   }
 }
 
@@ -572,12 +579,12 @@ const openImportDialog = () => {
 /** 导入成功回调 */
 const handleImportSuccess = async (result: YpidVersionVO) => {
   await loadVersionList()
-  
+
   // 如果是新创建的版本，切换到该版本
   if (result && result.id) {
     currentVersionId.value = result.id
     await handleVersionChange(result.id)
-    
+
     // 开始轮询进度
     startProgressPolling(result.id)
   } else {

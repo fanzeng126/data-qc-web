@@ -268,15 +268,15 @@ const startProgressPolling = (versionId: number) => {
   currentVersionId.value = versionId
   importProgress.value = 5
   progressText.value = '开始导入...'
-  
-  // 每秒查询一次进度
+
+  // 每3秒查询一次进度
   progressTimer.value = setInterval(async () => {
     try {
       const progress = await YpidVersionApi.getImportProgress(versionId.toString())
-      
+
       importProgress.value = progress.overallProgress || 0
       progressText.value = progress.currentMessage || '处理中...'
-      
+
       // 如果完成或失败，停止轮询
       if (progress.overallStatus === 2) {
         // 成功
@@ -296,7 +296,7 @@ const startProgressPolling = (versionId: number) => {
       console.error('查询进度失败:', error)
       // 如果查询失败，可能是网络问题，继续轮询
     }
-  }, 1000)
+  }, 3000)
 }
 
 /** 停止进度轮询 */
@@ -340,13 +340,13 @@ const handleImport = async () => {
 
       // 发起导入请求
       result = await YpidVersionApi.createVersionAndImport(formDataToSend)
-      
+
       // 导入请求成功提交，立即关闭对话框并通知父组件
       if (result && result.id) {
         importing.value = false
         dialogVisible.value = false
         emit('success', result)
-        ElMessage.success(`导入任务已提交，共${result.totalRecords}条记录，请在页面上查看进度`)
+        ElMessage.success(`导入任务已提交，请在页面上查看进度`)
       } else {
         throw new Error('无法获取版本ID')
       }
@@ -356,14 +356,13 @@ const handleImport = async () => {
         formData.value.selectedVersionId!,
         formData.value.file!
       )
-      
+
       // 导入请求成功提交，立即关闭对话框并通知父组件
       importing.value = false
       dialogVisible.value = false
       emit('success', result)
       ElMessage.success(`导入任务已提交，共${result.totalRecords}条记录，请在页面上查看进度`)
     }
-    
   } catch (error: any) {
     stopProgressPolling()
     handleImportComplete(false, error.message || '导入过程中发生错误')
@@ -379,25 +378,25 @@ const handleImportComplete = (success: boolean, message: string, data?: any) => 
     importProgress.value = 100
     importStatus.value = 'success'
     progressText.value = '导入完成'
-    
+
     importResult.value = {
       success: true,
       message,
       data
     }
-    
+
     // 通知父组件
     emit('success', data)
     ElMessage.success('数据导入成功')
   } else {
     importStatus.value = 'danger'
     progressText.value = '导入失败'
-    
+
     importResult.value = {
       success: false,
       message
     }
-    
+
     ElMessage.error('导入失败：' + message)
   }
 }

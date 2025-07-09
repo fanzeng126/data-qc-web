@@ -29,7 +29,6 @@ export interface StandardLibraryVO {
   drugCategory: string // 药品类别
   pharmacologyCategory: string // 药理/功效分类
   medicalInsuranceType: string // 医保甲乙类
-  medicalInsuranceNumber: string // 医保编号
   isCentralizedProcurement: number // 是否集中采购:0-否,1-是
   isConsistencyEvaluation: number // 是否通过一致性评价:0-否,1-是
   isImportedDrug: number // 是否进口药:0-否,1-是
@@ -74,4 +73,4 @@ export const StandardLibraryApi = {
   getDrugCategories: async (versionId?: number) => {
     return await request.get({ url: `/drug/standard-library/drug-categories`, params: { versionId } })
   }
-}
+}
