@@ -23,7 +23,6 @@
     <div class="detail-content" v-loading="loading">
       <!-- 任务概览面板 -->
       <div v-show="activeTab === 'overview'" class="tab-content">
-        <!-- 修复：确保在数据加载完成后才显示内容 -->
         <div v-if="taskDetail">
           <div class="overview-grid">
             <!-- 基本信息卡片 -->

@@ -64,11 +64,11 @@
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="入库日期" prop="inboundDate">
+            <el-form-item label="数据上报日期" prop="inboundDate">
               <el-date-picker
                 v-model="formData.inboundDate"
                 type="date"
-                placeholder="选择入库日期"
+                placeholder="选择数据上报日期"
                 format="YYYY-MM-DD"
                 value-format="YYYY-MM-DD"
                 style="width: 100%"

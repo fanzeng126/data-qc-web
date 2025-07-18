@@ -18,6 +18,7 @@
           <el-icon><Download /></el-icon>
           导出规则
         </el-button>
+        <el-button link @click="handleBuilder()"> 表达式构建器 </el-button>
       </template>
     </PageHeader>
 
@@ -64,7 +65,6 @@
       </el-row>
     </div>
 
-    <!-- 其余代码保持不变... -->
     <!-- 搜索和操作区域 -->
     <el-card class="search-card" shadow="never">
       <el-form
@@ -594,7 +594,16 @@ const handleExport = async () => {
 }
 
 // ========================= 业务操作方法 =========================
-
+// todo 测试
+const handleBuilder = (ruleId?: number) => {
+  if (ruleId) {
+    // 编辑规则
+    router.push(`/drug/qc/rule/builder/${ruleId}`)
+  } else {
+    // 新建规则
+    router.push('/drug/qc/rule/builder')
+  }
+}
 /** 打开表单对话框 */
 const formRef = ref()
 const openForm = (type: string, id?: number) => {

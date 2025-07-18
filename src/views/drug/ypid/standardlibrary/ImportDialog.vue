@@ -214,8 +214,9 @@ const openForVersion = async (versionId: number) => {
 const loadAvailableVersions = async () => {
   try {
     const data = await YpidVersionApi.getYpidVersionList()
-    // 只显示导入成功的版本
-    availableVersions.value = data.filter((v) => v.status === 2)
+    // // 只显示导入成功的版本
+    // availableVersions.value = data.filter((v) => v.status === 2)
+    availableVersions.value = data
     hasExistingVersions.value = availableVersions.value.length > 0
   } catch (error) {
     console.error('加载版本列表失败:', error)

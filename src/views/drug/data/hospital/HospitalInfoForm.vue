@@ -111,7 +111,7 @@
               </el-input-number>
             </el-form-item>
           </el-col>
-          <el-col :span="8">
+          <!--          <el-col :span="8">
             <el-form-item label="执业医师数" prop="doctorCount">
               <el-input-number
                 v-model="formData.doctorCount"
@@ -136,12 +136,12 @@
                 <template #append>人</template>
               </el-input-number>
             </el-form-item>
-          </el-col>
+          </el-col>-->
         </el-row>
       </div>
 
       <!-- 诊疗服务信息 -->
-      <div class="form-section">
+      <!--      <div class="form-section">
         <div class="section-title">
           <el-icon><DataAnalysis /></el-icon>
           诊疗服务信息
@@ -176,7 +176,7 @@
             </el-form-item>
           </el-col>
         </el-row>
-      </div>
+      </div>-->
 
       <!-- 药品收入信息 -->
       <div class="form-section">
@@ -186,9 +186,9 @@
         </div>
         <el-row :gutter="20">
           <el-col :span="24">
-            <el-form-item label="年度药品总收入" prop="annualDrugIncome">
+            <el-form-item label="年度药品总收入" prop="annualDrugIncomeImport">
               <el-input-number
-                v-model="formData.annualDrugIncome"
+                v-model="formData.annualDrugIncomeImport"
                 placeholder="请输入年度药品总收入"
                 :min="0"
                 :precision="2"
@@ -202,7 +202,7 @@
           </el-col>
         </el-row>
 
-        <el-row :gutter="20">
+        <!--        <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="中药饮片采购额" prop="ypPurchaseAmount">
               <el-input-number
@@ -258,7 +258,7 @@
               </el-input-number>
             </el-form-item>
           </el-col>
-        </el-row>
+        </el-row>-->
       </div>
 
       <!-- 质控信息 -->
@@ -354,7 +354,7 @@ const formData = ref({
   assistantDoctorCount: undefined,
   visitCount: undefined,
   dischargeCount: undefined,
-  annualDrugIncome: undefined,
+  annualDrugIncomeImport: undefined,
   ypPurchaseAmount: undefined,
   ypSellAmount: undefined,
   klPurchaseAmount: undefined,
@@ -403,7 +403,7 @@ const formRules = reactive({
     { required: true, message: '出院人数不能为空', trigger: 'blur' },
     { type: 'number', min: 0, message: '出院人数不能为负数', trigger: 'blur' }
   ],
-  annualDrugIncome: [
+  annualDrugIncomeImport: [
     { required: true, message: '年度药品总收入不能为空', trigger: 'blur' },
     { type: 'number', min: 0, message: '收入金额不能为负数', trigger: 'blur' }
   ],
@@ -492,7 +492,7 @@ const resetForm = () => {
     assistantDoctorCount: undefined,
     visitCount: undefined,
     dischargeCount: undefined,
-    annualDrugIncome: undefined,
+    annualDrugIncomeImport: undefined,
     ypPurchaseAmount: undefined,
     ypSellAmount: undefined,
     klPurchaseAmount: undefined,

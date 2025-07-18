@@ -6,23 +6,44 @@
       content="管理药品入库信息，包括入库数量、价格、质控状态等关键数据，确保药品供应链管理的准确性"
     >
       <template #extra>
-        <el-button type="primary" @click="openForm('create')" v-hasPermi="['drug:inbound:create']">
-          <Icon icon="ep:plus" class="mr-5px" />
-          新增入库
-        </el-button>
-        <el-button
-          type="success"
-          @click="handleExport"
-          :loading="exportLoading"
-          v-hasPermi="['drug:inbound:export']"
-        >
-          <Icon icon="ep:download" class="mr-5px" />
-          导出数据
-        </el-button>
+        <div class="header-actions">
+          <el-select
+            v-model="queryParams.uploadDate"
+            placeholder="选择导入批次"
+            clearable
+            style="width: 200px; margin-right: 12px"
+            @change="handleQuery"
+          >
+            <el-option
+              v-for="batch in dimensionFilters.uploadDates"
+              :key="batch"
+              :label="`${batch.substring(0, 4)}-${batch.substring(4, 6)}-${batch.substring(6, 8)}`"
+              :value="batch"
+            />
+          </el-select>
+          <el-button
+            type="primary"
+            @click="openForm('create')"
+            v-hasPermi="['drug:inbound:create']"
+          >
+            <Icon icon="ep:plus" class="mr-5px" />
+            新增入库
+          </el-button>
+          <el-button
+            type="success"
+            @click="handleExport"
+            :loading="exportLoading"
+            v-hasPermi="['drug:inbound:export']"
+          >
+            <Icon icon="ep:download" class="mr-5px" />
+            导出数据
+          </el-button>
+        </div>
       </template>
     </PageHeader>
 
     <!-- 统计概览卡片 -->
+    <!--
     <div class="stats-overview">
       <el-row :gutter="20">
         <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
@@ -69,6 +90,7 @@
         </el-col>
       </el-row>
     </div>
+-->
 
     <!-- 搜索工作栏 -->
     <el-card class="search-card" shadow="never">
@@ -101,14 +123,12 @@
             </el-form-item>
           </el-col>
           <el-col :xs="24" :sm="12" :md="8" :lg="6">
-            <el-form-item label="入库日期" prop="inboundDate">
-              <el-date-picker
-                v-model="queryParams.inboundDate"
-                type="daterange"
-                value-format="YYYY-MM-DD"
-                start-placeholder="开始日期"
-                end-placeholder="结束日期"
-                style="width: 100%"
+            <el-form-item label="机构名称" prop="organizationName">
+              <el-input
+                v-model="queryParams.organizationName"
+                placeholder="请输入机构名称"
+                clearable
+                @keyup.enter="handleQuery"
               />
             </el-form-item>
           </el-col>
@@ -125,31 +145,6 @@
                 <el-option label="质控通过" :value="1" />
                 <el-option label="质控失败" :value="2" />
               </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :sm="12" :md="8" :lg="6">
-            <el-form-item label="价格状态" prop="priceStatus">
-              <el-select
-                v-model="queryParams.priceStatus"
-                placeholder="请选择价格状态"
-                clearable
-                style="width: 100%"
-              >
-                <el-option label="全部" value="" />
-                <el-option label="正常" :value="0" />
-                <el-option label="价格过高" :value="1" />
-                <el-option label="价格过低" :value="2" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :sm="12" :md="8" :lg="6">
-            <el-form-item label="机构名称" prop="organizationName">
-              <el-input
-                v-model="queryParams.organizationName"
-                placeholder="请输入机构名称"
-                clearable
-                @keyup.enter="handleQuery"
-              />
             </el-form-item>
           </el-col>
         </el-row>
@@ -194,63 +189,85 @@
       >
         <el-table-column type="selection" width="55" />
         <el-table-column
-          label="入库日期"
+          label="数据上报日期"
           align="center"
-          prop="inboundDate"
-          width="100"
+          prop="uploadDate"
+          width="120"
           fixed="left"
         >
           <template #default="{ row }">
-            {{ formatDate(row.inboundDate) }}
+            {{ formatDate(row.uploadDate) }}
           </template>
         </el-table-column>
-        <el-table-column label="药品信息" align="left" min-width="250" show-overflow-tooltip>
-          <template #default="{ row }">
-            <div class="drug-info">
-              <div class="drug-name">{{ row.productName }}</div>
-              <div class="drug-code">
-                <span>YPID: {{ row.ypid }}</span>
-                <span v-if="row.hospitalDrugId">院内码: {{ row.hospitalDrugId }}</span>
-              </div>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="机构信息" align="center" width="180" show-overflow-tooltip>
-          <template #default="{ row }">
-            <div class="org-info">
-              <div>{{ row.organizationName }}</div>
-              <div class="text-muted">{{ row.hospitalCode }}</div>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="入库数量" align="center" width="120">
-          <template #default="{ row }">
-            <div class="quantity-info">
-              <div>包装: {{ formatNumber(row.inboundPackQuantity) }}</div>
-              <div class="text-muted">制剂: {{ formatNumber(row.inboundDosageQuantity) }}</div>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="入库价格" align="center" width="140">
-          <template #default="{ row }">
-            <div class="price-info">
-              <div>包装: ¥{{ formatAmount(row.inboundPackPrice) }}</div>
-              <div class="text-muted">制剂: ¥{{ formatAmount(row.inboundDosagePrice) }}</div>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="入库总额" align="center" prop="inboundTotalAmount" width="120">
+        <el-table-column label="省级行政区划代码" align="center" prop="domainCode" width="130" />
+        <el-table-column label="组织机构代码" align="center" prop="organizationCode" width="120" />
+        <el-table-column label="医疗机构代码" align="center" prop="hospitalCode" width="120" />
+        <el-table-column
+          label="组织机构名称"
+          align="center"
+          prop="organizationName"
+          min-width="200"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          label="国家药品编码（YPID）"
+          align="center"
+          prop="ypid"
+          width="150"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          label="院内药品唯一码"
+          align="center"
+          prop="hospitalDrugId"
+          width="150"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          label="省级药品集中采购平台药品编码"
+          align="center"
+          prop="provinceDrugCode"
+          width="180"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          label="产品名称"
+          align="center"
+          prop="productName"
+          width="150"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          label="入库总金额（元）"
+          align="center"
+          prop="inboundTotalAmount"
+          width="140"
+        >
           <template #default="{ row }">
             <span class="total-amount">¥{{ formatAmount(row.inboundTotalAmount) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="价格状态" align="center" prop="priceStatus" width="100">
+        <el-table-column
+          label="入库数量（最小销售包装单位）"
+          align="center"
+          prop="inboundPackQuantity"
+          width="180"
+        >
           <template #default="{ row }">
-            <el-tag :type="getPriceStatusType(row.priceStatus)" size="small" effect="plain">
-              {{ getPriceStatusText(row.priceStatus) }}
-            </el-tag>
+            {{ formatNumber(row.inboundPackQuantity) }}
           </template>
         </el-table-column>
+        <el-table-column
+          label="入库数量（最小制剂单位）"
+          align="center"
+          prop="inboundDosageQuantity"
+          width="180"
+        >
+          <template #default="{ row }">
+            {{ formatNumber(row.inboundDosageQuantity) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="修复规则" align="center" prop="fixRule" width="100" />
         <el-table-column label="质控状态" align="center" prop="qcStatus" width="100">
           <template #default="{ row }">
             <el-tag :type="getQcStatusType(row.qcStatus)" size="small" effect="dark">
@@ -336,9 +353,8 @@ const queryParams = reactive({
   ypid: undefined,
   productName: undefined,
   organizationName: undefined,
-  inboundDate: [],
   qcStatus: undefined,
-  priceStatus: undefined
+  uploadDate: undefined
 })
 const queryFormRef = ref()
 const exportLoading = ref(false)
@@ -352,10 +368,16 @@ const statistics = reactive({
   qcPassRateTrend: 0
 })
 
+// 维度筛选数据
+const dimensionFilters = reactive({
+  uploadDates: []
+})
+
 // ========================= 生命周期 =========================
 onMounted(() => {
   getList()
   loadStatistics()
+  loadDimensionFilters()
 })
 
 // ========================= 核心方法 =========================
@@ -402,6 +424,16 @@ const loadStatistics = async () => {
     console.error('加载统计数据失败:', error)
   } finally {
     statsLoading.value = false
+  }
+}
+
+/** 加载维度筛选数据 */
+const loadDimensionFilters = async () => {
+  try {
+    const data = await InboundApi.getDimensionFilters()
+    dimensionFilters.uploadDates = data.uploadDates || []
+  } catch (error) {
+    console.error('加载维度筛选数据失败:', error)
   }
 }
 
@@ -468,8 +500,8 @@ const handleExport = async () => {
 
 /** 格式化日期 */
 const formatDate = (dateStr: string): string => {
-  if (!dateStr) return ''
-  return dateStr.split(' ')[0]
+  if (!dateStr || dateStr.length < 8) return dateStr || ''
+  return `${dateStr.substring(0, 4)}-${dateStr.substring(4, 6)}-${dateStr.substring(6, 8)}`
 }
 
 /** 格式化数字 */
@@ -621,6 +653,11 @@ const getQcStatusText = (status: number): string => {
 .text-muted {
   color: #909399;
   font-size: 12px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
 }
 
 /* 响应式设计 */

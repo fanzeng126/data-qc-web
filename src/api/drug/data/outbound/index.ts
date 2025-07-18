@@ -51,4 +51,9 @@ export const OutboundApi = {
   exportOutbound: async (params) => {
     return await request.download({ url: `/drug/outbound/export-excel`, params })
   },
+
+  // 获取维度筛选选项
+  getDimensionFilters: async () => {
+    return await request.get({ url: `/drug/outbound/dimension-filters` })
+  }
 }

@@ -15,7 +15,8 @@ export interface HospitalInfoVO {
   assistantDoctorCount: number // 执业助理医师数
   visitCount: number // 总诊疗人次数
   dischargeCount: number // 出院人数
-  annualDrugIncome: number // 年度药品总收入
+  annualDrugIncomeImport: number // 年度药品总收入-导入
+  annualDrugIncomeSync: number // 年度药品总收入-直报
   ypPurchaseAmount: number // 中药饮片总采购额
   ypSellAmount: number // 中药饮片总销售额
   klPurchaseAmount: number // 中药颗粒剂总采购额
@@ -55,5 +56,10 @@ export const HospitalInfoApi = {
   // 导出医疗机构基本情况 Excel
   exportHospitalInfo: async (params) => {
     return await request.download({ url: `/drug/hospital-info/export-excel`, params })
+  },
+
+  // 获取维度筛选选项
+  getDimensionFilters: async () => {
+    return await request.get({ url: `/drug/hospital-info/dimension-filters` })
   }
 }

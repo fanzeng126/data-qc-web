@@ -6,27 +6,44 @@
       content="管理医疗机构基本信息，包括床位数、医师数、诊疗人次、药品收入等关键数据"
     >
       <template #extra>
-        <el-button
-          type="primary"
-          @click="openForm('create')"
-          v-hasPermi="['drug:hospital-info:create']"
-        >
-          <Icon icon="ep:plus" class="mr-5px" />
-          新增机构
-        </el-button>
-        <el-button
-          type="success"
-          @click="handleExport"
-          :loading="exportLoading"
-          v-hasPermi="['drug:hospital-info:export']"
-        >
-          <Icon icon="ep:download" class="mr-5px" />
-          导出数据
-        </el-button>
+        <div class="header-actions">
+          <el-select
+            v-model="queryParams.uploadDate"
+            placeholder="选择导入批次"
+            clearable
+            style="width: 200px; margin-right: 12px"
+            @change="handleQuery"
+          >
+            <el-option
+              v-for="batch in dimensionFilters.uploadDates"
+              :key="batch"
+              :label="`${batch.substring(0, 4)}-${batch.substring(4, 6)}-${batch.substring(6, 8)}`"
+              :value="batch"
+            />
+          </el-select>
+          <el-button
+            type="primary"
+            @click="openForm('create')"
+            v-hasPermi="['drug:hospital-info:create']"
+          >
+            <Icon icon="ep:plus" class="mr-5px" />
+            新增机构
+          </el-button>
+          <el-button
+            type="success"
+            @click="handleExport"
+            :loading="exportLoading"
+            v-hasPermi="['drug:hospital-info:export']"
+          >
+            <Icon icon="ep:download" class="mr-5px" />
+            导出数据
+          </el-button>
+        </div>
       </template>
     </PageHeader>
 
     <!-- 统计概览卡片 -->
+    <!--
     <div class="stats-overview">
       <el-row :gutter="20">
         <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
@@ -72,6 +89,7 @@
         </el-col>
       </el-row>
     </div>
+-->
 
     <!-- 搜索工作栏 -->
     <el-card class="search-card" shadow="never">
@@ -104,13 +122,54 @@
             </el-form-item>
           </el-col>
           <el-col :xs="24" :sm="12" :md="8" :lg="6">
-            <el-form-item label="行政区划" prop="domainCode">
-              <el-input
-                v-model="queryParams.domainCode"
-                placeholder="请输入省级行政区划代码"
+            <el-form-item label="年度" prop="year">
+              <el-select
+                v-model="queryParams.year"
+                placeholder="请选择年度"
                 clearable
-                @keyup.enter="handleQuery"
-              />
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="year in dimensionFilters.years"
+                  :key="year"
+                  :label="year"
+                  :value="year"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12" :md="8" :lg="6">
+            <el-form-item label="省级" prop="province">
+              <el-select
+                v-model="queryParams.province"
+                placeholder="请选择省级"
+                clearable
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="province in dimensionFilters.provinces"
+                  :key="province"
+                  :label="province"
+                  :value="province"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12" :md="8" :lg="6">
+            <el-form-item label="医疗机构" prop="hospital">
+              <el-select
+                v-model="queryParams.hospital"
+                placeholder="请选择医疗机构"
+                clearable
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="hospital in dimensionFilters.hospitals"
+                  :key="hospital"
+                  :label="hospital"
+                  :value="hospital"
+                />
+              </el-select>
             </el-form-item>
           </el-col>
           <el-col :xs="24" :sm="12" :md="8" :lg="6">
@@ -170,51 +229,45 @@
       >
         <el-table-column type="selection" width="55" />
         <el-table-column
-          label="医疗机构代码"
+          label="数据上报日期"
           align="center"
-          prop="hospitalCode"
-          width="180"
+          prop="uploadDate"
+          width="120"
           fixed="left"
-        />
+        >
+          <template #default="{ row }">
+            {{ formatDate(row.uploadDate) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="省级行政区划代码" align="center" prop="domainCode" width="130" />
+        <el-table-column label="组织机构代码" align="center" prop="organizationCode" width="120" />
+        <el-table-column label="医疗机构代码" align="center" prop="hospitalCode" width="150" />
         <el-table-column
-          label="机构名称"
+          label="组织机构名称"
           align="center"
           prop="organizationName"
           min-width="200"
           show-overflow-tooltip
         />
-        <el-table-column label="行政区划" align="center" prop="domainCode" width="100" />
-        <el-table-column label="床位数" align="center" prop="bedCount" width="100">
+        <el-table-column label="年度药品总收入（元）" align="center" width="160">
+          <template #default="{ row }">
+            <div class="income-comparison">
+              <div>导入: ¥{{ formatAmount(row.annualDrugIncomeImport) }}</div>
+              <div>直报: ¥{{ formatAmount(row.annualDrugIncomeSync) }}</div>
+              <div class="difference"
+                >差异: ¥{{
+                  formatAmount((row.annualDrugIncomeImport || 0) - (row.annualDrugIncomeSync || 0))
+                }}</div
+              >
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="实有床位数" align="center" prop="bedCount" width="100">
           <template #default="{ row }">
             <el-tag type="info" effect="plain">{{ row.bedCount || 0 }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="医师数" align="center" width="120">
-          <template #default="{ row }">
-            <div class="doctor-info">
-              <span>执业: {{ row.doctorCount || 0 }}</span>
-              <span class="text-muted">助理: {{ row.assistantDoctorCount || 0 }}</span>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="总诊疗人次" align="center" prop="visitCount" width="120">
-          <template #default="{ row }">
-            {{ formatNumber(row.visitCount) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="年度药品收入" align="center" prop="annualDrugIncome" width="140">
-          <template #default="{ row }">
-            <span class="income-value">¥{{ formatAmount(row.annualDrugIncome) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="中药销售情况" align="center" width="180">
-          <template #default="{ row }">
-            <div class="medicine-info">
-              <div>饮片: ¥{{ formatAmount(row.ypSellAmount) }}</div>
-              <div>颗粒剂: ¥{{ formatAmount(row.klSellAmount) }}</div>
-            </div>
-          </template>
-        </el-table-column>
+        <el-table-column label="修复规则" align="center" prop="fixRule" width="100" />
         <el-table-column label="质控状态" align="center" prop="qcStatus" width="100">
           <template #default="{ row }">
             <el-tag :type="getQcStatusType(row.qcStatus)" size="small" effect="dark">
@@ -300,7 +353,11 @@ const queryParams = reactive({
   hospitalCode: undefined,
   organizationName: undefined,
   domainCode: undefined,
-  qcStatus: undefined
+  qcStatus: undefined,
+  uploadDate: undefined,
+  year: undefined,
+  province: undefined,
+  hospital: undefined
 })
 const queryFormRef = ref()
 const exportLoading = ref(false)
@@ -314,10 +371,19 @@ const statistics = reactive({
   qcPassRateTrend: 0
 })
 
+// 维度筛选数据
+const dimensionFilters = reactive({
+  uploadDates: [],
+  years: [],
+  provinces: [],
+  hospitals: []
+})
+
 // ========================= 生命周期 =========================
 onMounted(() => {
   getList()
   loadStatistics()
+  loadDimensionFilters()
 })
 
 // ========================= 核心方法 =========================
@@ -356,6 +422,19 @@ const loadStatistics = async () => {
     console.error('加载统计数据失败:', error)
   } finally {
     statsLoading.value = false
+  }
+}
+
+/** 加载维度筛选数据 */
+const loadDimensionFilters = async () => {
+  try {
+    const data = await HospitalInfoApi.getDimensionFilters()
+    dimensionFilters.uploadDates = data.uploadDates || []
+    dimensionFilters.years = data.years || []
+    dimensionFilters.provinces = data.provinces || []
+    dimensionFilters.hospitals = data.hospitals || []
+  } catch (error) {
+    console.error('加载维度筛选数据失败:', error)
   }
 }
 
@@ -440,6 +519,12 @@ const formatAmount = (amount: number | undefined): string => {
     return (amount / 10000).toFixed(2) + '万'
   }
   return amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+/** 格式化日期 */
+const formatDate = (dateStr: string): string => {
+  if (!dateStr || dateStr.length < 8) return dateStr || ''
+  return `${dateStr.substring(0, 4)}-${dateStr.substring(4, 6)}-${dateStr.substring(6, 8)}`
 }
 
 /** 获取质控状态类型 */
@@ -537,6 +622,21 @@ const getQcStatusText = (status: number): string => {
 
 .text-muted {
   color: #909399;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+}
+
+.income-comparison {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.income-comparison .difference {
+  color: #e6a23c;
+  font-weight: 600;
 }
 
 /* 响应式设计 */

@@ -501,8 +501,9 @@ const startProgressPolling = (versionId: number) => {
           message.error('数据导入失败: ' + progress.errorMessage)
         }
         // 刷新数据
-        await getList()
-        await loadVersionDetails(versionId)
+        // await getList()
+        await handleVersionChange(versionId)
+        // await loadVersionDetails(versionId)
       }
     } catch (error) {
       console.error('查询进度失败:', error)
@@ -595,14 +596,6 @@ const handleImportSuccess = async (result: YpidVersionVO) => {
 /** 继续导入到当前版本 */
 const importToCurrentVersion = () => {
   importDialogRef.value.openForVersion(currentVersionId.value)
-}
-
-/** 导入到现有版本成功回调 */
-const handleImportToExistingVersionSuccess = async () => {
-  if (currentVersionId.value) {
-    await loadVersionDetails(currentVersionId.value)
-    startProgressPolling(currentVersionId.value)
-  }
 }
 
 /** 发布版本 */

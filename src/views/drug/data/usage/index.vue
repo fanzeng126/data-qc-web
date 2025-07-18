@@ -6,23 +6,40 @@
       content="监控药品销售和使用数据，支持价格异常检测和数据修复，确保药品使用信息的准确性和合规性"
     >
       <template #extra>
-        <el-button type="primary" @click="openForm('create')" v-hasPermi="['drug:usage:create']">
-          <Icon icon="ep:plus" class="mr-5px" />
-          新增记录
-        </el-button>
-        <el-button
-          type="success"
-          @click="handleExport"
-          :loading="exportLoading"
-          v-hasPermi="['drug:usage:export']"
-        >
-          <Icon icon="ep:download" class="mr-5px" />
-          导出数据
-        </el-button>
+        <div class="header-actions">
+          <el-select
+            v-model="queryParams.uploadDate"
+            placeholder="选择导入批次"
+            clearable
+            style="width: 200px; margin-right: 12px"
+            @change="handleQuery"
+          >
+            <el-option
+              v-for="batch in dimensionFilters.uploadDates"
+              :key="batch"
+              :label="`${batch.substring(0, 4)}-${batch.substring(4, 6)}-${batch.substring(6, 8)}`"
+              :value="batch"
+            />
+          </el-select>
+          <el-button type="primary" @click="openForm('create')" v-hasPermi="['drug:usage:create']">
+            <Icon icon="ep:plus" class="mr-5px" />
+            新增记录
+          </el-button>
+          <el-button
+            type="success"
+            @click="handleExport"
+            :loading="exportLoading"
+            v-hasPermi="['drug:usage:export']"
+          >
+            <Icon icon="ep:download" class="mr-5px" />
+            导出数据
+          </el-button>
+        </div>
       </template>
     </PageHeader>
 
     <!-- 统计概览卡片 -->
+    <!--
     <div class="stats-overview">
       <el-row :gutter="20">
         <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
@@ -69,6 +86,7 @@
         </el-col>
       </el-row>
     </div>
+-->
 
     <!-- 搜索工作栏 -->
     <el-card class="search-card" shadow="never">
@@ -101,45 +119,17 @@
             </el-form-item>
           </el-col>
           <el-col :xs="24" :sm="12" :md="8" :lg="6">
-            <el-form-item label="销售日期" prop="usageDate">
-              <el-date-picker
-                v-model="queryParams.usageDate"
-                type="daterange"
-                value-format="YYYY-MM-DD"
-                start-placeholder="开始日期"
-                end-placeholder="结束日期"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :sm="12" :md="8" :lg="6">
-            <el-form-item label="价格状态" prop="priceStatus">
+            <el-form-item label="质控状态" prop="qcStatus">
               <el-select
-                v-model="queryParams.priceStatus"
-                placeholder="请选择价格状态"
+                v-model="queryParams.qcStatus"
+                placeholder="请选择质控状态"
                 clearable
                 style="width: 100%"
               >
                 <el-option label="全部" value="" />
-                <el-option label="正常" :value="0" />
-                <el-option label="价格过高" :value="1" />
-                <el-option label="价格过低" :value="2" />
-                <el-option label="价格异常" :value="3" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :sm="12" :md="8" :lg="6">
-            <el-form-item label="修复状态" prop="fixStatus">
-              <el-select
-                v-model="queryParams.fixStatus"
-                placeholder="请选择修复状态"
-                clearable
-                style="width: 100%"
-              >
-                <el-option label="全部" value="" />
-                <el-option label="未修复" :value="0" />
-                <el-option label="自动修复" :value="1" />
-                <el-option label="手动修复" :value="2" />
+                <el-option label="未质控" :value="0" />
+                <el-option label="质控通过" :value="1" />
+                <el-option label="质控失败" :value="2" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -151,6 +141,60 @@
                 clearable
                 @keyup.enter="handleQuery"
               />
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12" :md="8" :lg="6">
+            <el-form-item label="年度" prop="year">
+              <el-select
+                v-model="queryParams.year"
+                placeholder="请选择年度"
+                clearable
+                style="width: 100%"
+                @change="handleQuery"
+              >
+                <el-option
+                  v-for="year in dimensionFilters.years"
+                  :key="year"
+                  :label="year"
+                  :value="year"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12" :md="8" :lg="6">
+            <el-form-item label="省级" prop="province">
+              <el-select
+                v-model="queryParams.province"
+                placeholder="请选择省级"
+                clearable
+                style="width: 100%"
+                @change="handleQuery"
+              >
+                <el-option
+                  v-for="province in dimensionFilters.provinces"
+                  :key="province.code"
+                  :label="province.name"
+                  :value="province.code"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12" :md="8" :lg="6">
+            <el-form-item label="医疗机构" prop="hospital">
+              <el-select
+                v-model="queryParams.hospital"
+                placeholder="请选择医疗机构"
+                clearable
+                style="width: 100%"
+                @change="handleQuery"
+              >
+                <el-option
+                  v-for="hospital in dimensionFilters.hospitals"
+                  :key="hospital.code"
+                  :label="hospital.name"
+                  :value="hospital.code"
+                />
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
@@ -194,68 +238,73 @@
         style="width: 100%"
       >
         <el-table-column type="selection" width="55" />
-        <el-table-column label="销售日期" align="center" prop="usageDate" width="100" fixed="left">
+        <el-table-column
+          label="数据上报日期"
+          align="center"
+          prop="uploadDate"
+          width="120"
+          fixed="left"
+        >
           <template #default="{ row }">
-            {{ formatDate(row.usageDate) }}
+            {{ formatDate(row.uploadDate) }}
           </template>
         </el-table-column>
-        <el-table-column label="药品信息" align="left" min-width="250" show-overflow-tooltip>
-          <template #default="{ row }">
-            <div class="drug-info">
-              <div class="drug-name">{{ row.productName }}</div>
-              <div class="drug-code">
-                <span>YPID: {{ row.ypid }}</span>
-                <span v-if="row.hospitalDrugId">院内码: {{ row.hospitalDrugId }}</span>
-              </div>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="机构信息" align="center" width="180" show-overflow-tooltip>
-          <template #default="{ row }">
-            <div class="org-info">
-              <div>{{ row.organizationName }}</div>
-              <div class="text-muted">{{ row.hospitalCode }}</div>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="销售数量" align="center" width="120">
-          <template #default="{ row }">
-            <div class="quantity-info">
-              <div>包装: {{ formatNumber(row.usagePackQuantity) }}</div>
-              <div class="text-muted">制剂: {{ formatNumber(row.usageDosageQuantity) }}</div>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="销售价格" align="center" width="140">
-          <template #default="{ row }">
-            <div class="price-info">
-              <div>包装: ¥{{ formatAmount(row.usagePackPrice) }}</div>
-              <div class="text-muted">制剂: ¥{{ formatAmount(row.usageDosagePrice) }}</div>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="销售总额" align="center" prop="usageTotalAmount" width="120">
+        <el-table-column label="省级行政区划代码" align="center" prop="domainCode" width="130" />
+        <el-table-column label="组织机构代码" align="center" prop="organizationCode" width="120" />
+        <el-table-column label="医疗机构代码" align="center" prop="hospitalCode" width="150" />
+        <el-table-column
+          label="组织机构名称"
+          align="center"
+          prop="organizationName"
+          min-width="200"
+          show-overflow-tooltip
+        />
+        <el-table-column label="国家药品编码（YPID）" align="center" prop="ypid" width="150" />
+        <el-table-column label="院内药品唯一码" align="center" prop="hospitalDrugId" width="130" />
+        <el-table-column
+          label="省级药品集中采购平台药品编码"
+          align="center"
+          prop="provinceDrugId"
+          width="180"
+        />
+        <el-table-column
+          label="产品名称"
+          align="center"
+          prop="productName"
+          min-width="200"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          label="销售总金额（元）"
+          align="center"
+          prop="usageTotalAmount"
+          width="130"
+        >
           <template #default="{ row }">
             <span class="total-amount">¥{{ formatAmount(row.usageTotalAmount) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="价格状态" align="center" prop="priceStatus" width="100">
+        <el-table-column
+          label="销售数量（最小销售包装单位）"
+          align="center"
+          prop="usagePackQuantity"
+          width="180"
+        >
           <template #default="{ row }">
-            <el-tag :type="getPriceStatusType(row.priceStatus)" size="small" effect="plain">
-              {{ getPriceStatusText(row.priceStatus) }}
-            </el-tag>
+            {{ formatNumber(row.usagePackQuantity) }}
           </template>
         </el-table-column>
-        <el-table-column label="修复状态" align="center" width="120">
+        <el-table-column
+          label="销售数量（最小制剂单位）"
+          align="center"
+          prop="usageDosageQuantity"
+          width="170"
+        >
           <template #default="{ row }">
-            <div class="fix-status">
-              <el-tag :type="getFixStatusType(row.fixStatus)" size="small">
-                {{ getFixStatusText(row.fixStatus) }}
-              </el-tag>
-              <div v-if="row.fixRule" class="fix-rule">{{ row.fixRule }}</div>
-            </div>
+            {{ formatNumber(row.usageDosageQuantity) }}
           </template>
         </el-table-column>
+        <el-table-column label="修复规则" align="center" prop="fixRule" width="100" />
         <el-table-column label="质控状态" align="center" prop="qcStatus" width="100">
           <template #default="{ row }">
             <el-tag :type="getQcStatusType(row.qcStatus)" size="small" effect="dark">
@@ -341,9 +390,11 @@ const queryParams = reactive({
   ypid: undefined,
   productName: undefined,
   organizationName: undefined,
-  usageDate: [],
-  priceStatus: undefined,
-  fixStatus: undefined
+  qcStatus: undefined,
+  uploadDate: undefined,
+  year: undefined,
+  province: undefined,
+  hospital: undefined
 })
 const queryFormRef = ref()
 const exportLoading = ref(false)
@@ -357,10 +408,19 @@ const statistics = reactive({
   fixRateTrend: 0
 })
 
+// 维度筛选数据
+const dimensionFilters = reactive({
+  uploadDates: [],
+  years: [],
+  provinces: [],
+  hospitals: []
+})
+
 // ========================= 生命周期 =========================
 onMounted(() => {
   getList()
   loadStatistics()
+  loadDimensionFilters()
 })
 
 // ========================= 核心方法 =========================
@@ -385,8 +445,8 @@ const loadStatistics = async () => {
     const today = new Date().toISOString().split('T')[0]
     const todayData = await UsageApi.getUsagePage({
       pageNo: 1,
-      pageSize: 100,
-      usageDate: [today + ' 00:00:00', today + ' 23:59:59']
+      pageSize: 100
+      // uploadDate: [today + ' 00:00:00', today + ' 23:59:59']
     })
 
     const todayList = todayData.list || []
@@ -407,6 +467,19 @@ const loadStatistics = async () => {
     console.error('加载统计数据失败:', error)
   } finally {
     statsLoading.value = false
+  }
+}
+
+/** 加载维度筛选数据 */
+const loadDimensionFilters = async () => {
+  try {
+    const data = await UsageApi.getDimensionFilters()
+    dimensionFilters.uploadDates = data.uploadDates || []
+    dimensionFilters.years = data.years || []
+    dimensionFilters.provinces = data.provinces || []
+    dimensionFilters.hospitals = data.hospitals || []
+  } catch (error) {
+    console.error('加载维度筛选数据失败:', error)
   }
 }
 
@@ -470,12 +543,6 @@ const handleExport = async () => {
 }
 
 // ========================= 工具方法 =========================
-
-/** 格式化日期 */
-const formatDate = (dateStr: string): string => {
-  if (!dateStr) return ''
-  return dateStr.split(' ')[0]
-}
 
 /** 格式化数字 */
 const formatNumber = (num: number | undefined): string => {
@@ -549,6 +616,12 @@ const getQcStatusText = (status: number): string => {
     2: '质控失败'
   }
   return texts[status] || '未知'
+}
+
+/** 格式化日期 */
+const formatDate = (dateStr: string): string => {
+  if (!dateStr || dateStr.length < 8) return dateStr || ''
+  return `${dateStr.substring(0, 4)}-${dateStr.substring(4, 6)}-${dateStr.substring(6, 8)}`
 }
 </script>
 
@@ -659,6 +732,11 @@ const getQcStatusText = (status: number): string => {
 .text-muted {
   color: #909399;
   font-size: 12px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
 }
 
 /* 响应式设计 */

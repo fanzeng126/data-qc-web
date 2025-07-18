@@ -265,7 +265,7 @@
           药品属性
         </div>
         <el-row :gutter="20">
-          <el-col :span="8">
+          <!--          <el-col :span="8">
             <el-form-item label="集中采购药品" prop="isCentralizedPurchase">
               <el-radio-group v-model="formData.isCentralizedPurchase">
                 <el-radio :label="1">
@@ -276,7 +276,7 @@
                 </el-radio>
               </el-radio-group>
             </el-form-item>
-          </el-col>
+          </el-col>-->
           <el-col :span="8">
             <el-form-item label="基本药物" prop="isBasicDrug">
               <el-radio-group v-model="formData.isBasicDrug">
@@ -289,6 +289,7 @@
               </el-radio-group>
             </el-form-item>
           </el-col>
+          <!--
           <el-col :span="8">
             <el-form-item label="一致性评价" prop="isConsistencyEvaluation">
               <el-radio-group v-model="formData.isConsistencyEvaluation">
@@ -301,6 +302,7 @@
               </el-radio-group>
             </el-form-item>
           </el-col>
+-->
         </el-row>
       </div>
 

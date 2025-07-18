@@ -396,6 +396,15 @@ const remainingRouter: AppRouteRecordRaw[] = [
     ]
   },
   {
+    path: '/drug/qc/rule/builder/:id?',
+    name: 'QcRuleBuilder',
+    component: () => import('@/views/drug/qc/rule/builder/index.vue'),
+    meta: {
+      title: '质控规则构建器',
+      activeMenu: '/drug/qc/rule'
+    }
+  },
+  {
     path: '/drug/ypid',
     component: Layout,
     name: 'DrugYpidCenter',

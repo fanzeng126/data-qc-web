@@ -6,23 +6,44 @@
       content="维护医疗机构药品目录信息，包括药品编码、名称、规格、生产企业等关键数据，支持YPID匹配和质控管理"
     >
       <template #extra>
-        <el-button type="primary" @click="openForm('create')" v-hasPermi="['drug:catalog:create']">
-          <Icon icon="ep:plus" class="mr-5px" />
-          新增药品
-        </el-button>
-        <el-button
-          type="success"
-          @click="handleExport"
-          :loading="exportLoading"
-          v-hasPermi="['drug:catalog:export']"
-        >
-          <Icon icon="ep:download" class="mr-5px" />
-          导出目录
-        </el-button>
+        <div class="header-actions">
+          <el-select
+            v-model="queryParams.uploadDate"
+            placeholder="选择导入批次"
+            clearable
+            style="width: 200px; margin-right: 12px"
+            @change="handleQuery"
+          >
+            <el-option
+              v-for="batch in dimensionFilters.uploadDates"
+              :key="batch"
+              :label="`${batch.substring(0, 4)}-${batch.substring(4, 6)}-${batch.substring(6, 8)}`"
+              :value="batch"
+            />
+          </el-select>
+          <el-button
+            type="primary"
+            @click="openForm('create')"
+            v-hasPermi="['drug:catalog:create']"
+          >
+            <Icon icon="ep:plus" class="mr-5px" />
+            新增药品
+          </el-button>
+          <el-button
+            type="success"
+            @click="handleExport"
+            :loading="exportLoading"
+            v-hasPermi="['drug:catalog:export']"
+          >
+            <Icon icon="ep:download" class="mr-5px" />
+            导出目录
+          </el-button>
+        </div>
       </template>
     </PageHeader>
 
     <!-- Statistics Overview -->
+    <!--
     <div class="stats-overview">
       <el-row :gutter="20">
         <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
@@ -68,6 +89,7 @@
         </el-col>
       </el-row>
     </div>
+-->
 
     <!-- Search Card -->
     <el-card class="search-card" shadow="never">
@@ -110,42 +132,17 @@
             </el-form-item>
           </el-col>
           <el-col :xs="24" :sm="12" :md="8" :lg="6">
-            <el-form-item label="生产企业" prop="manufacturer">
-              <el-input
-                v-model="queryParams.manufacturer"
-                placeholder="生产企业名称"
-                clearable
-                @keyup.enter="handleQuery"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :sm="12" :md="8" :lg="6">
-            <el-form-item label="基本药物" prop="isBasicDrug">
+            <el-form-item label="质控状态" prop="qcStatus">
               <el-select
-                v-model="queryParams.isBasicDrug"
-                placeholder="是否基药"
+                v-model="queryParams.qcStatus"
+                placeholder="请选择质控状态"
                 clearable
                 style="width: 100%"
               >
                 <el-option label="全部" value="" />
-                <el-option label="是" :value="1" />
-                <el-option label="否" :value="2" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :sm="12" :md="8" :lg="6">
-            <el-form-item label="匹配状态" prop="ypidMatchStatus">
-              <el-select
-                v-model="queryParams.ypidMatchStatus"
-                placeholder="YPID匹配状态"
-                clearable
-                style="width: 100%"
-              >
-                <el-option label="全部" value="" />
-                <el-option label="未匹配" :value="0" />
-                <el-option label="自动匹配" :value="1" />
-                <el-option label="手动匹配" :value="2" />
-                <el-option label="匹配失败" :value="3" />
+                <el-option label="未质控" :value="0" />
+                <el-option label="质控通过" :value="1" />
+                <el-option label="质控失败" :value="2" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -190,50 +187,76 @@
         style="width: 100%"
       >
         <el-table-column type="selection" width="55" />
-
-        <!-- Drug Basic Info -->
-        <el-table-column label="药品信息" align="left" min-width="300" fixed="left">
+        <el-table-column
+          label="数据上报日期"
+          align="center"
+          prop="uploadDate"
+          width="120"
+          fixed="left"
+        >
           <template #default="{ row }">
-            <div class="drug-info">
-              <div class="drug-name">{{ row.productName }}</div>
-              <div class="drug-details">
-                <span class="generic-name">通用名: {{ row.drugName }}</span>
-                <span v-if="row.tradeName" class="trade-name">商品名: {{ row.tradeName }}</span>
-              </div>
-              <div class="drug-codes">
-                <el-tag size="small" type="info">YPID: {{ row.ypid }}</el-tag>
-                <el-tag size="small" v-if="row.hospitalDrugId"
-                  >院内码: {{ row.hospitalDrugId }}</el-tag
-                >
-              </div>
-            </div>
+            {{ formatDate(row.uploadDate) }}
           </template>
         </el-table-column>
-
-        <!-- Manufacturer -->
+        <el-table-column label="省级行政区划代码" align="center" prop="domainCode" width="130" />
+        <el-table-column label="组织机构代码" align="center" prop="organizationCode" width="120" />
+        <el-table-column label="医疗机构代码" align="center" prop="hospitalCode" width="120" />
         <el-table-column
-          label="生产企业"
+          label="医疗机构名称"
           align="center"
-          prop="manufacturer"
+          prop="hospitalName"
+          min-width="200"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          label="国家药品编码（YPID）"
+          align="center"
+          prop="ypid"
+          width="150"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          label="院内药品唯一码"
+          align="center"
+          prop="hospitalDrugId"
+          width="150"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          label="省级药品集中采购平台药品编码"
+          align="center"
+          prop="provinceDrugCode"
           width="180"
           show-overflow-tooltip
         />
-
-        <!-- Drug Specs -->
-        <el-table-column label="规格信息" align="center" width="200">
-          <template #default="{ row }">
-            <div class="spec-info">
-              <div>{{ row.drugForm }} | {{ row.drugSpec }}</div>
-              <div class="units">
-                <span>制剂: {{ row.dosageUnit }}</span>
-                <span>包装: {{ row.packUnit }}</span>
-              </div>
-              <div class="conversion">转换系数: {{ row.conversionFactor }}</div>
-            </div>
-          </template>
-        </el-table-column>
-
-        <!-- Approval Number -->
+        <el-table-column
+          label="通用名"
+          align="center"
+          prop="drugName"
+          width="120"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          label="产品名称"
+          align="center"
+          prop="productName"
+          width="150"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          label="商品名"
+          align="center"
+          prop="tradeName"
+          width="120"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          label="商品名（英文）"
+          align="center"
+          prop="tradeNameEn"
+          width="150"
+          show-overflow-tooltip
+        />
         <el-table-column
           label="批准文号"
           align="center"
@@ -241,23 +264,25 @@
           width="150"
           show-overflow-tooltip
         />
-
-        <!-- Drug Properties -->
-        <el-table-column label="药品属性" align="center" width="160">
+        <el-table-column
+          label="生产企业"
+          align="center"
+          prop="manufacturer"
+          width="180"
+          show-overflow-tooltip
+        />
+        <el-table-column label="剂型名称" align="center" prop="drugForm" width="120" />
+        <el-table-column label="制剂规格" align="center" prop="drugSpec" width="120" />
+        <el-table-column label="制剂单位" align="center" prop="dosageUnit" width="120" />
+        <el-table-column label="最小销售包装单位" align="center" prop="packUnit" width="150" />
+        <el-table-column label="转换系数" align="center" prop="conversionFactor" width="120" />
+        <el-table-column label="是否基本药物" align="center" prop="isBasicDrug" width="120">
           <template #default="{ row }">
-            <div class="property-tags">
-              <el-tag v-if="row.isCentralizedPurchase === 1" size="small" type="primary"
-                >集采</el-tag
-              >
-              <el-tag v-if="row.isBasicDrug === 1" size="small" type="success">基药</el-tag>
-              <el-tag v-if="row.isConsistencyEvaluation === 1" size="small" type="warning"
-                >一致性</el-tag
-              >
-            </div>
+            <el-tag :type="row.isBasicDrug === 1 ? 'success' : 'info'" size="small">
+              {{ row.isBasicDrug === 1 ? '是' : '否' }}
+            </el-tag>
           </template>
         </el-table-column>
-
-        <!-- Match Status -->
         <el-table-column label="匹配状态" align="center" prop="ypidMatchStatus" width="100">
           <template #default="{ row }">
             <el-tag :type="getMatchStatusType(row.ypidMatchStatus)" size="small" effect="dark">
@@ -265,17 +290,14 @@
             </el-tag>
           </template>
         </el-table-column>
-
-        <!-- QC Status -->
+        <el-table-column label="修复规则" align="center" prop="fixRule" width="100" />
         <el-table-column label="质控状态" align="center" prop="qcStatus" width="100">
           <template #default="{ row }">
-            <el-tag :type="getQcStatusType(row.qcStatus)" size="small">
+            <el-tag :type="getQcStatusType(row.qcStatus)" size="small" effect="dark">
               {{ getQcStatusText(row.qcStatus) }}
             </el-tag>
           </template>
         </el-table-column>
-
-        <!-- Create Time -->
         <el-table-column
           label="创建时间"
           align="center"
@@ -356,9 +378,8 @@ const queryParams = reactive({
   ypid: undefined,
   productName: undefined,
   drugName: undefined,
-  manufacturer: undefined,
-  isBasicDrug: undefined,
-  ypidMatchStatus: undefined
+  qcStatus: undefined,
+  uploadDate: undefined
 })
 const queryFormRef = ref()
 const exportLoading = ref(false)
@@ -372,10 +393,16 @@ const statistics = reactive({
   matchRateTrend: 0
 })
 
+// 维度筛选数据
+const dimensionFilters = reactive({
+  uploadDates: []
+})
+
 // ========================= Lifecycle =========================
 onMounted(() => {
   getList()
   loadStatistics()
+  loadDimensionFilters()
 })
 
 // ========================= Core Methods =========================
@@ -415,6 +442,16 @@ const loadStatistics = async () => {
     console.error('Failed to load statistics:', error)
   } finally {
     statsLoading.value = false
+  }
+}
+
+/** 加载维度筛选数据 */
+const loadDimensionFilters = async () => {
+  try {
+    const data = await CatalogApi.getDimensionFilters()
+    dimensionFilters.uploadDates = data.uploadDates || []
+  } catch (error) {
+    console.error('加载维度筛选数据失败:', error)
   }
 }
 
@@ -520,6 +557,12 @@ const getQcStatusText = (status: number): string => {
   }
   return texts[status] || '未知'
 }
+
+/** 格式化日期 */
+const formatDate = (dateStr: string): string => {
+  if (!dateStr || dateStr.length < 8) return dateStr || ''
+  return `${dateStr.substring(0, 4)}-${dateStr.substring(4, 6)}-${dateStr.substring(6, 8)}`
+}
 </script>
 
 <style scoped>
@@ -575,6 +618,11 @@ const getQcStatusText = (status: number): string => {
   justify-content: end;
   margin-top: 20px;
   padding: 20px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
 }
 
 /* Drug info styles */

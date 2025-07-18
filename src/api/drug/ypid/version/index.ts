@@ -59,9 +59,9 @@ export const YpidVersionApi = {
     const formData = new FormData()
     formData.append('file', file)
     return request.post({
-      url: `/drug/ypid-version/${versionId}/import`,
+      url: `/drug/ypid-version/import?versionId=${versionId}`,
       data: formData,
-      timeout: 300000, // 5分钟超时
+      timeout: 300000,
       headers: {
         'Content-Type': 'multipart/form-data'
       }
