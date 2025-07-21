@@ -1,5 +1,41 @@
 import request from '@/config/axios'
 
+// 表达式编译相关类型定义
+
+// 验证错误信息
+export interface ValidationError {
+  errorType: string // 错误类型
+  errorPosition: number // 错误位置(字符索引)
+  errorLength: number // 错误长度
+  errorDescription: string // 错误描述
+  fixSuggestion: string // 修复建议
+}
+
+// 表达式请求VO
+export interface ExpressionRequestVO {
+  ruleExpression?: string // 规则表达式字符串
+  expressionJson?: any // 表达式JSON结构
+  checkDimension?: string // 检查维度
+  tableType?: number // 表类型
+  ruleCategory?: string // 规则分类
+  tableName?: string // 表名
+  sampleSize?: number // 样本数量
+  useRealData?: boolean // 是否使用真实数据
+  mockData?: Array<Record<string, any>> // 模拟数据
+  variables?: Record<string, any> // 变量映射
+}
+
+// 表达式编译响应VO
+export interface ExpressionCompileRespVO {
+  sqlExpression: string // 生成的SQL表达式
+  isValid: boolean // 是否有效
+  errors: ValidationError[] // 编译错误
+  usedTables: string[] // 使用的表
+  usedFields: string[] // 使用的字段
+  usedFunctions: string[] // 使用的函数
+  estimatedCost: number // 预估执行成本
+}
+
 // 数据源分类配置 VO
 export interface QcBuilderDatasourceCategoryVO {
   id: number // 分类ID
@@ -297,6 +333,11 @@ export const QcFunctionConfigApi = {
   // 导出构建器函数配置 Excel
   exportQcFunctionConfig: async (params) => {
     return await request.download({ url: `/drug/qc-builder/functions/export-excel`, params })
+  },
+
+  // 获得所有函数配置（不分页）
+  getFunctionConfigs: async (): Promise<QcFunctionConfigVO[]> => {
+    return await request.get({ url: `/drug/qc-builder/functions/configs` })
   }
 }
 
@@ -353,6 +394,19 @@ export const QcOperatorConfigApi = {
   // 导出构建器操作符配置 Excel
   exportQcOperatorConfig: async (params) => {
     return await request.download({ url: `/drug/qc-builder/operators/export-excel`, params })
+  },
+
+  // 获得所有操作符配置（不分页）
+  getOperatorConfigs: async (): Promise<QcOperatorConfigVO[]> => {
+    return await request.get({ url: `/drug/qc-builder/operators/configs` })
+  }
+}
+
+// 表达式编译API
+export const QcExpressionApi = {
+  // 编译规则表达式
+  compileRuleExpression: async (data: ExpressionRequestVO): Promise<ExpressionCompileRespVO> => {
+    return await request.post({ url: `/drug/qc-builder/expression/compile`, data })
   }
 }
 
@@ -363,7 +417,8 @@ export default {
   QcBuilderFieldMetadataApi,
   QcBuilderSyncApi,
   QcFunctionConfigApi,
-  QcOperatorConfigApi
+  QcOperatorConfigApi,
+  QcExpressionApi
 }
 
 // 数据源同步相关常量

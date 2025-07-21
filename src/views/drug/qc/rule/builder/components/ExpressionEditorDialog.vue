@@ -445,11 +445,11 @@ import ComponentProperties from './ComponentProperties.vue'
 import SaveTemplateDialog from './SaveTemplateDialog.vue'
 import {
   getDataSourceTree,
-  getFunctionCategories,
-  getOperatorCategories,
   validateExpression,
-  compileRuleExpression
+  compileRuleExpression,
+  previewRuleSQL
 } from '@/api/drug/qc/rule/builder'
+import { QcFunctionConfigApi, QcOperatorConfigApi } from '@/api/drug/qc/builder'
 
 interface Props {
   modelValue: boolean
@@ -458,6 +458,7 @@ interface Props {
 
 interface Emits {
   (e: 'update:modelValue', value: boolean): void
+
   (e: 'confirm', expression: any): void
 }
 
@@ -653,8 +654,8 @@ const loadData = async () => {
   try {
     const [datasourceData, functionData, operatorData] = await Promise.all([
       getDataSourceTree(),
-      getFunctionCategories(),
-      getOperatorCategories()
+      QcFunctionConfigApi.getFunctionConfigs(),
+      QcOperatorConfigApi.getOperatorConfigs()
     ])
 
     datasourceTree.value = datasourceData.data
@@ -907,7 +908,7 @@ const compileExpression = async () => {
       components: expressionComponents.value
     }
 
-    const { data } = await compileRuleExpression({
+    const { data } = await previewRuleSQL({
       expressionJson,
       tableName: 'temp_table'
     })

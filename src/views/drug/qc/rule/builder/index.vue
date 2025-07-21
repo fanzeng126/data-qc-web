@@ -35,51 +35,61 @@
           <!-- 数据源面板 -->
           <el-tab-pane label="数据源" name="datasource">
             <div class="tool-panel">
-              <div class="panel-header">
-                <span>数据源</span>
-                <el-button
-                  size="small"
-                  text
-                  @click="refreshDataSource"
-                  :loading="loadingDataSource"
-                >
-                  <Icon icon="ep:refresh" />
-                </el-button>
-              </div>
               <div class="panel-body">
-                <el-input
-                  v-model="dataSourceFilter"
-                  placeholder="搜索表或字段"
-                  clearable
-                  size="small"
-                  class="mb-10px"
-                >
-                  <template #prefix>
-                    <Icon icon="ep:search" />
-                  </template>
-                </el-input>
+                <!-- 搜索栏和刷新按钮放在一行 -->
+                <div class="search-row">
+                  <el-input
+                    v-model="dataSourceFilter"
+                    placeholder="搜索表或字段"
+                    clearable
+                    size="small"
+                    class="search-input"
+                  >
+                    <template #prefix>
+                      <Icon icon="ep:search" />
+                    </template>
+                  </el-input>
+                  <el-button
+                    size="small"
+                    text
+                    @click="refreshDataSource"
+                    :loading="loadingDataSource"
+                    class="refresh-btn"
+                  >
+                    <Icon icon="ep:refresh" />
+                  </el-button>
+                </div>
 
-                <el-tree
-                  ref="dataSourceTreeRef"
-                  :data="dataSourceTreeData"
-                  :props="treeProps"
-                  :filter-node-method="filterDataSourceNode"
-                  node-key="id"
-                  :default-expand-all="false"
-                  :expand-on-click-node="false"
-                  draggable
-                  @node-drag-start="handleDragStart"
-                >
-                  <template #default="{ node, data }">
-                    <div v-if="node && data" class="tree-node" :class="data.type">
-                      <Icon :icon="getNodeIcon(data)" class="mr-5px" />
-                      <span class="node-label">{{ node.label }}</span>
-                      <span v-if="data.type === 'field'" class="field-type">{{
-                        data.dataType
-                      }}</span>
-                    </div>
-                  </template>
-                </el-tree>
+                <div class="tree-container">
+                  <el-tree
+                    ref="dataSourceTreeRef"
+                    :data="dataSourceTreeData"
+                    :props="treeProps"
+                    :filter-node-method="filterDataSourceNode"
+                    node-key="id"
+                    :default-expand-all="false"
+                    :expand-on-click-node="false"
+                    draggable
+                    @node-drag-start="handleDragStart"
+                  >
+                    <template #default="{ node, data }">
+                      <div v-if="node && data" class="tree-node" :class="data.type">
+                        <Icon :icon="getNodeIcon(data)" class="node-icon" />
+                        <div class="node-content">
+                          <span class="node-label">{{ node.label }}</span>
+                          <!-- 显示英文名称 -->
+                          <span v-if="data.tableName || data.fieldName" class="english-name">
+                            {{ data.tableName || data.fieldName }}
+                          </span>
+                          <!-- 字段类型 -->
+                          <span v-if="data.type === 'field'" class="field-type">{{
+                            data.dataType || data.fieldType
+                          }}</span>
+                        </div>
+                      </div>
+                    </template>
+                  </el-tree>
+                </div>
               </div>
             </div>
           </el-tab-pane>
@@ -87,53 +97,55 @@
           <!-- 函数库面板 -->
           <el-tab-pane label="函数库" name="functions">
             <div class="tool-panel">
-              <div class="panel-header">
-                <span>函数库</span>
-                <el-button size="small" text @click="refreshFunctions">
-                  <Icon icon="ep:refresh" />
-                </el-button>
-              </div>
               <div class="panel-body">
-                <el-input
-                  v-model="functionFilter"
-                  placeholder="搜索函数"
-                  clearable
-                  size="small"
-                  class="mb-10px"
-                >
-                  <template #prefix>
-                    <Icon icon="ep:search" />
-                  </template>
-                </el-input>
-
-                <el-collapse v-model="activeFunctionCategories" accordion>
-                  <el-collapse-item
-                    v-for="category in filteredFunctionCategories"
-                    :key="category.name"
-                    :title="category.name"
-                    :name="category.name"
+                <!-- 搜索栏和刷新按钮放在一行 -->
+                <div class="search-row">
+                  <el-input
+                    v-model="functionFilter"
+                    placeholder="搜索函数"
+                    clearable
+                    size="small"
+                    class="search-input"
                   >
-                    <div class="function-list">
-                      <div
-                        v-for="func in category.functions"
-                        :key="func.id"
-                        class="function-item"
-                        draggable
-                        @dragstart="handleFunctionDragStart($event, func)"
-                        @click="handleFunctionClick(func)"
-                      >
-                        <div class="function-header">
-                          <span class="function-name">{{ func.functionName }}</span>
-                          <el-tag size="small" :type="getFunctionLevelType(func.functionLevel)">
-                            {{ getFunctionLevelText(func.functionLevel) }}
-                          </el-tag>
+                    <template #prefix>
+                      <Icon icon="ep:search" />
+                    </template>
+                  </el-input>
+                  <el-button size="small" text @click="refreshFunctions" class="refresh-btn">
+                    <Icon icon="ep:refresh" />
+                  </el-button>
+                </div>
+
+                <div class="function-container">
+                  <el-collapse v-model="activeFunctionCategories" accordion>
+                    <el-collapse-item
+                      v-for="category in filteredFunctionCategories"
+                      :key="category.name"
+                      :title="category.name"
+                      :name="category.name"
+                    >
+                      <div class="function-list">
+                        <div
+                          v-for="func in category.functions"
+                          :key="func.id"
+                          class="function-item"
+                          draggable
+                          @dragstart="handleFunctionDragStart($event, func)"
+                          @click="handleFunctionClick(func)"
+                        >
+                          <div class="function-header">
+                            <span class="function-name">{{ func.functionName }}</span>
+                            <el-tag size="small" :type="getFunctionLevelType(func.functionLevel)">
+                              {{ getFunctionLevelText(func.functionLevel) }}
+                            </el-tag>
+                          </div>
+                          <div class="function-desc">{{ func.chineseName }}</div>
+                          <div class="function-usage">{{ func.usageExample }}</div>
                         </div>
-                        <div class="function-desc">{{ func.chineseName }}</div>
-                        <div class="function-usage">{{ func.usageExample }}</div>
                       </div>
-                    </div>
-                  </el-collapse-item>
-                </el-collapse>
+                    </el-collapse-item>
+                  </el-collapse>
+                </div>
               </div>
             </div>
           </el-tab-pane>
@@ -141,32 +153,40 @@
           <!-- 操作符面板 -->
           <el-tab-pane label="操作符" name="operators">
             <div class="tool-panel">
-              <div class="panel-header">
-                <span>操作符</span>
-              </div>
               <div class="panel-body">
-                <el-collapse v-model="activeOperatorCategories">
-                  <el-collapse-item
-                    v-for="category in operatorCategories"
-                    :key="category.name"
-                    :title="category.name"
-                    :name="category.name"
-                  >
-                    <div class="operator-list">
-                      <div
-                        v-for="operator in category.operators"
-                        :key="operator.id"
-                        class="operator-item"
-                        draggable
-                        @dragstart="handleOperatorDragStart($event, operator)"
-                        @click="handleOperatorClick(operator)"
-                      >
-                        <div class="operator-symbol">{{ operator.operatorSymbol }}</div>
-                        <div class="operator-name">{{ operator.chineseName }}</div>
+                <div class="operator-container">
+                  <el-collapse v-model="activeOperatorCategories">
+                    <el-collapse-item
+                      v-for="category in operatorCategories"
+                      :key="category.name"
+                      :title="category.name"
+                      :name="category.name"
+                    >
+                      <div class="operator-list">
+                        <div
+                          v-for="operator in category.operators"
+                          :key="operator.id"
+                          class="operator-item"
+                          draggable
+                          @dragstart="handleOperatorDragStart($event, operator)"
+                          @click="handleOperatorClick(operator)"
+                        >
+                          <div class="operator-symbol">{{ operator.operatorSymbol }}</div>
+                          <div class="operator-name">{{ operator.chineseName }}</div>
+                          <!-- 近似等于操作符的特殊处理 -->
+                          <div
+                            v-if="
+                              operator.operatorSymbol === '≈' || operator.operatorSymbol === '≉'
+                            "
+                            class="tolerance-hint"
+                          >
+                            支持误差范围
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </el-collapse-item>
-                </el-collapse>
+                    </el-collapse-item>
+                  </el-collapse>
+                </div>
               </div>
             </div>
           </el-tab-pane>
@@ -267,27 +287,53 @@
                 </div>
 
                 <div v-else class="expression-components">
-                  <!-- 暂时注释掉ExpressionComponent，避免组件引用问题 -->
-                  <!-- <ExpressionComponent
-                    v-for="(component, compIndex) in group.expressionComponents"
-                    :key="`${group.id}-${compIndex}`"
-                    :component="component"
-                    :index="compIndex"
-                    @update="updateComponent(group.id, compIndex, $event)"
-                    @remove="removeComponent(group.id, compIndex)"
-                    @insert="insertComponent(group.id, compIndex, $event)"
-                  /> -->
-                  <!-- 临时显示组件信息 -->
+                  <!-- 表达式组件显示 -->
                   <div
                     v-for="(component, compIndex) in group.expressionComponents"
                     :key="`${group.id}-${compIndex}`"
-                    class="temp-component"
-                    @click="removeComponent(group.id, compIndex)"
+                    class="expression-component"
+                    :class="component.type"
                   >
-                    <span>{{ component.label || component.value }}</span>
-                    <el-button size="small" text type="danger">
-                      <Icon icon="ep:close" />
-                    </el-button>
+                    <div class="component-content">
+                      <Icon :icon="getComponentIcon(component)" class="component-icon" />
+                      <span class="component-label">{{ component.label || component.value }}</span>
+
+                      <!-- 近似等于操作符的误差范围配置 -->
+                      <div
+                        v-if="
+                          (component.value === '≈' || component.value === '≉') &&
+                          component.showTolerance
+                        "
+                        class="tolerance-config"
+                      >
+                        <el-input
+                          v-model="component.tolerance"
+                          placeholder="±0.1"
+                          size="small"
+                          style="width: 80px; margin-left: 8px"
+                          @click.stop
+                        />
+                      </div>
+                    </div>
+
+                    <div class="component-actions">
+                      <el-button
+                        size="small"
+                        text
+                        type="primary"
+                        @click.stop="editComponent(group.id, compIndex)"
+                      >
+                        <Icon icon="ep:edit" />
+                      </el-button>
+                      <el-button
+                        size="small"
+                        text
+                        type="danger"
+                        @click.stop="removeComponent(group.id, compIndex)"
+                      >
+                        <Icon icon="ep:close" />
+                      </el-button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -371,21 +417,11 @@
                     <div class="variable-help">
                       <p><strong>可用变量：</strong></p>
                       <ul>
-                        <li
-                          ><code>${{ tableName }}</code> - 表名</li
-                        >
-                        <li
-                          ><code>${{ fieldName }}</code> - 字段名</li
-                        >
-                        <li
-                          ><code>${{ functionName.result }}</code> - 函数返回值</li
-                        >
-                        <li
-                          ><code>${{ COUNT.result }}</code> - 计数结果</li
-                        >
-                        <li
-                          ><code>${{ HAS_NULL_FIELDS.nullFieldsList }}</code> - 空值字段列表</li
-                        >
+                        <li><code>${tableName}</code> - 表名</li>
+                        <li><code>${fieldName}</code> - 字段名</li>
+                        <li><code>${functionName.result}</code> - 函数返回值</li>
+                        <li><code>${COUNT.result}</code> - 计数结果</li>
+                        <li><code>${HAS_NULL_FIELDS.nullFieldsList}</code> - 空值字段列表</li>
                       </ul>
                     </div>
                   </el-popover>
@@ -413,7 +449,8 @@
 
     <!-- 表达式预览对话框 -->
     <!-- 暂时注释掉对话框组件，避免组件引用问题 -->
-    <!-- <ExpressionPreviewDialog
+    <!--
+    <ExpressionPreviewDialog
       v-model="showPreviewDialog"
       :rule-form="ruleForm"
       :condition-groups="conditionGroups"
@@ -423,7 +460,8 @@
       v-model="showTestDialog"
       :rule-form="ruleForm"
       :condition-groups="conditionGroups"
-    /> -->
+    />
+    -->
   </div>
 </template>
 
@@ -439,19 +477,15 @@ import { useRoute, useRouter } from 'vue-router'
 
 import {
   getDataSourceCategories,
-  getTablesByCategory,
-  getFieldsByTable,
-  getFunctionConfigs,
-  getOperatorConfigs,
   createQcRule,
   updateQcRule,
-  getQcRule,
-  compileRuleExpression
+  getQcRule
 } from '@/api/drug/qc/rule/builder'
+
+import { QcFunctionConfigApi, QcOperatorConfigApi, QcExpressionApi } from '@/api/drug/qc/builder'
 
 // 路由和基础状态
 const route = useRoute()
-const router = useRouter()
 const isEdit = computed(() => !!route.params.id)
 const saving = ref(false)
 
@@ -526,7 +560,7 @@ const filteredFunctionCategories = computed(() => {
     .filter((category) => category.functions.length > 0)
 })
 
-// 操作符数据
+// 操作符数据 - 添加近似等于操作符
 const operatorCategories = ref([])
 
 // 对话框状态
@@ -549,51 +583,17 @@ onMounted(async () => {
   }
 })
 
-// 数据加载方法
+// 数据加载方法 - 优化版，直接使用树形数据
 const loadDataSource = async () => {
   try {
     loadingDataSource.value = true
-    const { data: categories } = await getDataSourceCategories()
+    const { treeData: response } = await getDataSourceCategories()
 
-    const treeData = []
-    for (const category of categories) {
-      const categoryNode = {
-        id: `category_${category.id}`,
-        label: category.categoryName,
-        type: 'category',
-        children: []
-      }
-
-      const { data: tables } = await getTablesByCategory(category.id)
-      for (const table of tables) {
-        const tableNode = {
-          id: `table_${table.id}`,
-          label: table.chineseName || table.tableName,
-          type: 'table',
-          tableName: table.tableName,
-          children: []
-        }
-
-        const { data: fields } = await getFieldsByTable(table.id)
-        for (const field of fields) {
-          tableNode.children.push({
-            id: `field_${field.id}`,
-            label: field.chineseName || field.fieldName,
-            type: 'field',
-            fieldName: field.fieldName,
-            tableName: table.tableName,
-            dataType: field.dataType,
-            isRequired: field.isRequired
-          })
-        }
-
-        categoryNode.children.push(tableNode)
-      }
-
-      treeData.push(categoryNode)
-    }
+    // 直接使用返回的树形数据，但需要转换字段名以符合组件需求
+    const treeData = processTreeData(response || [])
 
     dataSourceTreeData.value = treeData
+    console.log(dataSourceTreeData.value)
   } catch (error) {
     console.error('加载数据源失败:', error)
     ElMessage.error('加载数据源失败')
@@ -602,14 +602,44 @@ const loadDataSource = async () => {
   }
 }
 
+// 处理树形数据，转换字段名并添加必要属性
+const processTreeData = (treeData) => {
+  return treeData.map((node) => {
+    const processedNode = {
+      id: node.id,
+      label: node.label,
+      type: node.type,
+      icon: node.icon,
+      description: node.description,
+      isActive: node.isActive,
+      sortOrder: node.sortOrder,
+      // 保留原有字段
+      categoryCode: node.categoryCode,
+      tableName: node.tableName,
+      fieldName: node.fieldName,
+      fieldType: node.fieldType,
+      // 为了兼容现有逻辑，添加一些字段映射
+      dataType: node.fieldType, // 字段类型映射
+      isRequired: node.fieldName ? true : undefined // 字段是否必填，这里可以根据实际情况调整
+    }
+
+    // 递归处理子节点
+    if (node.children && node.children.length > 0) {
+      processedNode.children = processTreeData(node.children)
+    }
+
+    return processedNode
+  })
+}
+
 const loadFunctions = async () => {
   try {
-    const { data } = await getFunctionConfigs()
+    const data = await QcFunctionConfigApi.getFunctionConfigs()
 
     // 按分类分组
     const categoryMap = new Map()
-    if (data && data.list) {
-      data.list.forEach((func) => {
+    if (data && Array.isArray(data)) {
+      data.forEach((func) => {
         if (!categoryMap.has(func.functionCategory)) {
           categoryMap.set(func.functionCategory, {
             name: getCategoryName(func.functionCategory),
@@ -629,12 +659,12 @@ const loadFunctions = async () => {
 
 const loadOperators = async () => {
   try {
-    const { data } = await getOperatorConfigs()
+    const data = await QcOperatorConfigApi.getOperatorConfigs()
 
     // 按分类分组
     const categoryMap = new Map()
-    if (data && data.list) {
-      data.list.forEach((operator) => {
+    if (data && Array.isArray(data)) {
+      data.forEach((operator) => {
         if (!categoryMap.has(operator.operatorCategory)) {
           categoryMap.set(operator.operatorCategory, {
             name: getCategoryName(operator.operatorCategory),
@@ -644,6 +674,32 @@ const loadOperators = async () => {
         categoryMap.get(operator.operatorCategory).operators.push(operator)
       })
     }
+
+    // 添加近似等于操作符
+    if (!categoryMap.has('APPROXIMATION')) {
+      categoryMap.set('APPROXIMATION', {
+        name: '近似比较',
+        operators: []
+      })
+    }
+
+    const approximationCategory = categoryMap.get('APPROXIMATION')
+    approximationCategory.operators.push(
+      {
+        id: 'approx_equal',
+        operatorSymbol: '≈',
+        chineseName: '近似等于',
+        operatorCategory: 'APPROXIMATION',
+        supportsTolerance: true
+      },
+      {
+        id: 'not_approx_equal',
+        operatorSymbol: '≉',
+        chineseName: '不近似等于',
+        operatorCategory: 'APPROXIMATION',
+        supportsTolerance: true
+      }
+    )
 
     operatorCategories.value = Array.from(categoryMap.values())
   } catch (error) {
@@ -719,9 +775,23 @@ const setActiveGroup = (index) => {
   activeGroupIndex.value = index
 }
 
+// 判断节点是否可拖拽
+const isDraggableNode = (node) => {
+  if (!node || !node.data) return false
+  const nodeType = node.data.type
+  // 只允许表、字段拖拽，分类不允许拖拽
+  return nodeType === 'table' || nodeType === 'field'
+}
+
 // 拖拽处理
 const handleDragStart = (event, node) => {
   if (!node || !node.data) return
+
+  // 检查是否允许拖拽
+  if (!isDraggableNode(node)) {
+    event.preventDefault()
+    return
+  }
 
   event.dataTransfer.setData(
     'application/json',
@@ -741,6 +811,8 @@ const handleFunctionDragStart = (event, func) => {
       data: func
     })
   )
+  // 设置拖拽效果
+  event.dataTransfer.effectAllowed = 'copy'
 }
 
 const handleOperatorDragStart = (event, operator) => {
@@ -751,16 +823,30 @@ const handleOperatorDragStart = (event, operator) => {
       data: operator
     })
   )
+  // 设置拖拽效果
+  event.dataTransfer.effectAllowed = 'copy'
 }
 
 const handleDrop = (event, groupId) => {
   event.preventDefault()
+  event.currentTarget.classList.remove('drag-over')
 
   try {
-    const dragData = JSON.parse(event.dataTransfer.getData('application/json'))
+    const dragDataString = event.dataTransfer.getData('application/json')
+
+    // 检查是否有有效的拖拽数据
+    if (!dragDataString || dragDataString.trim() === '') {
+      console.warn('拖拽数据为空')
+      return
+    }
+
+    const dragData = JSON.parse(dragDataString)
     const group = conditionGroups.value.find((g) => g.id === groupId)
 
-    if (!group) return
+    if (!group) {
+      console.warn('未找到目标条件组')
+      return
+    }
 
     // 确保 expressionComponents 存在
     if (!group.expressionComponents) {
@@ -774,15 +860,15 @@ const handleDrop = (event, groupId) => {
         if (dragData.nodeType === 'field') {
           component = {
             type: 'field',
-            value: `${dragData.data.tableName}.${dragData.data.fieldName}`,
-            label: dragData.data.label,
-            dataType: dragData.data.dataType
+            value: `${dragData.data.tableName || ''}.${dragData.data.fieldName || ''}`,
+            label: dragData.data.label || '',
+            dataType: dragData.data.dataType || dragData.data.fieldType || ''
           }
         } else if (dragData.nodeType === 'table') {
           component = {
             type: 'table',
-            value: dragData.data.tableName,
-            label: dragData.data.label
+            value: dragData.data.tableName || '',
+            label: dragData.data.label || ''
           }
         }
         break
@@ -790,8 +876,8 @@ const handleDrop = (event, groupId) => {
       case 'function':
         component = {
           type: 'function',
-          value: dragData.data.functionName,
-          label: dragData.data.chineseName,
+          value: dragData.data.functionName || '',
+          label: dragData.data.chineseName || dragData.data.displayName || '',
           parameters: [],
           config: dragData.data
         }
@@ -800,37 +886,59 @@ const handleDrop = (event, groupId) => {
       case 'operator':
         component = {
           type: 'operator',
-          value: dragData.data.operatorSymbol,
-          label: dragData.data.chineseName,
-          config: dragData.data
+          value: dragData.data.operatorSymbol || '',
+          label: dragData.data.chineseName || dragData.data.displayName || '',
+          config: dragData.data,
+          // 近似等于操作符的特殊处理
+          showTolerance: dragData.data.supportsTolerance || false,
+          tolerance: dragData.data.supportsTolerance ? '±0.1' : undefined
         }
         break
+
+      default:
+        console.warn('未知的拖拽类型:', dragData.type)
+        return
     }
 
-    if (component) {
+    if (component && component.value) {
       group.expressionComponents.push(component)
+      console.log('成功添加组件:', component)
+      ElMessage.success(`已添加${component.label || component.value}`)
+    } else {
+      console.warn('创建组件失败，数据不完整:', dragData)
+      ElMessage.warning('拖拽失败：数据不完整')
     }
   } catch (error) {
     console.error('拖拽数据解析失败:', error)
+    ElMessage.error('拖拽失败：数据解析错误')
   }
 }
 
 const handleDragOver = (event) => {
   event.preventDefault()
+  event.dataTransfer.dropEffect = 'copy'
   event.currentTarget.classList.add('drag-over')
 }
 
 const handleDragLeave = (event) => {
-  event.currentTarget.classList.remove('drag-over')
+  // 只有当鼠标真正离开容器时才移除样式
+  if (!event.currentTarget.contains(event.relatedTarget)) {
+    event.currentTarget.classList.remove('drag-over')
+  }
 }
 
 // 工具方法
 const getNodeIcon = (data) => {
   if (!data) return 'ep:document'
 
+  // 优先使用数据中的图标
+  if (data.icon) {
+    return data.icon
+  }
+
   switch (data.type) {
     case 'category':
-      return 'ep:folder'
+      return 'fa-solid:database'
     case 'table':
       return 'ep:grid'
     case 'field':
@@ -840,9 +948,24 @@ const getNodeIcon = (data) => {
   }
 }
 
+const getComponentIcon = (component) => {
+  switch (component.type) {
+    case 'field':
+      return 'ep:key'
+    case 'table':
+      return 'ep:grid'
+    case 'function':
+      return 'ep:cpu'
+    case 'operator':
+      return 'ep:operation'
+    default:
+      return 'ep:document'
+  }
+}
+
 const getFunctionLevelType = (level) => {
-  const types = { 1: '', 2: 'warning', 3: 'danger' }
-  return types[level] || ''
+  const types = { 1: 'info', 2: 'warning', 3: 'danger' }
+  return types[level] || 'info'
 }
 
 const getFunctionLevelText = (level) => {
@@ -885,7 +1008,8 @@ const getCategoryName = (category) => {
     SET: '集合操作符',
     PATTERN: '模式匹配',
     ARITHMETIC: '算术操作符',
-    RANGE: '范围操作符'
+    RANGE: '范围操作符',
+    APPROXIMATION: '近似比较'
   }
   return names[category] || category
 }
@@ -896,7 +1020,11 @@ const refreshFunctions = () => loadFunctions()
 
 const filterDataSourceNode = (value, data) => {
   if (!value || !data) return true
-  return data.label.includes(value)
+  return (
+    data.label.includes(value) ||
+    (data.tableName && data.tableName.includes(value)) ||
+    (data.fieldName && data.fieldName.includes(value))
+  )
 }
 
 const handleFunctionClick = (func) => {
@@ -907,6 +1035,20 @@ const handleFunctionClick = (func) => {
 const handleOperatorClick = (operator) => {
   // 点击操作符时的处理逻辑
   console.log('操作符点击:', operator)
+}
+
+const editComponent = (groupId, compIndex) => {
+  const group = conditionGroups.value.find((g) => g.id === groupId)
+  if (group && group.expressionComponents && group.expressionComponents[compIndex]) {
+    const component = group.expressionComponents[compIndex]
+    // 对于近似等于操作符，切换显示误差范围输入
+    if (component.value === '≈' || component.value === '≉') {
+      component.showTolerance = !component.showTolerance
+      if (component.showTolerance && !component.tolerance) {
+        component.tolerance = '±0.1'
+      }
+    }
+  }
 }
 
 const updateComponent = (groupId, compIndex, newComponent) => {
@@ -938,6 +1080,8 @@ const generateExpressionText = (components) => {
       if (comp.type === 'function') {
         const params = comp.parameters ? comp.parameters.map((p) => p.value).join(', ') : ''
         return `${comp.value}(${params})`
+      } else if (comp.type === 'operator' && comp.tolerance) {
+        return `${comp.value}(${comp.tolerance})`
       }
       return comp.value || comp.label || ''
     })
@@ -951,7 +1095,7 @@ const compileExpression = async (group) => {
       components: group.expressionComponents || []
     }
 
-    const { data } = await compileRuleExpression({
+    const data = await QcExpressionApi.compileRuleExpression({
       expressionJson,
       tableName: 'temp_table'
     })
@@ -960,8 +1104,8 @@ const compileExpression = async (group) => {
       isValid: data.isValid,
       message: data.isValid
         ? '表达式语法正确'
-        : data.validationErrors
-          ? data.validationErrors.join('; ')
+        : data.errors && data.errors.length > 0
+          ? data.errors.map((err) => err.errorDescription).join('; ')
           : '编译失败'
     }
   } catch (error) {
@@ -1084,22 +1228,6 @@ watch(dataSourceFilter, (val) => {
       display: flex;
       flex-direction: column;
 
-      .sidebar-tabs {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-
-        :deep(.el-tabs__content) {
-          flex: 1;
-          overflow: hidden;
-        }
-
-        :deep(.el-tab-pane) {
-          height: 100%;
-          overflow: hidden;
-        }
-      }
-
       .tool-panel {
         height: 100%;
         display: flex;
@@ -1117,7 +1245,54 @@ watch(dataSourceFilter, (val) => {
         .panel-body {
           flex: 1;
           padding: 16px;
-          overflow-y: auto;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+
+          /* 搜索栏和刷新按钮一行布局 */
+          .search-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-shrink: 0;
+
+            .search-input {
+              flex: 1;
+            }
+
+            .refresh-btn {
+              flex-shrink: 0;
+            }
+          }
+
+          /* 容器支持滚动 */
+          .tree-container,
+          .function-container,
+          .operator-container {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+
+            /* 自定义滚动条样式 */
+            &::-webkit-scrollbar {
+              width: 6px;
+            }
+
+            &::-webkit-scrollbar-track {
+              background: #f1f1f1;
+              border-radius: 3px;
+            }
+
+            &::-webkit-scrollbar-thumb {
+              background: #c1c1c1;
+              border-radius: 3px;
+
+              &:hover {
+                background: #a8a8a8;
+              }
+            }
+          }
         }
       }
     }
@@ -1191,12 +1366,30 @@ watch(dataSourceFilter, (val) => {
           .expression-canvas {
             min-height: 120px;
             padding: 16px;
-            border: 2px dashed transparent;
-            transition: all 0.3s;
+            border: 2px dashed #d9d9d9;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            position: relative;
 
             &.drag-over {
               border-color: #409eff;
-              background-color: rgba(64, 158, 255, 0.05);
+              background-color: rgba(64, 158, 255, 0.08);
+              box-shadow: inset 0 0 0 1px rgba(64, 158, 255, 0.2);
+
+              &::before {
+                content: '松开鼠标添加到表达式';
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(64, 158, 255, 0.9);
+                color: white;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-size: 14px;
+                z-index: 10;
+                pointer-events: none;
+              }
             }
 
             .empty-canvas {
@@ -1210,6 +1403,14 @@ watch(dataSourceFilter, (val) => {
               .empty-icon {
                 font-size: 32px;
                 margin-bottom: 8px;
+                opacity: 0.6;
+              }
+
+              p {
+                margin: 0;
+                font-size: 14px;
+                text-align: center;
+                line-height: 1.4;
               }
             }
 
@@ -1218,86 +1419,135 @@ watch(dataSourceFilter, (val) => {
               flex-wrap: wrap;
               gap: 8px;
               align-items: center;
-            }
-
-            .temp-component {
-              display: flex;
-              align-items: center;
-              gap: 4px;
-              padding: 4px 8px;
-              background: #f0f0f0;
-              border-radius: 4px;
-              cursor: pointer;
+              min-height: 40px;
             }
           }
 
-          .expression-preview {
-            padding: 16px;
-            background: #f8f9fa;
-            border-top: 1px solid #e4e7ed;
+          .expression-component {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 12px;
+            background: #f0f0f0;
+            border: 1px solid #d9d9d9;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
 
-            .preview-header {
+            &:hover {
+              background: #e6f7ff;
+              border-color: #409eff;
+            }
+
+            &.field {
+              background: #e6f7ff;
+              border-color: #91d5ff;
+            }
+
+            &.function {
+              background: #f6ffed;
+              border-color: #b7eb8f;
+            }
+
+            &.operator {
+              background: #fff7e6;
+              border-color: #ffd591;
+            }
+
+            .component-content {
               display: flex;
               align-items: center;
-              justify-content: space-between;
-              margin-bottom: 8px;
-              font-weight: 500;
+              gap: 4px;
+
+              .component-icon {
+                font-size: 14px;
+              }
+
+              .component-label {
+                font-size: 13px;
+                font-weight: 500;
+              }
+
+              .tolerance-config {
+                display: flex;
+                align-items: center;
+              }
             }
 
-            .preview-content {
-              background: #2d3748;
-              color: #e2e8f0;
-              padding: 12px;
-              border-radius: 4px;
-              font-family: 'Fira Code', Consolas, monospace;
-              font-size: 14px;
-              line-height: 1.5;
-              overflow-x: auto;
+            .component-actions {
+              display: flex;
+              gap: 2px;
+              margin-left: 8px;
             }
+          }
+        }
 
-            .compilation-result {
-              margin-top: 12px;
-            }
+        .expression-preview {
+          padding: 16px;
+          background: #f8f9fa;
+          border-top: 1px solid #e4e7ed;
+
+          .preview-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-weight: 500;
+          }
+
+          .preview-content {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 12px;
+            border-radius: 4px;
+            font-family: 'Fira Code', Consolas, monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            overflow-x: auto;
+          }
+
+          .compilation-result {
+            margin-top: 12px;
           }
         }
       }
     }
+  }
 
-    .builder-aside {
-      width: 300px;
-      background: white;
-      border-left: 1px solid #e4e7ed;
+  .builder-aside {
+    width: 300px;
+    background: white;
+    border-left: 1px solid #e4e7ed;
 
-      .config-panel {
-        height: 100%;
-        display: flex;
-        flex-direction: column;
+    .config-panel {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
 
-        .panel-header {
-          padding: 16px;
-          border-bottom: 1px solid #e4e7ed;
-          font-weight: 500;
-        }
-
-        .panel-body {
-          flex: 1;
-          padding: 16px;
-          overflow-y: auto;
-        }
+      .panel-header {
+        padding: 16px;
+        border-bottom: 1px solid #e4e7ed;
+        font-weight: 500;
       }
 
-      .empty-config {
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        color: #909399;
+      .panel-body {
+        flex: 1;
+        padding: 16px;
+        overflow-y: auto;
+      }
+    }
 
-        .empty-icon {
-          font-size: 48px;
-          margin-bottom: 16px;
-        }
+    .empty-config {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #909399;
+
+      .empty-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
       }
     }
   }
@@ -1308,30 +1558,105 @@ watch(dataSourceFilter, (val) => {
   display: flex;
   align-items: center;
   width: 100%;
+  padding: 4px 0; /* 增加表和字段间的间距 */
+  cursor: default;
 
-  .node-label {
-    flex: 1;
-    margin-right: 8px;
+  &.draggable-node {
+    cursor: grab;
+
+    &:hover {
+      background-color: rgba(64, 158, 255, 0.1);
+      border-radius: 4px;
+    }
   }
 
-  .field-type {
-    font-size: 12px;
-    color: #909399;
-    background: #f0f0f0;
-    padding: 2px 6px;
-    border-radius: 4px;
+  .node-icon {
+    margin-right: 8px;
+    font-size: 14px;
+    color: #409eff;
+    flex-shrink: 0;
+  }
+
+  .node-content {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    flex: 1;
+    min-width: 0;
+
+    .node-main {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      margin-bottom: 2px;
+
+      .node-label {
+        font-weight: 500;
+        font-size: 13px;
+        line-height: 1.3;
+        flex: 1;
+        min-width: 0;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+      }
+
+      .field-type {
+        font-size: 11px;
+        color: #909399;
+        background: #f0f0f0;
+        padding: 2px 6px;
+        border-radius: 3px;
+        margin-left: 8px;
+        flex-shrink: 0;
+        font-family: 'Fira Code', Consolas, monospace;
+      }
+    }
+
+    .english-name {
+      font-size: 11px;
+      color: #909399;
+      font-family: 'Fira Code', Consolas, monospace;
+      line-height: 1.2;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+      width: 100%;
+    }
   }
 
   &.field {
-    font-size: 14px;
+    margin-left: 12px; /* 字段缩进 */
+
+    .node-icon {
+      color: #52c41a;
+    }
   }
 
   &.table {
-    font-weight: 500;
+    margin-bottom: 4px; /* 表之间的间距 */
+
+    .node-icon {
+      color: #1890ff;
+    }
+
+    .node-label {
+      font-weight: 600;
+    }
   }
 
   &.category {
-    font-weight: 600;
+    margin-bottom: 6px; /* 分类间距 */
+
+    .node-icon {
+      color: #722ed1;
+    }
+
+    .node-label {
+      font-weight: 600;
+      color: #722ed1;
+    }
   }
 }
 
@@ -1412,6 +1737,16 @@ watch(dataSourceFilter, (val) => {
   .operator-name {
     font-size: 12px;
     color: #606266;
+    margin-bottom: 2px;
+  }
+
+  .tolerance-hint {
+    font-size: 10px;
+    color: #409eff;
+    background: rgba(64, 158, 255, 0.1);
+    padding: 2px 4px;
+    border-radius: 2px;
+    margin-top: 4px;
   }
 }
 
