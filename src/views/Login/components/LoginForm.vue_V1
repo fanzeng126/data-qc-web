@@ -15,7 +15,7 @@
           <LoginFormTitle style="width: 100%" />
         </el-form-item>
       </el-col>
-      <el-col :span="24" style="padding-right: 10px; padding-left: 10px">
+      <!-- <el-col :span="24" style="padding-right: 10px; padding-left: 10px">
         <el-form-item v-if="loginData.tenantEnable === 'true'" prop="tenantName">
           <el-input
             v-model="loginData.loginForm.tenantName"
@@ -25,7 +25,7 @@
             type="primary"
           />
         </el-form-item>
-      </el-col>
+      </el-col> -->
       <el-col :span="24" style="padding-right: 10px; padding-left: 10px">
         <el-form-item prop="username">
           <el-input
@@ -58,7 +58,7 @@
                 {{ t('login.remember') }}
               </el-checkbox>
             </el-col>
-            <el-col :offset="6" :span="12">
+            <!-- <el-col :offset="6" :span="12">
               <el-link
                 style="float: right"
                 type="primary"
@@ -66,7 +66,7 @@
               >
                 {{ t('login.forgetPassword') }}
               </el-link>
-            </el-col>
+            </el-col> -->
           </el-row>
         </el-form-item>
       </el-col>
@@ -89,34 +89,34 @@
         mode="pop"
         @success="handleLogin"
       />
-      <el-col :span="24" style="padding-right: 10px; padding-left: 10px">
-        <el-form-item>
-          <el-row :gutter="5" justify="space-between" style="width: 100%">
-            <el-col :span="8">
+      <!-- <el-col :span="24" style="padding-right: 10px; padding-left: 10px">
+        <el-form-item> -->
+          <!-- <el-row :gutter="5" justify="space-between" style="width: 100%"> -->
+            <!-- <el-col :span="8">
               <XButton
                 :title="t('login.btnMobile')"
                 class="w-[100%]"
                 @click="setLoginState(LoginStateEnum.MOBILE)"
               />
-            </el-col>
-            <el-col :span="8">
+            </el-col> -->
+            <!-- <el-col :span="8">
               <XButton
                 :title="t('login.btnQRCode')"
                 class="w-[100%]"
                 @click="setLoginState(LoginStateEnum.QR_CODE)"
               />
-            </el-col>
-            <el-col :span="8">
+            </el-col> -->
+            <!-- <el-col :span="8">
               <XButton
                 :title="t('login.btnRegister')"
                 class="w-[100%]"
                 @click="setLoginState(LoginStateEnum.REGISTER)"
               />
-            </el-col>
-          </el-row>
-        </el-form-item>
-      </el-col>
-      <el-divider content-position="center">{{ t('login.otherLogin') }}</el-divider>
+            </el-col> -->
+          <!-- </el-row> -->
+        <!-- </el-form-item>
+      </el-col> -->
+      <!-- <el-divider content-position="center">{{ t('login.otherLogin') }}</el-divider>
       <el-col :span="24" style="padding-right: 10px; padding-left: 10px">
         <el-form-item>
           <div class="w-[100%] flex justify-between">
@@ -131,7 +131,22 @@
             />
           </div>
         </el-form-item>
-      </el-col>
+      </el-col> -->
+      <!-- <el-divider content-position="center">萌新必读</el-divider>
+      <el-col :span="24" style="padding-right: 10px; padding-left: 10px">
+        <el-form-item>
+          <div class="w-[100%] flex justify-between">
+            <el-link href="https://doc.iocoder.cn/" target="_blank">📚开发指南</el-link>
+            <el-link href="https://doc.iocoder.cn/video/" target="_blank">🔥视频教程</el-link>
+            <el-link href="https://www.iocoder.cn/Interview/good-collection/" target="_blank">
+              ⚡面试手册
+            </el-link>
+            <el-link href="http://static.yudao.iocoder.cn/mp/Aix9975.jpeg" target="_blank">
+              🤝外包咨询
+            </el-link>
+          </div>
+        </el-form-item>
+      </el-col> -->
     </el-row>
   </el-form>
 </template>
@@ -186,7 +201,9 @@ const loginData = reactive({
 
 const socialList = [
   { icon: 'ant-design:wechat-filled', type: 30 },
-  { icon: 'ant-design:dingtalk-circle-filled', type: 20 }
+  { icon: 'ant-design:dingtalk-circle-filled', type: 20 },
+  { icon: 'ant-design:github-filled', type: 0 },
+  { icon: 'ant-design:alipay-circle-filled', type: 0 }
 ]
 
 // 获取验证码
@@ -199,6 +216,7 @@ const getCode = async () => {
     // 弹出验证码
     verify.value.show()
   }
+  // loginData.captchaEnable = 'false';
 }
 // 获取租户 ID
 const getTenantId = async () => {
@@ -295,8 +313,8 @@ const doSocialLogin = async (type: number) => {
       }
     }
     // 计算 redirectUri
-    // tricky: type、redirect需要先encode一次，否则钉钉回调会丢失。
-    // 配合 Login/SocialLogin.vue#getUrlValue() 使用
+    // 注意: type、redirect 需要先 encode 一次，否则钉钉回调会丢失。
+    // 配合 social-login.vue#getUrlValue() 使用
     const redirectUri =
       location.origin +
       '/social-login?' +

@@ -396,13 +396,27 @@ const remainingRouter: AppRouteRecordRaw[] = [
     ]
   },
   {
-    path: '/drug/qc/rule/builder/:id?',
-    name: 'QcRuleBuilder',
-    component: () => import('@/views/drug/qc/rule/builder/index.vue'),
+    path: '/drug-qc',
+    component: Layout,
+    name: 'DrugQcCenter',
     meta: {
-      title: '质控规则构建器',
-      activeMenu: '/drug/qc/rule'
-    }
+      hidden: true
+    },
+    children: [
+      {
+        path: 'rule/builder/:id?',
+        name: 'QcRuleBuilder',
+        component: () => import('@/views/drug/qc/rule/builder/index.vue'),
+        meta: {
+          title: '质控规则构建器',
+          icon: 'ep:cpu',
+          noCache: true,
+          canTo: true,
+          hidden: true,
+          activeMenu: '/drug/qc/rule'
+        }
+      }
+    ]
   },
   {
     path: '/drug/ypid',

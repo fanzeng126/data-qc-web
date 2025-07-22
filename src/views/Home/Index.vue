@@ -92,7 +92,13 @@
             </div>
           </template>
 
-          <el-table :data="recentTasks" v-loading="tasksLoading" stripe style="width: 100%">
+          <el-table
+            :data="recentTasks"
+            v-loading="tasksLoading"
+            :stripe="true"
+            style="width: 100%"
+            class="tasks-table"
+          >
             <template #empty>
               <el-empty description="暂无导入任务" :image-size="80">
                 <el-button type="primary" @click="handleQuickImport">开始导入</el-button>
@@ -411,8 +417,7 @@ const loadRecentTasks = async () => {
   tasksLoading.value = true
   try {
     const response = await DashboardApi.getRecentTasks(10)
-    console.log('Recent tasks response:', response)
-    
+
     // 正确解析返回的数据结构
     recentTasks.value = response.data?.list || response.list || response || []
   } catch (error) {
@@ -426,8 +431,7 @@ const loadAlerts = async () => {
   alertsLoading.value = true
   try {
     const response = await DashboardApi.getSystemAlerts(5)
-    console.log('System alerts response:', response)
-    
+
     // 正确解析返回的数据结构
     alerts.value = response.data?.list || response.list || response || []
     unreadAlerts.value = response.data?.unreadCount || response.unreadCount || 0

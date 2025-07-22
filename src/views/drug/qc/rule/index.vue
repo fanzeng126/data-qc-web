@@ -18,7 +18,6 @@
           <el-icon><Download /></el-icon>
           导出规则
         </el-button>
-        <el-button link @click="handleBuilder()"> 表达式构建器 </el-button>
       </template>
     </PageHeader>
 
@@ -594,20 +593,16 @@ const handleExport = async () => {
 }
 
 // ========================= 业务操作方法 =========================
-// todo 测试
-const handleBuilder = (ruleId?: number) => {
-  if (ruleId) {
-    // 编辑规则
-    router.push(`/drug/qc/rule/builder/${ruleId}`)
-  } else {
-    // 新建规则
-    router.push('/drug/qc/rule/builder')
-  }
-}
 /** 打开表单对话框 */
 const formRef = ref()
 const openForm = (type: string, id?: number) => {
-  formRef.value.open(type, id)
+  if (type === 'create') {
+    // 新增规则跳转到构建器页面
+    router.push('/drug-qc/rule/builder')
+  } else {
+    // 编辑规则也跳转到构建器页面，传递id
+    router.push(`/drug-qc/rule/builder/${id}`)
+  }
 }
 
 /** 表单成功处理 */
