@@ -53,5 +53,13 @@ export const YpidMatchTaskApi = {
 
   importAndCreateYpidMatchTask: async (data:FormData) => {
     return await request.upload({url: '/drug/ypid-match-task/importAndCreate', data: data})
+  },
+
+  reVerify: async (data:FormData) => {
+    return await request.upload({url: '/drug/ypid-match-task/re-verify', data: data})
+  },
+
+  list: async () => {
+    return await request.get({url: '/drug/ypid-match-task/list'})
   }
 }

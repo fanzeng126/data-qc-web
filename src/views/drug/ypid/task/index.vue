@@ -57,6 +57,10 @@
             <Icon icon="ep:upload" />
             从模板导入创建
           </el-button>
+          <el-button type="success" @click="createFromTemplate2">
+            <Icon icon="ep:upload" />
+           导入result
+          </el-button>
           <el-button @click="downloadTemplate">
             <Icon icon="ep:download" />
             下载导入模板
@@ -222,6 +226,39 @@
       </template>
     </el-dialog>
 
+    <!-- 从模板导入创建对话框 -->
+    <el-dialog v-model="templateCreateVisible2" title="从模板导入创建YPID匹配任务" width="600px">
+      <el-form :model="templateCreateForm" label-width="120px">
+        <el-form-item label="任务名称">
+          <el-input v-model="templateCreateForm.taskName" placeholder="请输入任务名称" />
+        </el-form-item>
+        <el-form-item label="上传文件">
+          <el-upload
+            ref="uploadRef2"
+            v-model:file-list="uploadedFile2"
+            :auto-upload="false"
+            :limit="1"
+            accept=".xlsx,.xls"
+            action="none"
+          >
+            <el-button type="primary">
+              <Icon icon="ep:upload" />
+              选择Excel文件
+            </el-button>
+            <template #tip>
+              <div class="el-upload__tip">只支持xlsx/xls格式文件</div>
+            </template>
+          </el-upload>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="templateCreateVisible2 = false">取消</el-button>
+        <el-button type="primary" @click="handlerTemplateCreate2" :loading="templateCreateLoading2">
+          创建任务
+        </el-button>
+      </template>
+    </el-dialog>
+
     <TemplateDownloadDialog ref="downloadDialog"/>
   </div>
 </template>
@@ -283,8 +320,12 @@ const qcCreateForm = reactive({
 // 从模板导入创建相关
 const templateCreateVisible = ref(false)
 const templateCreateLoading = ref(false)
+const templateCreateVisible2 = ref(false)
+const templateCreateLoading2 = ref(false)
 const uploadRef = ref()
+const uploadRef2 = ref()
 const uploadedFile = ref<UploadUserFile[]>([])
+const uploadedFile2 = ref<UploadUserFile[]>([])
 const templateCreateForm = reactive({
   taskName: '',
   autoApplyEnabled: true,
@@ -417,6 +458,9 @@ const handleQcCreate = async () => {
 const createFromTemplate = () => {
   templateCreateVisible.value = true
 }
+const createFromTemplate2 = () => {
+  templateCreateVisible2.value = true
+}
 
 // 处理文件选择
 // const handleFileChange = (file: any) => {
@@ -431,7 +475,11 @@ const getCurrentDateString = () => {
 
     return `${year}${month}${day}`;
 }
-
+const handlerTemplateCreate2 = async () => {
+  const form = new FormData()
+  form.append('file', uploadedFile2.value[0].raw as Blob)
+  await YpidMatchTaskApi.reVerify(form)
+}
 // 处理模板创建
 const handleTemplateCreate = async () => {
   if (!templateCreateForm.taskName || !(uploadedFile.value.length > 0)) {
