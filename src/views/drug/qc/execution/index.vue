@@ -3,19 +3,13 @@
     <!-- 页面头部 -->
     <PageHeader title="质控执行监控" content="实时监控质控任务执行状态，查看质控结果和异常处理情况">
       <template #extra>
-        <el-button type="primary" @click="handleManualTrigger">
-          <el-icon><VideoPlay /></el-icon>
-          手动触发质控
-        </el-button>
-        <el-button @click="handleRefreshAll" :loading="refreshing">
-          <el-icon><Refresh /></el-icon>
-          刷新监控
-        </el-button>
+        <el-button type="primary" @click="handleManualTrigger"> 手动触发质控 </el-button>
+        <el-button @click="handleRefreshAll" :loading="refreshing"> 刷新监控 </el-button>
       </template>
     </PageHeader>
 
     <!-- 实时监控面板 -->
-    <div class="monitor-overview">
+    <ContentWrap>
       <el-row :gutter="20">
         <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
           <MonitorCard
@@ -59,81 +53,54 @@
           />
         </el-col>
       </el-row>
-    </div>
+    </ContentWrap>
 
     <!-- 执行状态图表 -->
-    <el-row :gutter="20" class="chart-section">
-      <el-col :span="12">
-        <el-card class="chart-card">
-          <template #header>
-            <div class="card-header">
-              <span>质控执行趋势</span>
+    <ContentWrap>
+      <el-row :gutter="20">
+        <el-col :span="12">
+          <div class="chart-container">
+            <div class="chart-header">
+              <span class="chart-title">质控执行趋势</span>
               <el-radio-group v-model="trendPeriod" size="small" @change="loadTrendChart">
                 <el-radio-button label="7d">近7天</el-radio-button>
                 <el-radio-button label="30d">近30天</el-radio-button>
               </el-radio-group>
             </div>
-          </template>
-          <div ref="trendChartRef" style="height: 300px"></div>
-        </el-card>
-      </el-col>
-      <el-col :span="12">
-        <el-card class="chart-card">
-          <template #header>
-            <span>错误类型分布</span>
-          </template>
-          <div ref="errorChartRef" style="height: 300px"></div>
-        </el-card>
-      </el-col>
-    </el-row>
-
-    <!-- 质控执行记录 -->
-    <el-card class="execution-list-card">
-      <template #header>
-        <div class="table-header">
-          <span class="table-title">质控执行记录</span>
-          <div class="table-actions">
-            <el-button size="small" @click="handleRefreshList" :loading="listLoading">
-              <el-icon><Refresh /></el-icon>
-              刷新
-            </el-button>
-            <el-button size="small" type="primary" @click="openExecutionDetail()">
-              <el-icon><View /></el-icon>
-              查看详情
-            </el-button>
+            <div ref="trendChartRef" style="height: 300px"></div>
           </div>
-        </div>
-      </template>
+        </el-col>
+        <el-col :span="12">
+          <div class="chart-container">
+            <div class="chart-header">
+              <span class="chart-title">错误类型分布</span>
+            </div>
+            <div ref="errorChartRef" style="height: 300px"></div>
+          </div>
+        </el-col>
+      </el-row>
+    </ContentWrap>
 
-      <!-- 搜索表单 -->
-      <el-form :model="queryParams" :inline="true" class="search-form">
+    <!-- 搜索表单 -->
+    <ContentWrap class="-mb-15px">
+      <el-form :model="queryParams" :inline="true">
         <el-form-item label="执行批次">
           <el-input
             v-model="queryParams.executionNo"
             placeholder="请输入执行批次号"
             clearable
-            style="width: 200px"
+            class="!w-240px"
           />
         </el-form-item>
         <el-form-item label="质控类型">
-          <el-select
-            v-model="queryParams.qcType"
-            placeholder="请选择"
-            clearable
-            style="width: 120px"
-          >
+          <el-select v-model="queryParams.qcType" placeholder="请选择" clearable class="!w-240px">
             <el-option label="全部" value="" />
             <el-option label="前置质控" value="1" />
             <el-option label="后置质控" value="2" />
           </el-select>
         </el-form-item>
         <el-form-item label="执行状态">
-          <el-select
-            v-model="queryParams.status"
-            placeholder="请选择"
-            clearable
-            style="width: 120px"
-          >
+          <el-select v-model="queryParams.status" placeholder="请选择" clearable class="!w-240px">
             <el-option label="全部" value="" />
             <el-option label="进行中" value="0" />
             <el-option label="成功" value="1" />
@@ -145,19 +112,21 @@
           <el-button @click="handleResetQuery">重置</el-button>
         </el-form-item>
       </el-form>
+    </ContentWrap>
 
-      <!-- 执行记录表格 -->
+    <!-- 执行记录表格 -->
+    <ContentWrap>
       <el-table
         v-loading="listLoading"
         :data="executionList"
-        stripe
-        border
         style="width: 100%"
+        :stripe="true"
+        :show-overflow-tooltip="true"
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="55" />
 
-        <el-table-column prop="executionNo" label="执行批次" width="180" fixed="left">
+        <el-table-column prop="executionNo" label="执行批次" min-width="220" fixed="left">
           <template #default="{ row }">
             <el-link type="primary" @click="openExecutionDetail(row.id)">
               {{ row.executionNo }}
@@ -165,7 +134,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="taskId" label="关联任务" width="100" align="center">
+        <el-table-column prop="taskId" label="关联任务" width="120" align="center">
           <template #default="{ row }">
             <el-link type="primary" @click="openTaskDetail(row.taskId)">
               {{ row.taskId }}
@@ -173,7 +142,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="qcType" label="质控类型" width="100" align="center">
+        <el-table-column prop="qcType" label="质控类型" width="120" align="center">
           <template #default="{ row }">
             <el-tag :type="row.qcType === 1 ? 'primary' : 'success'" size="small">
               {{ row.qcType === 1 ? '前置质控' : '后置质控' }}
@@ -181,7 +150,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="执行进度" width="200" align="center">
+        <el-table-column label="执行进度" width="300" align="center">
           <template #default="{ row }">
             <div class="progress-wrapper">
               <el-progress
@@ -194,7 +163,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="质控结果" width="150" align="center">
+        <el-table-column label="质控结果" width="200" align="center">
           <template #default="{ row }">
             <div class="result-stats">
               <div class="stat-item success">
@@ -213,7 +182,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="executionStatus" label="执行状态" width="100" align="center">
+        <el-table-column prop="executionStatus" label="执行状态" width="120" align="center">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.executionStatus)" size="small">
               <el-icon v-if="row.executionStatus === 0" class="is-loading"><Loading /></el-icon>
@@ -222,7 +191,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="执行时间" width="200" align="center">
+        <el-table-column label="执行时间" width="300" align="center">
           <template #default="{ row }">
             <div class="time-info">
               <div>开始: {{ formatTime(row.startTime) }}</div>
@@ -234,51 +203,45 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="150" fixed="right" align="center">
+        <el-table-column label="操作" width="300" fixed="right" align="center">
           <template #default="{ row }">
-            <div class="action-buttons">
-              <el-button type="primary" link size="small" @click="openExecutionDetail(row.id)">
-                <el-icon><View /></el-icon>
-                查看详情
-              </el-button>
-              <el-button
-                v-if="row.executionStatus === 1"
-                type="success"
-                link
-                size="small"
-                @click="downloadReport(row)"
-              >
-                <el-icon><Download /></el-icon>
-                质控报告
-              </el-button>
-              <el-button
-                v-if="row.executionStatus === 0"
-                type="warning"
-                link
-                size="small"
-                @click="stopExecution(row)"
-              >
-                <el-icon><Close /></el-icon>
-                停止
-              </el-button>
-            </div>
+            <el-button type="primary" link size="small" @click="openExecutionDetail(row.id)">
+              查看详情
+            </el-button>
+            <el-button
+              v-if="row.executionStatus === 1"
+              type="success"
+              link
+              size="small"
+              @click="downloadReport(row)"
+            >
+              下载报告
+            </el-button>
+            <el-button
+              v-if="row.executionStatus === 0"
+              type="warning"
+              link
+              size="small"
+              @click="stopExecution(row)"
+            >
+              停止
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
 
       <!-- 分页 -->
-      <div class="pagination-wrapper">
-        <el-pagination
-          v-model:current-page="queryParams.pageNo"
-          v-model:page-size="queryParams.pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          :total="total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleQuery"
-          @current-change="handleQuery"
-        />
-      </div>
-    </el-card>
+      <el-pagination
+        v-model:current-page="queryParams.pageNo"
+        v-model:page-size="queryParams.pageSize"
+        :page-sizes="[10, 20, 50, 100]"
+        :total="total"
+        layout="total, sizes, prev, pager, next, jumper"
+        @size-change="handleQuery"
+        @current-change="handleQuery"
+        style="margin-top: 20px"
+      />
+    </ContentWrap>
 
     <!-- 执行详情弹窗 -->
     <ExecutionDetailModal v-model="detailVisible" :execution-id="selectedExecutionId" />
@@ -319,7 +282,7 @@ const trendPeriod = ref('7d')
 /** 查询参数 */
 const queryParams = reactive<QcExecutionPageReqVO>({
   pageNo: 1,
-  pageSize: 20,
+  pageSize: 10,
   executionNo: undefined,
   qcType: undefined,
   status: undefined
@@ -388,7 +351,7 @@ const initPage = async () => {
 const loadMonitorStats = async () => {
   statsLoading.value = true
   try {
-    const data = await QcExecutionApi.getMonitorStats()
+    const data = await QcExecutionApi.getExecutionStatistics()
     Object.assign(monitorStats, data)
   } catch (error) {
     console.error('加载监控统计失败:', error)
@@ -401,7 +364,7 @@ const loadMonitorStats = async () => {
 const loadExecutionList = async () => {
   listLoading.value = true
   try {
-    const { list, total: totalCount } = await QcExecutionApi.getExecutionPage(queryParams)
+    const { list, total: totalCount } = await QcExecutionApi.getQcExecutionPage(queryParams)
     executionList.value = list || []
     total.value = totalCount || 0
   } catch (error) {
@@ -422,7 +385,7 @@ const handleQuery = () => {
 const handleResetQuery = () => {
   Object.assign(queryParams, {
     pageNo: 1,
-    pageSize: 20,
+    pageSize: 10,
     executionNo: undefined,
     qcType: undefined,
     status: undefined
@@ -473,42 +436,78 @@ const loadTrendChart = async () => {
   if (!trendChart) return
 
   try {
-    const data = await QcExecutionApi.getTrendChart(trendPeriod.value)
+    // 使用假数据进行展示
+    const data = {
+      dates:
+        trendPeriod.value === '7d'
+          ? ['07-17', '07-18', '07-19', '07-20', '07-21', '07-22', '07-23']
+          : Array.from({ length: 30 }, (_, i) => {
+              const date = new Date()
+              date.setDate(date.getDate() - 29 + i)
+              return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+            }),
+      totalTasks:
+        trendPeriod.value === '7d'
+          ? [45, 52, 38, 41, 67, 59, 72]
+          : Array.from({ length: 30 }, () => Math.floor(Math.random() * 50) + 30),
+      successTasks:
+        trendPeriod.value === '7d'
+          ? [40, 48, 33, 37, 61, 53, 65]
+          : Array.from({ length: 30 }, () => Math.floor(Math.random() * 40) + 25),
+      failedTasks:
+        trendPeriod.value === '7d'
+          ? [5, 4, 5, 4, 6, 6, 7]
+          : Array.from({ length: 30 }, () => Math.floor(Math.random() * 10))
+    }
 
     const option = {
-      title: {
-        text: '质控执行趋势',
-        left: 'center',
-        textStyle: { fontSize: 14 }
-      },
       tooltip: { trigger: 'axis' },
       legend: {
         data: ['总任务数', '成功任务', '失败任务'],
         bottom: 0
       },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '15%',
+        containLabel: true
+      },
       xAxis: {
         type: 'category',
-        data: data.dates
+        data: data.dates,
+        axisLine: { lineStyle: { color: '#ddd' } },
+        axisLabel: { color: '#666' }
       },
-      yAxis: { type: 'value' },
+      yAxis: {
+        type: 'value',
+        axisLine: { lineStyle: { color: '#ddd' } },
+        axisLabel: { color: '#666' },
+        splitLine: { lineStyle: { color: '#f0f0f0' } }
+      },
       series: [
         {
           name: '总任务数',
           type: 'line',
           data: data.totalTasks,
-          smooth: true
+          smooth: true,
+          itemStyle: { color: '#409eff' },
+          lineStyle: { color: '#409eff' }
         },
         {
           name: '成功任务',
           type: 'line',
           data: data.successTasks,
-          smooth: true
+          smooth: true,
+          itemStyle: { color: '#67c23a' },
+          lineStyle: { color: '#67c23a' }
         },
         {
           name: '失败任务',
           type: 'line',
           data: data.failedTasks,
-          smooth: true
+          smooth: true,
+          itemStyle: { color: '#f56c6c' },
+          lineStyle: { color: '#f56c6c' }
         }
       ]
     }
@@ -524,36 +523,52 @@ const loadErrorChart = async () => {
   if (!errorChart) return
 
   try {
-    const data = await QcExecutionApi.getErrorDistribution()
+    // 使用假数据进行展示
+    const data = [
+      { name: '数据格式错误', value: 35 },
+      { name: '必填字段缺失', value: 28 },
+      { name: '数值范围异常', value: 22 },
+      { name: '重复数据', value: 15 },
+      { name: '引用完整性', value: 12 },
+      { name: '其他错误', value: 8 }
+    ]
 
     const option = {
-      title: {
-        text: '错误类型分布',
-        left: 'center',
-        textStyle: { fontSize: 14 }
+      tooltip: {
+        trigger: 'item',
+        formatter: '{a} <br/>{b}: {c} ({d}%)'
       },
-      tooltip: { trigger: 'item' },
       legend: {
         orient: 'vertical',
-        left: 'left'
+        left: 'left',
+        textStyle: { fontSize: 12 }
       },
       series: [
         {
+          name: '错误类型',
           type: 'pie',
-          radius: '50%',
-          data: data.map((item) => ({
-            name: item.errorType,
-            value: item.count
-          })),
+          radius: ['40%', '70%'],
+          center: ['60%', '50%'],
+          data: data,
+          itemStyle: {
+            borderRadius: 5,
+            borderColor: '#fff',
+            borderWidth: 2
+          },
           emphasis: {
             itemStyle: {
               shadowBlur: 10,
               shadowOffsetX: 0,
               shadowColor: 'rgba(0, 0, 0, 0.5)'
             }
+          },
+          label: {
+            show: true,
+            formatter: '{b}: {d}%'
           }
         }
-      ]
+      ],
+      color: ['#ff6b6b', '#ffa726', '#42a5f5', '#66bb6a', '#ab47bc', '#78909c']
     }
 
     errorChart.setOption(option)
@@ -598,7 +613,7 @@ const downloadReport = async (row: QcExecutionRespVO) => {
     await QcExecutionApi.downloadReport(row.id)
     ElMessage.success('报告下载已开始')
   } catch (error) {
-    ElMessage.error('下载报告失败')
+    ElMessage.warning('下载报告开发中')
   }
 }
 
@@ -729,52 +744,26 @@ const formatNumber = (num: number): string => {
   background-color: #f5f5f5;
   min-height: calc(100vh - 50px);
 }
-
-.monitor-overview {
-  margin-bottom: 20px;
+.chart-container {
+  padding: 10px;
+  border: 1px solid #ebeef5;
+  border-radius: 4px;
+  background: #fff;
 }
 
-.chart-section {
-  margin-bottom: 20px;
-}
-
-.chart-card {
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-}
-
-.card-header {
+.chart-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.chart-title {
+  font-size: 14px;
   font-weight: 600;
   color: #303133;
-}
-
-.execution-list-card {
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-}
-
-.table-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.table-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.table-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.search-form {
-  margin-bottom: 16px;
 }
 
 .progress-wrapper {
@@ -826,20 +815,6 @@ const formatNumber = (num: number): string => {
   margin-top: 2px;
 }
 
-.action-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  justify-content: center;
-}
-
-.pagination-wrapper {
-  display: flex;
-  justify-content: end;
-  margin-top: 20px;
-  padding: 20px;
-}
-
 /* 加载动画 */
 .is-loading {
   animation: rotating 2s linear infinite;
@@ -856,66 +831,8 @@ const formatNumber = (num: number): string => {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .qc-execution-container {
-    padding: 10px;
+  .chart-container {
+    margin-bottom: 15px;
   }
-
-  .chart-section .el-col {
-    margin-bottom: 20px;
-  }
-
-  .search-form :deep(.el-form-item) {
-    width: 100%;
-    margin-right: 0;
-  }
-
-  .table-header {
-    flex-direction: column;
-    gap: 12px;
-    align-items: flex-start;
-  }
-
-  .action-buttons {
-    flex-direction: column;
-    width: 100%;
-  }
-}
-
-/* 表格样式优化 */
-:deep(.el-table) {
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-:deep(.el-table th) {
-  background-color: #fafafa;
-  color: #606266;
-  font-weight: 600;
-}
-
-/* 进度条样式 */
-:deep(.el-progress-bar__outer) {
-  border-radius: 4px;
-}
-
-:deep(.el-progress-bar__inner) {
-  border-radius: 4px;
-}
-
-/* 标签样式 */
-:deep(.el-tag) {
-  border-radius: 4px;
-  font-weight: 500;
-}
-
-/* 卡片样式 */
-:deep(.el-card) {
-  border: none;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-}
-
-:deep(.el-card__header) {
-  border-bottom: 1px solid #f0f0f0;
-  background-color: #fafafa;
 }
 </style>

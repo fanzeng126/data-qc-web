@@ -1,51 +1,36 @@
 <template>
   <div class="analysis-container">
-    <!-- 页面标题和刷新控制 -->
-    <div class="page-header">
-      <div class="header-left">
-        <h1 class="page-title">
-          <Icon icon="ep:data-analysis" class="title-icon" />
-          药品统计分析中心
-        </h1>
-        <p class="page-subtitle">数据驱动决策，智能分析助力精准管理</p>
-      </div>
-      <div class="header-right">
+    <!-- 页面头部 -->
+    <PageHeader
+      title="药品统计分析中心"
+      content="数据驱动决策，智能分析助力精准管理"
+    >
+      <template #extra>
         <div class="update-info">
           <span class="update-text">最后更新：{{ dashboardData.updateTime || '暂无数据' }}</span>
           <el-button
             type="primary"
             @click="refreshAllData"
             :loading="loading"
-            class="refresh-btn"
           >
             <Icon icon="ep:refresh" />
             刷新数据
           </el-button>
         </div>
-      </div>
-    </div>
+      </template>
+    </PageHeader>
 
     <!-- 核心指标卡片区域 -->
     <div class="metrics-section">
       <el-row :gutter="20" class="metrics-row">
         <el-col :span="6" v-for="(metric, index) in coreMetrics" :key="index">
-          <el-card class="metric-card" :class="metric.type">
-            <div class="metric-content">
-              <div class="metric-icon" :class="`${metric.type}-icon`">
-                <Icon :icon="metric.icon" />
-              </div>
-              <div class="metric-info">
-                <div class="metric-value">{{ metric.value }}</div>
-                <div class="metric-label">{{ metric.label }}</div>
-                <div class="metric-change" v-if="metric.change">
-                  <Icon :icon="metric.change > 0 ? 'ep:arrow-up' : 'ep:arrow-down'" />
-                  <span :class="metric.change > 0 ? 'positive' : 'negative'">
-                    {{ Math.abs(metric.change) }}%
-                  </span>
-                </div>
-              </div>
-            </div>
-          </el-card>
+          <StatCard
+            :title="metric.label"
+            :value="metric.value"
+            :icon="metric.icon"
+            :color="getMetricColor(metric.type)"
+            :trend="metric.change"
+          />
         </el-col>
       </el-row>
     </div>
@@ -186,6 +171,8 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as AnalysisApi from '@/api/dataqc/analysis'
 import { formatAmount } from '@/utils/analysis'
+import PageHeader from '@/components/PageHeader/index.vue'
+import StatCard from '@/components/StatCard/index.vue'
 import DrugAnalysisChart from './DrugAnalysisChart.vue'
 import InoutAnalysisChart from './InoutAnalysisChart.vue'
 import UseAnalysisChart from './UseAnalysisChart.vue'
@@ -468,6 +455,21 @@ const handleAdvancedAnalysisComplete = (result: any) => {
   advancedAnalysisVisible.value = false
   ElMessage.success('高级分析完成')
 }
+
+// ========== 工具方法 ==========
+
+/**
+ * 获取指标卡片颜色
+ */
+const getMetricColor = (type: string) => {
+  const colorMap = {
+    drug: '#667eea',
+    inventory: '#f093fb',
+    usage: '#4facfe',
+    compliance: '#43e97b'
+  }
+  return colorMap[type] || '#409eff'
+}
 </script>
 
 <style scoped>
@@ -478,47 +480,6 @@ const handleAdvancedAnalysisComplete = (result: any) => {
 }
 
 /* ========== 页面头部样式 ========== */
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  padding: 20px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.header-left {
-  flex: 1;
-}
-
-.page-title {
-  display: flex;
-  align-items: center;
-  font-size: 24px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 8px 0;
-}
-
-.title-icon {
-  margin-right: 12px;
-  color: #409eff;
-  font-size: 28px;
-}
-
-.page-subtitle {
-  color: #909399;
-  font-size: 14px;
-  margin: 0;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-}
-
 .update-info {
   display: flex;
   align-items: center;
@@ -530,93 +491,9 @@ const handleAdvancedAnalysisComplete = (result: any) => {
   font-size: 12px;
 }
 
-.refresh-btn {
-  border-radius: 6px;
-}
-
 /* ========== 指标卡片样式 ========== */
 .metrics-section {
   margin-bottom: 24px;
-}
-
-.metric-card {
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-  cursor: pointer;
-}
-
-.metric-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-}
-
-.metric-content {
-  display: flex;
-  align-items: center;
-  padding: 24px;
-}
-
-.metric-icon {
-  width: 64px;
-  height: 64px;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32px;
-  color: white;
-  margin-right: 20px;
-}
-
-.drug-icon {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.inventory-icon {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-}
-
-.usage-icon {
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-}
-
-.compliance-icon {
-  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-}
-
-.metric-info {
-  flex: 1;
-}
-
-.metric-value {
-  font-size: 32px;
-  font-weight: 700;
-  color: #303133;
-  margin-bottom: 8px;
-  line-height: 1;
-}
-
-.metric-label {
-  font-size: 16px;
-  color: #909399;
-  margin-bottom: 8px;
-}
-
-.metric-change {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.positive {
-  color: #67c23a;
-}
-
-.negative {
-  color: #f56c6c;
 }
 
 /* ========== 预警区域样式 ========== */
@@ -699,12 +576,6 @@ const handleAdvancedAnalysisComplete = (result: any) => {
 }
 
 @media (max-width: 768px) {
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 16px;
-  }
-
   .warning-content {
     flex-direction: column;
   }
@@ -724,18 +595,9 @@ const handleAdvancedAnalysisComplete = (result: any) => {
     background: #1a1a1a;
   }
 
-  .page-header,
   .content-area,
   .action-card {
     background: #2d2d2d;
-    color: #e5e5e5;
-  }
-
-  .metric-card {
-    background: #2d2d2d;
-  }
-
-  .metric-value {
     color: #e5e5e5;
   }
 }

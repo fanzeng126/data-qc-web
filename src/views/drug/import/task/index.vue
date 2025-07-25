@@ -60,13 +60,13 @@
     </div>
 
     <!-- 搜索和操作区域 -->
-    <el-card class="search-card" shadow="never">
+    <ContentWrap>
       <el-form
-        ref="queryFormRef"
+        class="-mb-15px"
         :model="queryParams"
+        ref="queryFormRef"
         :inline="true"
-        label-width="80px"
-        class="search-form"
+        label-width="68px"
       >
         <el-form-item label="任务编号" prop="taskNo">
           <el-input
@@ -74,26 +74,24 @@
             placeholder="请输入任务编号"
             clearable
             @keyup.enter="handleQuery"
-            style="width: 200px"
+            class="!w-240px"
           />
         </el-form-item>
-
         <el-form-item label="任务名称" prop="taskName">
           <el-input
             v-model="queryParams.taskName"
             placeholder="请输入任务名称"
             clearable
             @keyup.enter="handleQuery"
-            style="width: 200px"
+            class="!w-240px"
           />
         </el-form-item>
-
         <el-form-item label="任务状态" prop="status">
           <el-select
             v-model="queryParams.status"
             placeholder="请选择状态"
             clearable
-            style="width: 150px"
+            class="!w-240px"
           >
             <el-option label="全部" value="" />
             <el-option
@@ -104,7 +102,6 @@
             />
           </el-select>
         </el-form-item>
-
         <el-form-item label="创建时间" prop="createTime">
           <el-date-picker
             v-model="queryParams.createTime"
@@ -113,72 +110,27 @@
             start-placeholder="开始日期"
             end-placeholder="结束日期"
             value-format="YYYY-MM-DD"
-            style="width: 240px"
+            class="!w-240px"
           />
         </el-form-item>
-
         <el-form-item>
-          <el-button type="primary" @click="handleQuery">
-            <el-icon><Search /></el-icon>
-            搜索
-          </el-button>
-          <el-button @click="resetQuery">
-            <el-icon><Refresh /></el-icon>
-            重置
-          </el-button>
-          <el-button type="success" @click="handleExport" :loading="exportLoading">
-            <el-icon><Download /></el-icon>
-            导出
+          <el-button @click="handleQuery"><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button>
+          <el-button @click="resetQuery"><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button>
+          <el-button type="success" plain @click="handleExport" :loading="exportLoading">
+            <Icon icon="ep:download" class="mr-5px" /> 导出
           </el-button>
         </el-form-item>
       </el-form>
-    </el-card>
+    </ContentWrap>
 
-    <!-- 任务列表 -->
-    <el-card class="table-card" shadow="never">
-      <template #header>
-        <div class="table-header">
-          <span class="table-title">任务列表</span>
-          <div class="table-actions">
-            <el-button type="primary" size="small" @click="openBatchImport">
-              <el-icon><Plus /></el-icon>
-              新建任务
-            </el-button>
-            <el-button size="small" @click="handleRefresh" :loading="refreshing">
-              <el-icon><Refresh /></el-icon>
-              刷新
-            </el-button>
-          </div>
-        </div>
-      </template>
-
-      <el-table
-        v-loading="loading"
-        :data="taskList"
-        stripe
-        border
-        style="width: 100%"
-        @sort-change="handleSortChange"
-      >
-        <el-table-column type="expand">
-          <template #default="{ row }">
-            <TaskExpandContent :task="row" />
-          </template>
-        </el-table-column>
-
-        <el-table-column
-          prop="taskNo"
-          label="任务编号"
-          width="160"
-          fixed="left"
-          show-overflow-tooltip
-        />
-
-        <el-table-column prop="taskName" label="任务名称" min-width="150" show-overflow-tooltip />
-
-        <el-table-column prop="fileName" label="文件名称" min-width="180" show-overflow-tooltip />
-
-        <el-table-column prop="status" label="状态" width="100" align="center">
+    <!-- 列表 -->
+    <ContentWrap>
+      <el-table v-loading="loading" :data="taskList" :stripe="true" :show-overflow-tooltip="true">
+        <el-table-column label="任务ID" align="center" prop="id" />
+        <el-table-column label="任务编号" align="center" prop="taskNo" />
+        <el-table-column label="任务名称" align="center" prop="taskName" />
+        <el-table-column label="文件名称" align="center" prop="fileName" />
+        <el-table-column label="状态" align="center" prop="status">
           <template #default="{ row }">
             <el-tag
               :type="getDictColorType(DICT_TYPE.DRUG_TASK_STATUS, row.status)"
@@ -189,8 +141,7 @@
             </el-tag>
           </template>
         </el-table-column>
-
-        <el-table-column prop="progressPercent" label="进度" width="120" align="center">
+        <el-table-column label="进度" align="center" prop="progressPercent">
           <template #default="{ row }">
             <el-progress
               :percentage="row.progressPercent || 0"
@@ -201,8 +152,7 @@
             <div class="progress-text">{{ row.progressPercent }}%</div>
           </template>
         </el-table-column>
-
-        <el-table-column label="处理统计" width="120" align="center">
+        <el-table-column label="处理统计" align="center">
           <template #default="{ row }">
             <div class="stats-column">
               <div class="stat-row">
@@ -234,22 +184,17 @@
         />
 
         <el-table-column
-          prop="createTime"
           label="创建时间"
-          width="150"
           align="center"
-          sortable="custom"
+          prop="createTime"
           :formatter="dateFormatter"
+          width="180px"
         />
-
-        <el-table-column label="操作" width="200" fixed="right" align="center">
+        <el-table-column label="操作" align="center" min-width="150px">
           <template #default="{ row }">
             <div class="action-buttons">
               <router-link :to="'/drug-import/monitor/' + row.id">
-                <el-button type="primary" link size="small">
-                  <el-icon><View /></el-icon>
-                  查看进度
-                </el-button>
+                <el-button type="primary" link size="small"> 查看进度 </el-button>
               </router-link>
 
               <el-button
@@ -259,7 +204,6 @@
                 size="small"
                 @click="handleRetry(row)"
               >
-                <el-icon><RefreshRight /></el-icon>
                 重试
               </el-button>
 
@@ -270,29 +214,18 @@
                 size="small"
                 @click="handleCancel(row)"
               >
-                <el-icon><Close /></el-icon>
                 取消
               </el-button>
 
               <el-dropdown trigger="click" @command="(command) => handleMoreAction(command, row)">
-                <el-button link size="small">
-                  <el-icon><MoreFilled /></el-icon>
-                  更多
-                </el-button>
+                <el-button link size="small"> 更多 </el-button>
                 <template #dropdown>
                   <el-dropdown-menu>
-                    <el-dropdown-item command="detail">
-                      <el-icon><InfoFilled /></el-icon>
-                      查看详情
-                    </el-dropdown-item>
+                    <el-dropdown-item command="detail"> 查看详情 </el-dropdown-item>
                     <el-dropdown-item command="download" v-if="isTaskCompleted(row.status)">
-                      <el-icon><Download /></el-icon>
                       下载报告
                     </el-dropdown-item>
-                    <el-dropdown-item command="delete" divided>
-                      <el-icon><Delete /></el-icon>
-                      删除任务
-                    </el-dropdown-item>
+                    <el-dropdown-item command="delete" divided> 删除任务 </el-dropdown-item>
                   </el-dropdown-menu>
                 </template>
               </el-dropdown>
@@ -300,17 +233,14 @@
           </template>
         </el-table-column>
       </el-table>
-
       <!-- 分页 -->
-      <div class="pagination-wrapper">
-        <Pagination
-          :total="total"
-          v-model:page="queryParams.pageNo"
-          v-model:limit="queryParams.pageSize"
-          @pagination="loadTaskList"
-        />
-      </div>
-    </el-card>
+      <Pagination
+        :total="total"
+        v-model:page="queryParams.pageNo"
+        v-model:limit="queryParams.pageSize"
+        @pagination="loadTaskList"
+      />
+    </ContentWrap>
 
     <!-- 批量导入模态框 -->
     <BatchImportModal v-model="batchImportVisible" @success="handleImportSuccess" />
@@ -337,19 +267,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
-import {
-  Upload,
-  Download,
-  Search,
-  Refresh,
-  Plus,
-  View,
-  RefreshRight,
-  Close,
-  MoreFilled,
-  InfoFilled,
-  Delete
-} from '@element-plus/icons-vue'
+import { Upload, Download, View, RefreshRight, Close, Delete } from '@element-plus/icons-vue'
 import type { FormInstance } from 'element-plus'
 import { dateFormatter } from '@/utils/formatTime'
 import {
@@ -383,7 +301,7 @@ const queryFormRef = ref<FormInstance>()
 /** 查询参数 */
 const queryParams = reactive<ImportTaskPageReqVO>({
   pageNo: 1,
-  pageSize: 20,
+  pageSize: 10,
   taskNo: undefined,
   taskName: undefined,
   status: undefined,

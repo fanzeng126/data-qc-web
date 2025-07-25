@@ -333,12 +333,12 @@
 
           <!-- 修复：确保在数据加载完成后才显示内容 -->
           <div
-            v-if="taskDetail?.tableDetails && taskDetail.tableDetails.length > 0"
+            v-if="parsedTableProgress && parsedTableProgress.length > 0"
             class="table-details-list"
           >
             <div
-              v-for="table in taskDetail.tableDetails"
-              :key="table.basicInfo?.tableType"
+              v-for="table in parsedTableProgress"
+              :key="table.tableType"
               class="table-detail-item"
             >
               <div class="table-item-header">
@@ -352,13 +352,13 @@
                     </el-icon>
                   </div>
                   <div class="table-meta">
-                    <div class="table-name">{{ getTableTypeName(table.basicInfo?.tableType) }}</div>
-                    <div class="file-name">{{ table.basicInfo?.fileName }}</div>
+                    <div class="table-name">{{ table.tableType }}</div>
+                    <div class="file-name">{{ `${table.tableType}.xlsx` }}</div>
                   </div>
                 </div>
                 <div class="table-status">
-                  <el-tag :type="getTableStatusTagType(table.progressInfo?.status)" size="small">
-                    {{ getTableStatusText(table.progressInfo?.status) }}
+                  <el-tag :type="getTableStatusTagType(table.status)" size="small">
+                    {{ getTableStatusText(table.status) }}
                   </el-tag>
                 </div>
               </div>
@@ -367,66 +367,77 @@
                 <div class="progress-info">
                   <span class="progress-label">处理进度</span>
                   <span class="progress-percent"
-                    >{{ getValidProgress(table.progressInfo?.progressPercent) }}%</span
+                    >{{ getValidProgress(table.progressPercent) }}%</span
                   >
                 </div>
                 <el-progress
-                  :percentage="getValidProgress(table.progressInfo?.progressPercent)"
+                  :percentage="getValidProgress(table.progressPercent)"
                   :stroke-width="6"
                   :show-text="false"
-                  :status="getTableProgressStatus(table.progressInfo?.status)"
+                  :status="getTableProgressStatus(table.status)"
                 />
-                <div class="progress-message">{{ table.progressInfo?.currentMessage || '' }}</div>
+                <div class="progress-message">{{ getTableProcessingMessage(table) }}</div>
               </div>
 
               <div class="table-statistics">
                 <div class="stats-row">
                   <div class="stat-item">
-                    <span class="stat-label">总行数:</span>
+                    <span class="stat-label">总记录数:</span>
                     <span class="stat-value">{{
-                      formatNumber(table.statisticsInfo?.totalRows || 0)
+                      formatNumber(table.totalRecords || 0)
                     }}</span>
                   </div>
                   <div class="stat-item">
-                    <span class="stat-label">有效行数:</span>
+                    <span class="stat-label">已处理:</span>
                     <span class="stat-value">{{
-                      formatNumber(table.statisticsInfo?.validRows || 0)
+                      formatNumber(table.processedRecords || 0)
                     }}</span>
                   </div>
                   <div class="stat-item success">
                     <span class="stat-label">成功:</span>
                     <span class="stat-value">{{
-                      formatNumber(table.statisticsInfo?.successRows || 0)
+                      formatNumber(table.successRecords || 0)
                     }}</span>
                   </div>
                   <div class="stat-item danger">
                     <span class="stat-label">失败:</span>
                     <span class="stat-value">{{
-                      formatNumber(table.statisticsInfo?.failedRows || 0)
+                      formatNumber(table.failedRecords || 0)
                     }}</span>
                   </div>
                 </div>
 
-                <div class="stats-row" v-if="table.statisticsInfo?.qcPassedRows !== undefined">
+                <div class="stats-row">
                   <div class="stat-item">
-                    <span class="stat-label">质控通过:</span>
+                    <span class="stat-label">开始时间:</span>
                     <span class="stat-value">{{
-                      formatNumber(table.statisticsInfo?.qcPassedRows || 0)
-                    }}</span>
-                  </div>
-                  <div class="stat-item warning">
-                    <span class="stat-label">质控失败:</span>
-                    <span class="stat-value">{{
-                      formatNumber(table.statisticsInfo?.qcFailedRows || 0)
+                      table.startTime ? formatTime(table.startTime) : '未开始'
                     }}</span>
                   </div>
                   <div class="stat-item">
-                    <span class="stat-label">成功率:</span>
-                    <span class="stat-value"
-                      >{{ (table.statisticsInfo?.successRate || 0).toFixed(1) }}%</span
-                    >
+                    <span class="stat-label">结束时间:</span>
+                    <span class="stat-value">{{
+                      table.endTime ? formatTime(table.endTime) : '进行中'
+                    }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-label">处理耗时:</span>
+                    <span class="stat-value">{{
+                      getTableProcessingDuration(table)
+                    }}</span>
                   </div>
                 </div>
+              </div>
+
+              <!-- 错误信息显示 -->
+              <div v-if="table.errorMessage" class="table-error">
+                <el-alert
+                  :title="table.errorMessage"
+                  type="error"
+                  :closable="false"
+                  show-icon
+                  class="error-alert"
+                />
               </div>
 
               <div class="table-operations" v-if="table.operationInfo">
@@ -468,7 +479,7 @@
           <!-- 修复：完善空状态处理 -->
           <div
             v-else-if="
-              taskDetail && (!taskDetail.tableDetails || taskDetail.tableDetails.length === 0)
+              taskDetail && (!parsedTableProgress || parsedTableProgress.length === 0)
             "
             class="empty-tables"
           >
@@ -672,6 +683,44 @@ let refreshTimer: NodeJS.Timeout | null = null
 const isComponentMounted = ref(false)
 
 // ========================= 计算属性 =========================
+
+/** 解析分表进度JSON数据 */
+const parsedTableProgress = computed(() => {
+  if (!taskDetail.value?.tableProgress) {
+    return []
+  }
+  
+  try {
+    // 如果tableProgress是字符串，解析JSON；如果已经是对象，直接使用
+    const progressData = typeof taskDetail.value.tableProgress === 'string' 
+      ? JSON.parse(taskDetail.value.tableProgress)
+      : taskDetail.value.tableProgress
+    
+    // 转换为数组格式
+    if (Array.isArray(progressData)) {
+      return progressData
+    } else if (typeof progressData === 'object') {
+      // 将对象格式转换为数组格式
+      return Object.entries(progressData).map(([key, value]: [string, any]) => ({
+        tableType: value.tableType || key,
+        status: value.status || 'PENDING',
+        progressPercent: value.progressPercent || 0,
+        totalRecords: value.totalRecords || 0,
+        processedRecords: value.processedRecords || 0,
+        successRecords: value.successRecords || 0,
+        failedRecords: value.failedRecords || 0,
+        startTime: value.startTime,
+        endTime: value.endTime,
+        errorMessage: value.errorMessage
+      }))
+    }
+    
+    return []
+  } catch (error) {
+    console.error('解析分表进度数据失败:', error)
+    return []
+  }
+})
 
 const pageTitle = computed(() => {
   return taskDetail.value?.taskInfo?.taskName || '任务详情'
@@ -1095,20 +1144,99 @@ const getTableStatusColor = (status: number | undefined) => {
   return colorMap[colorType] || '#909399'
 }
 
-const getTableStatusTagType = (status: number | undefined) => {
+const getTableStatusTagType = (status: number | string | undefined) => {
   if (!status) return 'info'
+  
+  // 处理字符串状态
+  if (typeof status === 'string') {
+    const statusMap = {
+      'PENDING': 'info',
+      'PROCESSING': 'warning', 
+      'SUCCESS': 'success',
+      'FAILED': 'danger'
+    }
+    return statusMap[status] || 'info'
+  }
+  
   return getDictColorType(DICT_TYPE.DRUG_DETAIL_STATUS, status.toString()) || 'info'
 }
 
-const getTableStatusText = (status: number | undefined) => {
+const getTableStatusText = (status: number | string | undefined) => {
   if (!status) return '未知状态'
+  
+  // 处理字符串状态
+  if (typeof status === 'string') {
+    const statusMap = {
+      'PENDING': '等待中',
+      'PROCESSING': '处理中',
+      'SUCCESS': '成功',
+      'FAILED': '失败'
+    }
+    return statusMap[status] || '未知状态'
+  }
+  
   return getDictLabel(DICT_TYPE.DRUG_DETAIL_STATUS, status.toString()) || '未知状态'
 }
 
-const getTableProgressStatus = (status: number | undefined) => {
+const getTableProgressStatus = (status: number | string | undefined) => {
+  // 处理字符串状态
+  if (typeof status === 'string') {
+    if (status === 'SUCCESS') return 'success'
+    if (status === 'FAILED') return 'exception'
+    return undefined
+  }
+  
   if (status === 4) return 'success'
   if (status === 5) return 'exception'
   return undefined
+}
+
+/** 获取表处理消息 */
+const getTableProcessingMessage = (table: any) => {
+  if (table.errorMessage) {
+    return `错误: ${table.errorMessage}`
+  }
+  
+  if (table.status === 'PROCESSING') {
+    return `正在处理... ${table.processedRecords || 0}/${table.totalRecords || 0}`
+  }
+  
+  if (table.status === 'SUCCESS') {
+    return `处理完成 - 成功: ${table.successRecords || 0}, 失败: ${table.failedRecords || 0}`
+  }
+  
+  if (table.status === 'FAILED') {
+    return '处理失败'
+  }
+  
+  return '等待处理'
+}
+
+/** 获取表处理耗时 */
+const getTableProcessingDuration = (table: any) => {
+  if (!table.startTime) {
+    return '未开始'
+  }
+  
+  const startTime = new Date(table.startTime).getTime()
+  const endTime = table.endTime ? new Date(table.endTime).getTime() : Date.now()
+  const duration = endTime - startTime
+  
+  if (duration < 1000) {
+    return '< 1秒'
+  }
+  
+  const seconds = Math.floor(duration / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const hours = Math.floor(minutes / 60)
+  
+  if (hours > 0) {
+    return `${hours}时${minutes % 60}分${seconds % 60}秒`
+  } else if (minutes > 0) {
+    return `${minutes}分${seconds % 60}秒`
+  } else {
+    return `${seconds}秒`
+  }
 }
 
 const getDataSourceText = (dataSource: string | undefined) => {

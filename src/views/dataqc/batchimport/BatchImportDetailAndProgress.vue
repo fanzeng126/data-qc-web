@@ -110,7 +110,12 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column prop="startTime" label="开始时间" width="150" :formatter="timeFormatter" />
+          <el-table-column
+            prop="startTime"
+            label="开始时间"
+            width="150"
+            :formatter="timeFormatter"
+          />
           <el-table-column prop="endTime" label="结束时间" width="150" :formatter="timeFormatter" />
           <el-table-column prop="errorMsg" label="错误信息" show-overflow-tooltip>
             <template #default="scope">
@@ -139,7 +144,7 @@
               size="small"
               @click="refreshProgress"
               :loading="progressLoading"
-              style="margin-left: auto;"
+              style="margin-left: auto"
             >
               刷新
             </el-button>
@@ -151,7 +156,9 @@
               <div class="progress-item">
                 <div class="progress-info">
                   <span class="progress-label">任务进度</span>
-                  <span class="progress-percentage">{{ progressData.progressPercentage || 0 }}%</span>
+                  <span class="progress-percentage"
+                    >{{ progressData.progressPercentage || 0 }}%</span
+                  >
                 </div>
                 <el-progress
                   :percentage="progressData.progressPercentage || 0"
@@ -167,7 +174,9 @@
                   <span class="stat-label">总文件数</span>
                 </div>
                 <div class="stat-item">
-                  <span class="stat-value text-green-600">{{ progressData.successFiles || 0 }}</span>
+                  <span class="stat-value text-green-600">{{
+                    progressData.successFiles || 0
+                  }}</span>
                   <span class="stat-label">已完成</span>
                 </div>
                 <div class="stat-item">
@@ -345,9 +354,12 @@ const calculateDetailProgress = (detail) => {
 /** 获取进度条状态 */
 const getProgressStatus = (status) => {
   switch (status) {
-    case 2: return 'success'
-    case 3: return 'exception'
-    default: return undefined
+    case 2:
+      return 'success'
+    case 3:
+      return 'exception'
+    default:
+      return undefined
   }
 }
 
@@ -367,10 +379,12 @@ const getStatusTagType = (status) => {
 const getStatusText = (status) => {
   const textMap = {
     0: '待处理',
-    1: '处理中',
-    2: '成功',
-    3: '失败',
-    4: '部分成功'
+    1: '解压中',
+    2: '导入中',
+    3: '质控中',
+    4: '完成',
+    5: '失败',
+    6: '部分成功'
   }
   return textMap[status] || '未知'
 }

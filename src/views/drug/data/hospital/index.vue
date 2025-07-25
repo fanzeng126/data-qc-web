@@ -91,150 +91,68 @@
     </div>
 -->
 
-    <!-- 搜索工作栏 -->
-    <el-card class="search-card" shadow="never">
+    <!-- 搜索和操作区域 -->
+    <ContentWrap>
       <el-form
-        ref="queryFormRef"
+        class="-mb-15px"
         :model="queryParams"
+        ref="queryFormRef"
         :inline="true"
-        label-width="100px"
-        class="search-form"
+        label-width="68px"
       >
-        <el-row :gutter="20">
-          <el-col :xs="24" :sm="12" :md="8" :lg="6">
-            <el-form-item label="机构代码" prop="hospitalCode">
-              <el-input
-                v-model="queryParams.hospitalCode"
-                placeholder="请输入医疗机构代码"
-                clearable
-                @keyup.enter="handleQuery"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :sm="12" :md="8" :lg="6">
-            <el-form-item label="机构名称" prop="organizationName">
-              <el-input
-                v-model="queryParams.organizationName"
-                placeholder="请输入组织机构名称"
-                clearable
-                @keyup.enter="handleQuery"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :sm="12" :md="8" :lg="6">
-            <el-form-item label="年度" prop="year">
-              <el-select
-                v-model="queryParams.year"
-                placeholder="请选择年度"
-                clearable
-                style="width: 100%"
-              >
-                <el-option
-                  v-for="year in dimensionFilters.years"
-                  :key="year"
-                  :label="year"
-                  :value="year"
-                />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :sm="12" :md="8" :lg="6">
-            <el-form-item label="省级" prop="province">
-              <el-select
-                v-model="queryParams.province"
-                placeholder="请选择省级"
-                clearable
-                style="width: 100%"
-              >
-                <el-option
-                  v-for="province in dimensionFilters.provinces"
-                  :key="province"
-                  :label="province"
-                  :value="province"
-                />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :sm="12" :md="8" :lg="6">
-            <el-form-item label="医疗机构" prop="hospital">
-              <el-select
-                v-model="queryParams.hospital"
-                placeholder="请选择医疗机构"
-                clearable
-                style="width: 100%"
-              >
-                <el-option
-                  v-for="hospital in dimensionFilters.hospitals"
-                  :key="hospital"
-                  :label="hospital"
-                  :value="hospital"
-                />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :sm="12" :md="8" :lg="6">
-            <el-form-item label="质控状态" prop="qcStatus">
-              <el-select
-                v-model="queryParams.qcStatus"
-                placeholder="请选择质控状态"
-                clearable
-                style="width: 100%"
-              >
-                <el-option label="全部" value="" />
-                <el-option label="未质控" :value="0" />
-                <el-option label="质控通过" :value="1" />
-                <el-option label="质控失败" :value="2" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row>
-          <el-col :span="24" style="text-align: center">
-            <el-form-item>
-              <el-button type="primary" @click="handleQuery">
-                <Icon icon="ep:search" class="mr-5px" />
-                搜索
-              </el-button>
-              <el-button @click="resetQuery">
-                <Icon icon="ep:refresh" class="mr-5px" />
-                重置
-              </el-button>
-            </el-form-item>
-          </el-col>
-        </el-row>
+        <el-form-item label="机构代码" prop="hospitalCode">
+          <el-input
+            v-model="queryParams.hospitalCode"
+            placeholder="请输入医疗机构代码"
+            clearable
+            @keyup.enter="handleQuery"
+            class="!w-240px"
+          />
+        </el-form-item>
+        <el-form-item label="机构名称" prop="organizationName">
+          <el-input
+            v-model="queryParams.organizationName"
+            placeholder="请输入组织机构名称"
+            clearable
+            @keyup.enter="handleQuery"
+            class="!w-240px"
+          />
+        </el-form-item>
+        <el-form-item label="年度" prop="year">
+          <el-select v-model="queryParams.year" placeholder="请选择年度" clearable class="!w-240px">
+            <el-option
+              v-for="year in dimensionFilters.years"
+              :key="year"
+              :label="year"
+              :value="year"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="质控状态" prop="qcStatus">
+          <el-select
+            v-model="queryParams.qcStatus"
+            placeholder="请选择质控状态"
+            clearable
+            class="!w-240px"
+          >
+            <el-option label="全部" value="" />
+            <el-option label="未质控" :value="0" />
+            <el-option label="质控通过" :value="1" />
+            <el-option label="质控失败" :value="2" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button @click="handleQuery"><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button>
+          <el-button @click="resetQuery"><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button>
+        </el-form-item>
       </el-form>
-    </el-card>
+    </ContentWrap>
 
-    <!-- 数据列表 -->
-    <el-card class="table-card" shadow="never">
-      <template #header>
-        <div class="table-header">
-          <span class="table-title">医疗机构列表</span>
-          <div class="table-actions">
-            <el-button size="small" @click="handleRefresh" :loading="refreshing">
-              <Icon icon="ep:refresh" class="mr-5px" />
-              刷新
-            </el-button>
-          </div>
-        </div>
-      </template>
-
-      <el-table
-        v-loading="loading"
-        :data="list"
-        :stripe="true"
-        :show-overflow-tooltip="true"
-        border
-        style="width: 100%"
-      >
-        <el-table-column type="selection" width="55" />
-        <el-table-column
-          label="数据上报日期"
-          align="center"
-          prop="uploadDate"
-          width="120"
-          fixed="left"
-        >
+    <!-- 列表 -->
+    <ContentWrap>
+      <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
+        <el-table-column label="ID" align="center" prop="id" />
+        <el-table-column label="数据上报日期" align="center" prop="uploadDate">
           <template #default="{ row }">
             {{ formatDate(row.uploadDate) }}
           </template>
@@ -262,7 +180,7 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="实有床位数" align="center" prop="bedCount" width="100">
+        <el-table-column label="实有床位数" align="center" prop="bedCount">
           <template #default="{ row }">
             <el-tag type="info" effect="plain">{{ row.bedCount || 0 }}</el-tag>
           </template>
@@ -280,46 +198,37 @@
           align="center"
           prop="createTime"
           :formatter="dateFormatter"
-          width="160"
+          width="180px"
         />
-        <el-table-column label="操作" align="center" width="160" fixed="right">
+        <el-table-column label="操作" align="center" min-width="120px">
           <template #default="scope">
-            <div class="action-buttons">
-              <el-button
-                link
-                type="primary"
-                size="small"
-                @click="openForm('update', scope.row.id)"
-                v-hasPermi="['drug:hospital-info:update']"
-              >
-                <Icon icon="ep:edit" class="mr-3px" />
-                编辑
-              </el-button>
-              <el-button
-                link
-                type="danger"
-                size="small"
-                @click="handleDelete(scope.row.id)"
-                v-hasPermi="['drug:hospital-info:delete']"
-              >
-                <Icon icon="ep:delete" class="mr-3px" />
-                删除
-              </el-button>
-            </div>
+            <el-button
+              link
+              type="primary"
+              @click="openForm('update', scope.row.id)"
+              v-hasPermi="['drug:hospital-info:update']"
+            >
+              编辑
+            </el-button>
+            <el-button
+              link
+              type="danger"
+              @click="handleDelete(scope.row.id)"
+              v-hasPermi="['drug:hospital-info:delete']"
+            >
+              删除
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
-
       <!-- 分页 -->
-      <div class="pagination-wrapper">
-        <Pagination
-          :total="total"
-          v-model:page="queryParams.pageNo"
-          v-model:limit="queryParams.pageSize"
-          @pagination="getList"
-        />
-      </div>
-    </el-card>
+      <Pagination
+        :total="total"
+        v-model:page="queryParams.pageNo"
+        v-model:limit="queryParams.pageSize"
+        @pagination="getList"
+      />
+    </ContentWrap>
 
     <!-- 表单弹窗：添加/修改 -->
     <HospitalInfoForm ref="formRef" @success="handleFormSuccess" />
@@ -659,35 +568,5 @@ const getQcStatusText = (status: number): string => {
     flex-direction: column;
     width: 100%;
   }
-}
-
-/* 表格样式优化 */
-:deep(.el-table) {
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-:deep(.el-table th) {
-  background-color: #fafafa;
-  color: #606266;
-  font-weight: 600;
-}
-
-/* 标签样式 */
-:deep(.el-tag) {
-  border-radius: 4px;
-  font-weight: 500;
-}
-
-/* 卡片样式 */
-:deep(.el-card) {
-  border: none;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-}
-
-:deep(.el-card__header) {
-  border-bottom: 1px solid #f0f0f0;
-  background-color: #fafafa;
-  padding: 16px 20px;
 }
 </style>

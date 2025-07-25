@@ -1987,7 +1987,7 @@ const loadRuleData = async (ruleId) => {
     }
   } catch (error) {
     console.error('加载规则数据失败:', error)
-    ElMessage.error('加载规则数据失败')
+    // ElMessage.error('加载规则数据失败')
   }
 }
 

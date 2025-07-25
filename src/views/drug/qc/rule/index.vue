@@ -6,18 +6,9 @@
       content="管理前置质控和后置质控规则，确保药品数据质量符合国家标准要求"
     >
       <template #extra>
-        <el-button type="primary" @click="openForm('create')">
-          <el-icon><Plus /></el-icon>
-          新增规则
-        </el-button>
-        <el-button @click="handleImport">
-          <el-icon><Upload /></el-icon>
-          导入规则
-        </el-button>
-        <el-button @click="handleExport" :loading="exportLoading">
-          <el-icon><Download /></el-icon>
-          导出规则
-        </el-button>
+        <el-button type="primary" @click="openForm('create')"> 新增规则 </el-button>
+        <el-button @click="handleImport"> 导入规则 </el-button>
+        <el-button @click="handleExport" :loading="exportLoading"> 导出规则 </el-button>
       </template>
     </PageHeader>
 
@@ -64,41 +55,35 @@
       </el-row>
     </div>
 
-    <!-- 搜索和操作区域 -->
-    <el-card class="search-card" shadow="never">
-      <el-form
-        ref="queryFormRef"
-        :model="queryParams"
-        :inline="true"
-        label-width="80px"
-        class="search-form"
-      >
+    <!-- 搜索区域 -->
+    <ContentWrap class="-mb-15px">
+      <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="80px">
         <el-form-item label="规则编码" prop="ruleCode">
           <el-input
             v-model="queryParams.ruleCode"
+            class="!w-240px"
             placeholder="请输入规则编码"
             clearable
             @keyup.enter="handleQuery"
-            style="width: 200px"
           />
         </el-form-item>
 
         <el-form-item label="规则名称" prop="ruleName">
           <el-input
             v-model="queryParams.ruleName"
+            class="!w-240px"
             placeholder="请输入规则名称"
             clearable
             @keyup.enter="handleQuery"
-            style="width: 200px"
           />
         </el-form-item>
 
         <el-form-item label="规则类型" prop="ruleType">
           <el-select
             v-model="queryParams.ruleType"
+            class="!w-240px"
             placeholder="请选择类型"
             clearable
-            style="width: 150px"
           >
             <el-option label="全部" value="" />
             <el-option
@@ -113,9 +98,9 @@
         <el-form-item label="适用表" prop="tableType">
           <el-select
             v-model="queryParams.tableType"
+            class="!w-240px"
             placeholder="请选择适用表"
             clearable
-            style="width: 150px"
           >
             <el-option label="全部" value="" />
             <el-option
@@ -130,9 +115,9 @@
         <el-form-item label="字段名称" prop="fieldName">
           <el-input
             v-model="queryParams.fieldName"
+            class="!w-240px"
             clearable
             placeholder="请输入字段名称"
-            style="width: 150px"
             @keyup.enter="handleQuery"
           />
         </el-form-item>
@@ -140,9 +125,9 @@
         <el-form-item label="启用状态" prop="enabled">
           <el-select
             v-model="queryParams.enabled"
+            class="!w-240px"
             placeholder="请选择状态"
             clearable
-            style="width: 120px"
           >
             <el-option label="全部" value="" />
             <el-option label="启用" :value="true" />
@@ -151,45 +136,21 @@
         </el-form-item>
 
         <el-form-item>
-          <el-button type="primary" @click="handleQuery">
-            <el-icon><Search /></el-icon>
-            搜索
-          </el-button>
-          <el-button @click="resetQuery">
-            <el-icon><Refresh /></el-icon>
-            重置
-          </el-button>
+          <el-button type="primary" @click="handleQuery"> 搜索 </el-button>
+          <el-button @click="resetQuery"> 重置 </el-button>
           <el-button type="success" @click="handleExport" :loading="exportLoading">
-            <el-icon><Download /></el-icon>
             导出
           </el-button>
         </el-form-item>
       </el-form>
-    </el-card>
+    </ContentWrap>
 
     <!-- 规则列表 -->
-    <el-card class="table-card" shadow="never">
-      <template #header>
-        <div class="table-header">
-          <span class="table-title">规则列表</span>
-          <div class="table-actions">
-            <el-button type="primary" size="small" @click="openForm('create')">
-              <el-icon><Plus /></el-icon>
-              新增规则
-            </el-button>
-            <el-button size="small" @click="handleRefresh" :loading="refreshing">
-              <el-icon><Refresh /></el-icon>
-              刷新
-            </el-button>
-          </div>
-        </div>
-      </template>
-
+    <ContentWrap>
       <el-table
         v-loading="loading"
         :data="ruleList"
         stripe
-        border
         style="width: 100%"
         @selection-change="handleSelectionChange"
         @sort-change="handleSortChange"
@@ -224,9 +185,9 @@
 
         <el-table-column align="center" label="适用表" prop="tableType" width="150">
           <template #default="{ row }">
-            <div v-if="row.tableType">
-              <!-- 解析逗号分隔的字符串格式 -->
-              <div v-if="row.tableType === '0'" class="table-all">
+            <div v-if="row.tableType !== null && row.tableType !== undefined">
+              <!-- 检查是否为"全部表"的情况 -->
+              <div v-if="row.tableType === 0 || row.tableType === '0'" class="table-all">
                 <el-tag size="small" type="info">全部表</el-tag>
               </div>
               <div v-else>
@@ -386,7 +347,7 @@
       </el-table>
 
       <!-- 分页 -->
-      <div class="pagination-wrapper">
+      <div class="flex justify-end mt-4">
         <Pagination
           :total="total"
           v-model:page="queryParams.pageNo"
@@ -394,7 +355,7 @@
           @pagination="loadRuleList"
         />
       </div>
-    </el-card>
+    </ContentWrap>
 
     <!-- 质控规则表单对话框 -->
     <QcRuleForm ref="formRef" @success="handleSuccess" />
@@ -414,6 +375,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import type { FormInstance } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useRouter } from 'vue-router'
 import {
   Clock,
   Connection,
@@ -440,6 +402,7 @@ import { DICT_TYPE, getDictLabel, getIntDictOptions } from '@/utils/dict'
 // 导入组件
 import PageHeader from '@/components/PageHeader/index.vue'
 import StatCard from '@/components/StatCard/index.vue'
+import { ContentWrap } from '@/components/ContentWrap'
 import QcRuleForm from './QcRuleForm.vue'
 import RuleDetailModal from './components/RuleDetailModal.vue'
 import RuleTestModal from './components/RuleTestModal.vue'
@@ -459,7 +422,7 @@ const queryFormRef = ref<FormInstance>()
 /** 查询参数 */
 const queryParams = reactive<QcRulePageReqVO>({
   pageNo: 1,
-  pageSize: 20,
+  pageSize: 10,
   ruleCode: undefined,
   ruleName: undefined,
   ruleType: undefined,
@@ -514,7 +477,12 @@ const loadRuleList = async () => {
   loading.value = true
   try {
     const { list, total: totalCount } = await QcRuleApi.getQcRulePage(queryParams)
-    ruleList.value = list || []
+    // 转换后端Integer类型的enabled字段为boolean
+    ruleList.value = (list || []).map((item) => ({
+      ...item,
+      enabled: Boolean(item.enabled), // 将0/1转换为false/true
+      statusLoading: false // 初始化状态加载状态
+    }))
     total.value = totalCount || 0
   } catch (error) {
     ElMessage.error('加载规则列表失败')
@@ -697,15 +665,29 @@ const handleImport = () => {
 
 // ========================= 工具方法 =========================
 
-/** 解析表类型字符串为数组 */
-const parseTableTypes = (tableTypeStr: string): number[] => {
-  if (!tableTypeStr || tableTypeStr === '0') {
+/** 解析表类型为数组 */
+const parseTableTypes = (tableType: string | number | null | undefined): number[] => {
+  if (!tableType) {
     return []
   }
-  return tableTypeStr
-    .split(',')
-    .map((t) => parseInt(t.trim()))
-    .filter((t) => !isNaN(t))
+
+  // 如果是数字类型，直接返回数组
+  if (typeof tableType === 'number') {
+    return tableType === 0 ? [] : [tableType]
+  }
+
+  // 如果是字符串类型，按逗号分隔解析
+  if (typeof tableType === 'string') {
+    if (tableType === '0' || !tableType.trim()) {
+      return []
+    }
+    return tableType
+      .split(',')
+      .map((t) => parseInt(t.trim()))
+      .filter((t) => !isNaN(t))
+  }
+
+  return []
 }
 
 /** 解析字段名字符串为数组 */
@@ -731,106 +713,9 @@ const parseFieldNames = (fieldNameStr: string): string[] => {
   margin-bottom: 20px;
 }
 
-.search-card {
-  margin-bottom: 20px;
-  border-radius: 8px;
-}
-
-.search-form {
-  margin-bottom: 0;
-}
-
-.table-card {
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-}
-
-.table-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.table-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.table-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.action-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  justify-content: center;
-}
-
-.pagination-wrapper {
-  display: flex;
-  justify-content: end;
-  margin-top: 20px;
-  padding: 20px;
-}
-
 .text-muted {
   color: #909399;
   font-style: italic;
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .qc-rule-container {
-    padding: 10px;
-  }
-
-  .search-form :deep(.el-form-item) {
-    width: 100%;
-    margin-right: 0;
-  }
-
-  .table-header {
-    flex-direction: column;
-    gap: 12px;
-    align-items: flex-start;
-  }
-
-  .action-buttons {
-    flex-direction: column;
-    width: 100%;
-  }
-}
-
-/* 表格样式优化 */
-:deep(.el-table) {
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-:deep(.el-table th) {
-  background-color: #fafafa;
-  color: #606266;
-  font-weight: 600;
-}
-
-/* 标签样式 */
-:deep(.el-tag) {
-  border-radius: 4px;
-  font-weight: 500;
-}
-
-/* 卡片样式 */
-:deep(.el-card) {
-  border: none;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-}
-
-:deep(.el-card__header) {
-  border-bottom: 1px solid #f0f0f0;
-  background-color: #fafafa;
 }
 
 /* 表类型标签样式 */

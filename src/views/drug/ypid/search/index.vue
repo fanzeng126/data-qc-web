@@ -44,14 +44,20 @@
     </div>
 
     <!-- 搜索区域 -->
-    <el-card class="search-card" shadow="never">
-      <el-form ref="queryFormRef" :model="queryParams" :inline="true" label-width="80px">
+    <ContentWrap>
+      <el-form
+        ref="queryFormRef"
+        :model="queryParams"
+        :inline="true"
+        label-width="80px"
+        class="-mb-15px"
+      >
         <el-form-item label="关键词" prop="keyword">
           <el-input
             v-model="queryParams.keyword"
             placeholder="支持YPID、药品名、生产企业搜索"
             clearable
-            style="width: 300px"
+            class="!w-240px"
             @keyup.enter="handleQuery"
           />
         </el-form-item>
@@ -61,7 +67,7 @@
             v-model="queryParams.ypid"
             placeholder="请输入YPID编码"
             clearable
-            style="width: 200px"
+            class="!w-240px"
           />
         </el-form-item>
 
@@ -70,7 +76,7 @@
             v-model="queryParams.drugName"
             placeholder="请输入药品通用名"
             clearable
-            style="width: 200px"
+            class="!w-240px"
           />
         </el-form-item>
 
@@ -79,7 +85,7 @@
             v-model="queryParams.manufacturer"
             placeholder="请输入生产企业"
             clearable
-            style="width: 200px"
+            class="!w-240px"
           />
         </el-form-item>
 
@@ -88,7 +94,7 @@
             v-model="queryParams.category"
             placeholder="请选择类别"
             clearable
-            style="width: 150px"
+            class="!w-240px"
           >
             <el-option label="全部" value="" />
             <el-option label="西药" value="western" />
@@ -103,7 +109,7 @@
             v-model="queryParams.status"
             placeholder="请选择状态"
             clearable
-            style="width: 120px"
+            class="!w-240px"
           >
             <el-option label="全部" value="" />
             <el-option label="正常" :value="1" />
@@ -126,18 +132,11 @@
           </el-button>
         </el-form-item>
       </el-form>
-    </el-card>
+    </ContentWrap>
 
-    <!-- 搜索结果 -->
-    <el-card class="result-card" shadow="never">
-      <template #header>
-        <div class="card-header">
-          <span class="card-title">搜索结果</span>
-          <span class="result-count">共 {{ total }} 条记录</span>
-        </div>
-      </template>
-
-      <el-table v-loading="loading" :data="drugList" stripe border highlight-current-row>
+    <!-- 表格区域 -->
+    <ContentWrap>
+      <el-table v-loading="loading" :data="drugList" stripe highlight-current-row>
         <el-table-column prop="ypid" label="YPID编码" width="150" fixed="left">
           <template #default="{ row }">
             <el-link type="primary" @click="handleViewDetail(row)">
@@ -146,7 +145,12 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="genericNameCn" label="药品通用名" min-width="150" show-overflow-tooltip />
+        <el-table-column
+          prop="genericNameCn"
+          label="药品通用名"
+          min-width="150"
+          show-overflow-tooltip
+        />
 
         <el-table-column
           prop="productName"
@@ -173,7 +177,7 @@
         <el-table-column prop="drugCategory" label="类别" width="100">
           <template #default="{ row }">
             <el-tag size="small" :type="getCategoryTag(row.drugCategory)">
-              {{ getCategoryLabel(row.drugCategory  ) }}
+              {{ getCategoryLabel(row.drugCategory) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -196,13 +200,16 @@
         </el-table-column>
       </el-table>
 
-      <Pagination
+      <el-pagination
+        v-model:current-page="queryParams.pageNo"
+        v-model:page-size="queryParams.pageSize"
+        :page-sizes="[10, 20, 50, 100]"
         :total="total"
-        v-model:page="queryParams.pageNo"
-        v-model:limit="queryParams.pageSize"
-        @pagination="loadDrugList"
+        layout="total, sizes, prev, pager, next, jumper"
+        @size-change="loadDrugList"
+        @current-change="loadDrugList"
       />
-    </el-card>
+    </ContentWrap>
 
     <!-- 药品详情对话框 -->
     <YpidDetailModal v-model="detailVisible" :ypid="selectedYpid" />
@@ -229,7 +236,7 @@ const exportLoading = ref(false)
 
 const queryParams = reactive<YpidSearchVO>({
   pageNo: 1,
-  pageSize: 20,
+  pageSize: 10,
   keyword: undefined,
   ypid: undefined,
   drugName: undefined,
@@ -297,7 +304,7 @@ const handleQuery = () => {
 const resetQuery = () => {
   Object.assign(queryParams, {
     pageNo: 1,
-    pageSize: 20,
+    pageSize: 10,
     keyword: undefined,
     ypid: undefined,
     drugName: undefined,

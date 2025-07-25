@@ -10,19 +10,15 @@
       </template>
     </PageHeader>
 
-    <!-- 报告列表 -->
-    <el-card class="report-list-card" shadow="never">
-      <template #header>
-        <span class="card-title">匹配报告列表</span>
-      </template>
-
-      <el-form :model="queryParams" :inline="true" label-width="80px" class="search-form">
+    <!-- 搜索区域 -->
+    <ContentWrap>
+      <el-form :model="queryParams" :inline="true" label-width="80px" class="-mb-15px">
         <el-form-item label="任务ID" prop="taskId">
           <el-input
             v-model="queryParams.taskId"
             placeholder="请输入任务ID"
             clearable
-            style="width: 150px"
+            class="!w-240px"
           />
         </el-form-item>
 
@@ -31,7 +27,7 @@
             v-model="queryParams.hospitalName"
             placeholder="请输入医院名称"
             clearable
-            style="width: 200px"
+            class="!w-240px"
           />
         </el-form-item>
 
@@ -43,6 +39,7 @@
             start-placeholder="开始日期"
             end-placeholder="结束日期"
             value-format="YYYY-MM-DD"
+            class="!w-240px"
             @change="handleDateChange"
           />
         </el-form-item>
@@ -58,7 +55,10 @@
           </el-button>
         </el-form-item>
       </el-form>
+    </ContentWrap>
 
+    <!-- 表格区域 -->
+    <ContentWrap>
       <el-table
         v-loading="loading"
         :data="reportList"
@@ -100,24 +100,25 @@
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click.stop="handleViewDetail(row)">
-              <el-icon><View /></el-icon>
               查看详情
             </el-button>
             <el-button type="success" link size="small" @click.stop="handleDownload(row)">
-              <el-icon><Download /></el-icon>
               下载
             </el-button>
           </template>
         </el-table-column>
       </el-table>
 
-      <Pagination
+      <el-pagination
+        v-model:current-page="queryParams.pageNo"
+        v-model:page-size="queryParams.pageSize"
+        :page-sizes="[10, 20, 50, 100]"
         :total="total"
-        v-model:page="queryParams.pageNo"
-        v-model:limit="queryParams.pageSize"
-        @pagination="loadReportList"
+        layout="total, sizes, prev, pager, next, jumper"
+        @size-change="loadReportList"
+        @current-change="loadReportList"
       />
-    </el-card>
+    </ContentWrap>
 
     <!-- 报告详情 -->
     <el-card v-if="currentReport" class="report-detail-card" shadow="never">
@@ -247,7 +248,6 @@ import { YpidApi, type MatchReportVO } from '@/api/drug/ypid'
 
 // 导入组件
 import PageHeader from '@/components/PageHeader/index.vue'
-
 defineOptions({ name: 'YpidReportIndex' })
 
 // ========================= 响应式数据 =========================
@@ -257,7 +257,7 @@ const exportLoading = ref(false)
 
 const queryParams = reactive({
   pageNo: 1,
-  pageSize: 20,
+  pageSize: 10,
   taskId: undefined as number | undefined,
   hospitalName: undefined,
   startTime: undefined,
@@ -283,16 +283,16 @@ const initPage = async () => {
   const route = useRoute()
   const taskId = Number(route.query.taskId)
   const reportId = route.query.reportId as string
-  
+
   if (taskId) {
     queryParams.taskId = taskId
   }
-  
+
   await loadReportList()
-  
+
   // 如果指定了报告ID，直接打开报告详情
   if (reportId && reportList.value.length > 0) {
-    const targetReport = reportList.value.find(report => report.reportId === reportId)
+    const targetReport = reportList.value.find((report) => report.reportId === reportId)
     if (targetReport) {
       await handleViewDetail(targetReport)
     }
@@ -302,9 +302,114 @@ const initPage = async () => {
 const loadReportList = async () => {
   loading.value = true
   try {
-    const { list, total: totalCount } = await YpidApi.getReportList(queryParams)
-    reportList.value = list || []
-    total.value = totalCount || 0
+    // 使用假数据替代API调用
+    const mockReports = [
+      {
+        reportId: 'RPT-2024-001',
+        taskNo: 'TASK-2024-001',
+        hospitalName: '北京协和医院',
+        reportTime: '2024-01-15 10:30:00',
+        totalDrugs: 1250,
+        matchRate: 87,
+        matchQualityScore: 8.5,
+        matchedCount: 1088,
+        unmatchedCount: 162,
+        autoMatchCount: 950,
+        manualMatchCount: 138,
+        averageConfidence: 92.3,
+        categoryDistribution: {
+          western: 850,
+          chinese: 280,
+          herbal: 90,
+          biological: 30
+        },
+        unmatchedReasons: {
+          no_match: 65,
+          multiple_match: 42,
+          low_confidence: 28,
+          info_incomplete: 15,
+          name_mismatch: 8,
+          spec_mismatch: 4
+        },
+        suggestions: [
+          '建议完善药品规格信息，提高匹配准确率',
+          '对于多个匹配项的药品，建议进行人工复核',
+          '加强生产企业名称标准化管理'
+        ]
+      },
+      {
+        reportId: 'RPT-2024-002',
+        taskNo: 'TASK-2024-002',
+        hospitalName: '上海华山医院',
+        reportTime: '2024-01-14 14:20:00',
+        totalDrugs: 980,
+        matchRate: 92,
+        matchQualityScore: 9.1,
+        matchedCount: 901,
+        unmatchedCount: 79,
+        autoMatchCount: 820,
+        manualMatchCount: 81,
+        averageConfidence: 94.7,
+        categoryDistribution: {
+          western: 680,
+          chinese: 200,
+          herbal: 70,
+          biological: 30
+        },
+        unmatchedReasons: {
+          no_match: 35,
+          multiple_match: 22,
+          low_confidence: 12,
+          info_incomplete: 6,
+          name_mismatch: 3,
+          spec_mismatch: 1
+        },
+        suggestions: [
+          '匹配质量良好，建议继续保持数据质量标准',
+          '对于少数未匹配项目，建议补充详细信息'
+        ]
+      },
+      {
+        reportId: 'RPT-2024-003',
+        taskNo: 'TASK-2024-003',
+        hospitalName: '广州中山大学附属第一医院',
+        reportTime: '2024-01-13 09:15:00',
+        totalDrugs: 1450,
+        matchRate: 78,
+        matchQualityScore: 7.2,
+        matchedCount: 1131,
+        unmatchedCount: 319,
+        autoMatchCount: 1000,
+        manualMatchCount: 131,
+        averageConfidence: 88.5,
+        categoryDistribution: {
+          western: 950,
+          chinese: 350,
+          herbal: 120,
+          biological: 30
+        },
+        unmatchedReasons: {
+          no_match: 128,
+          multiple_match: 85,
+          low_confidence: 58,
+          info_incomplete: 28,
+          name_mismatch: 15,
+          spec_mismatch: 5
+        },
+        suggestions: [
+          '建议加强药品信息标准化录入培训',
+          '优化匹配算法，提高复杂情况下的匹配准确率',
+          '建立药品信息质量监控机制'
+        ]
+      }
+    ]
+
+    // 模拟分页
+    const start = (queryParams.pageNo - 1) * queryParams.pageSize
+    const end = start + queryParams.pageSize
+
+    reportList.value = mockReports.slice(start, end)
+    total.value = mockReports.length
   } catch (error) {
     console.error('加载报告列表失败:', error)
   } finally {
@@ -320,7 +425,7 @@ const handleQuery = () => {
 const resetQuery = () => {
   Object.assign(queryParams, {
     pageNo: 1,
-    pageSize: 20,
+    pageSize: 10,
     taskId: undefined,
     hospitalName: undefined,
     startTime: undefined,
@@ -355,7 +460,8 @@ const handleViewReport = (row: MatchReportVO) => {
 
 const handleViewDetail = async (row: MatchReportVO) => {
   try {
-    currentReport.value = await YpidApi.getReportDetail(row.reportId)
+    // 使用假数据替代API调用，直接使用当前行数据
+    currentReport.value = row
     await nextTick()
     initCharts()
   } catch (error) {

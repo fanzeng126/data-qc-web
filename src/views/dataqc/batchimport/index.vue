@@ -43,10 +43,12 @@
           class="!w-240px"
         >
           <el-option label="待处理" :value="0" />
-          <el-option label="处理中" :value="1" />
-          <el-option label="成功" :value="2" />
-          <el-option label="失败" :value="3" />
-          <el-option label="部分成功" :value="4" />
+          <el-option label="解压中" :value="1" />
+          <el-option label="导入中" :value="2" />
+          <el-option label="质控中" :value="3" />
+          <el-option label="完成" :value="4" />
+          <el-option label="失败" :value="5" />
+          <el-option label="部分成功" :value="6" />
         </el-select>
       </el-form-item>
       <el-form-item label="创建时间" prop="createTime">
@@ -100,10 +102,7 @@
       />
       <el-table-column label="状态" align="center" width="100">
         <template #default="scope">
-          <el-tag
-            :type="getStatusTagType(scope.row.status)"
-            disable-transitions
-          >
+          <el-tag :type="getStatusTagType(scope.row.status)" disable-transitions>
             {{ getStatusText(scope.row.status) }}
           </el-tag>
         </template>
@@ -124,9 +123,7 @@
             :stroke-width="6"
             :show-text="false"
           />
-          <div class="text-xs text-gray-500 mt-1">
-            {{ calculateProgress(scope.row) }}%
-          </div>
+          <div class="text-xs text-gray-500 mt-1"> {{ calculateProgress(scope.row) }}% </div>
         </template>
       </el-table-column>
       <el-table-column label="耗时" align="center" width="100">
@@ -169,11 +166,13 @@
             </el-button>
             <el-dropdown
               @command="(command) => handleCommand(command, scope.row)"
-              v-hasPermi="['dataqc:batch-import:retry', 'dataqc:batch-import:cancel', 'dataqc:batch-import:delete']"
+              v-hasPermi="[
+                'dataqc:batch-import:retry',
+                'dataqc:batch-import:cancel',
+                'dataqc:batch-import:delete'
+              ]"
             >
-              <el-button type="primary" link>
-                <Icon icon="ep:d-arrow-right" /> 更多
-              </el-button>
+              <el-button type="primary" link> <Icon icon="ep:d-arrow-right" /> 更多 </el-button>
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item
@@ -357,11 +356,13 @@ const handleDelete = async (id: number) => {
 /** 获取状态标签类型 */
 const getStatusTagType = (status: number) => {
   const typeMap = {
-    0: 'info',    // 待处理
-    1: 'warning', // 处理中
-    2: 'success', // 成功
-    3: 'danger',  // 失败
-    4: 'primary'  // 部分成功
+    0: 'pending', // 等待中
+    1: 'processing', // 进行中（带动画）
+    2: 'processing', // 进行中（带动画）
+    3: 'processing', // 进行中（带动画）
+    4: 'success', // 成功
+    5: 'error', // 失败
+    6: 'warning' // 部分成功
   }
   return typeMap[status] || 'info'
 }
@@ -371,9 +372,11 @@ const getStatusText = (status: number) => {
   const textMap = {
     0: '待处理',
     1: '处理中',
-    2: '成功',
-    3: '失败',
-    4: '部分成功'
+    2: '导入中',
+    3: '质控中',
+    4: '完成',
+    5: '失败',
+    6: '部分成功'
   }
   return textMap[status] || '未知'
 }

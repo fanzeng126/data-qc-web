@@ -1,27 +1,7 @@
 <template>
   <div class="template-container">
     <!-- 页面头部 -->
-    <PageHeader content="管理数据导入模板，包括默认模板和自定义模板" title="导入模板管理">
-      <template #extra>
-        <el-button
-          v-hasPermi="['drug:import-template:create']"
-          type="primary"
-          @click="openForm('create')"
-        >
-          <el-icon><Plus /></el-icon>
-          新建模板
-        </el-button>
-        <el-button
-          v-hasPermi="['drug:import-template:export']"
-          :loading="exportLoading"
-          type="success"
-          @click="handleExport"
-        >
-          <el-icon><Download /></el-icon>
-          导出列表
-        </el-button>
-      </template>
-    </PageHeader>
+    <PageHeader content="管理数据导入模板，包括默认模板和自定义模板" title="导入模板管理" />
 
     <!-- 统计概览卡片 -->
     <div class="stats-overview">
@@ -57,120 +37,86 @@
     </div>
 
     <!-- 搜索和操作区域 -->
-    <el-card class="search-card" shadow="never">
+    <ContentWrap>
       <el-form
+        class="-mb-15px"
+        :model="queryParams"
         ref="queryFormRef"
         :inline="true"
-        :model="queryParams"
-        class="search-form"
-        label-width="80px"
+        label-width="68px"
       >
-        <el-row :gutter="20">
-          <el-col :lg="6" :md="8" :sm="12" :xs="24">
-            <el-form-item label="模板名称" prop="templateName">
-              <el-input
-                v-model="queryParams.templateName"
-                clearable
-                placeholder="请输入模板名称"
-                @keyup.enter="handleQuery"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :lg="6" :md="8" :sm="12" :xs="24">
-            <el-form-item label="模板编码" prop="templateCode">
-              <el-input
-                v-model="queryParams.templateCode"
-                clearable
-                placeholder="请输入模板编码"
-                @keyup.enter="handleQuery"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :lg="6" :md="8" :sm="12" :xs="24">
-            <el-form-item label="表类型" prop="tableType">
-              <el-select
-                v-model="queryParams.tableType"
-                clearable
-                placeholder="请选择表类型"
-                style="width: 100%"
-              >
-                <el-option label="全部" value="" />
-                <el-option
-                  v-for="(name, type) in TABLE_TYPE_NAMES"
-                  :key="type"
-                  :label="name"
-                  :value="Number(type)"
-                />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :lg="6" :md="8" :sm="12" :xs="24">
-            <el-form-item label="状态" prop="status">
-              <el-select
-                v-model="queryParams.status"
-                clearable
-                placeholder="请选择状态"
-                style="width: 100%"
-              >
-                <el-option label="全部" value="" />
-                <el-option :value="1" label="启用" />
-                <el-option :value="0" label="禁用" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row>
-          <el-col :span="24" style="text-align: center">
-            <el-form-item>
-              <el-button type="primary" @click="handleQuery">
-                <el-icon><Search /></el-icon>
-                搜索
-              </el-button>
-              <el-button @click="resetQuery">
-                <el-icon><Refresh /></el-icon>
-                重置
-              </el-button>
-            </el-form-item>
-          </el-col>
-        </el-row>
+        <el-form-item label="模板名称" prop="templateName">
+          <el-input
+            v-model="queryParams.templateName"
+            placeholder="请输入模板名称"
+            clearable
+            @keyup.enter="handleQuery"
+            class="!w-240px"
+          />
+        </el-form-item>
+        <el-form-item label="模板编码" prop="templateCode">
+          <el-input
+            v-model="queryParams.templateCode"
+            placeholder="请输入模板编码"
+            clearable
+            @keyup.enter="handleQuery"
+            class="!w-240px"
+          />
+        </el-form-item>
+        <el-form-item label="表类型" prop="tableType">
+          <el-select
+            v-model="queryParams.tableType"
+            placeholder="请选择表类型"
+            clearable
+            class="!w-240px"
+          >
+            <el-option label="全部" value="" />
+            <el-option
+              v-for="(name, type) in TABLE_TYPE_NAMES"
+              :key="type"
+              :label="name"
+              :value="Number(type)"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="状态" prop="status">
+          <el-select
+            v-model="queryParams.status"
+            placeholder="请选择状态"
+            clearable
+            class="!w-240px"
+          >
+            <el-option label="全部" value="" />
+            <el-option :value="1" label="启用" />
+            <el-option :value="0" label="禁用" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button @click="handleQuery"><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button>
+          <el-button @click="resetQuery"><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button>
+          <el-button
+            type="primary"
+            @click="openForm('create')"
+            v-hasPermi="['drug:import-template:create']"
+          >
+            <Icon icon="ep:plus" class="mr-5px" /> 新增
+          </el-button>
+          <el-button
+            type="success"
+            @click="handleExport"
+            :loading="exportLoading"
+            v-hasPermi="['drug:import-template:export']"
+          >
+            <Icon icon="ep:download" class="mr-5px" /> 导出
+          </el-button>
+        </el-form-item>
       </el-form>
-    </el-card>
+    </ContentWrap>
 
-    <!-- 模板列表 -->
-    <el-card class="table-card" shadow="never">
-      <template #header>
-        <div class="table-header">
-          <span class="table-title">模板列表</span>
-          <div class="table-actions">
-            <el-button size="small" type="primary" @click="openForm('create')">
-              <el-icon><Plus /></el-icon>
-              新建模板
-            </el-button>
-            <el-button :loading="refreshing" size="small" @click="handleRefresh">
-              <el-icon><Refresh /></el-icon>
-              刷新
-            </el-button>
-          </div>
-        </div>
-      </template>
-
-      <el-table
-        v-loading="loading"
-        :data="list"
-        :show-overflow-tooltip="true"
-        :stripe="true"
-        border
-        style="width: 100%"
-        @selection-change="handleSelectionChange"
-      >
-        <el-table-column type="selection" width="55" />
-        <el-table-column
-          align="left"
-          fixed="left"
-          label="模板名称"
-          min-width="180"
-          prop="templateName"
-        >
+    <!-- 列表 -->
+    <ContentWrap>
+      <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
+        <el-table-column label="模板名称" align="center" prop="templateName" min-width="200px">
           <template #default="{ row }">
             <div class="template-info">
               <div class="template-name">
@@ -184,22 +130,22 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column align="center" label="表类型" prop="tableTypeName" width="120">
+        <el-table-column label="表类型" align="center" prop="tableType" min-width="120px">
           <template #default="{ row }">
             <el-tag effect="plain" type="info">{{ getTableTypeName(row.tableType) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column align="center" label="字段数量" prop="fieldCount" width="100">
+        <el-table-column label="字段数量" align="center" prop="fieldCount">
           <template #default="{ row }">
             <el-badge :value="row.fieldCount" class="field-badge" type="primary" />
           </template>
         </el-table-column>
-        <el-table-column align="center" label="下载次数" prop="downloadCount" width="100">
+        <el-table-column label="下载次数" align="center" prop="downloadCount">
           <template #default="{ row }">
             <span class="download-count">{{ formatNumber(row.downloadCount) }}</span>
           </template>
         </el-table-column>
-        <el-table-column align="center" label="状态" prop="status" width="100">
+        <el-table-column label="状态" align="center" prop="status">
           <template #default="{ row }">
             <el-switch
               v-model="row.status"
@@ -209,7 +155,7 @@
             />
           </template>
         </el-table-column>
-        <el-table-column align="center" label="模板类型" width="100">
+        <el-table-column label="模板类型" align="center">
           <template #default="{ row }">
             <el-tag :type="row.isDefault ? 'warning' : 'primary'" size="small">
               {{ row.isDefault ? '默认' : '自定义' }}
@@ -217,82 +163,67 @@
           </template>
         </el-table-column>
         <el-table-column
-          :formatter="dateFormatter"
-          align="center"
           label="创建时间"
+          align="center"
           prop="createTime"
-          width="160"
+          :formatter="dateFormatter"
+          width="180px"
         />
-        <el-table-column align="center" label="创建人" prop="creator" width="100" />
-        <el-table-column align="center" fixed="right" label="操作" width="260">
+        <el-table-column label="创建人" align="center" prop="creator" />
+        <el-table-column label="操作" align="center" min-width="200px">
           <template #default="{ row }">
-            <div class="action-buttons">
-              <el-button
-                v-hasPermi="['drug:import-template:query']"
-                link
-                size="small"
-                type="primary"
-                @click="handlePreview(row.id)"
-              >
-                <Icon class="mr-3px" icon="ep:view" />
-                预览
-              </el-button>
-              <el-button
-                v-hasPermi="['drug:import-template:query']"
-                link
-                size="small"
-                type="success"
-                @click="handleDownload(row.id)"
-              >
-                <Icon class="mr-3px" icon="ep:download" />
-                下载
-              </el-button>
-              <el-button
-                v-hasPermi="['drug:import-template:update']"
-                link
-                size="small"
-                type="primary"
-                @click="openForm('update', row.id)"
-              >
-                <Icon class="mr-3px" icon="ep:edit" />
-                编辑
-              </el-button>
-              <el-button
-                v-hasPermi="['drug:import-template:create']"
-                link
-                size="small"
-                type="warning"
-                @click="handleCopy(row.id)"
-              >
-                <Icon class="mr-3px" icon="ep:copy-document" />
-                复制
-              </el-button>
-              <el-button
-                v-hasPermi="['drug:import-template:delete']"
-                :disabled="row.isDefault"
-                link
-                size="small"
-                type="danger"
-                @click="handleDelete(row.id)"
-              >
-                <Icon class="mr-3px" icon="ep:delete" />
-                删除
-              </el-button>
-            </div>
+            <el-button
+              link
+              type="primary"
+              @click="handlePreview(row.id)"
+              v-hasPermi="['drug:import-template:query']"
+            >
+              预览
+            </el-button>
+            <el-button
+              link
+              type="success"
+              @click="handleDownload(row.id)"
+              v-hasPermi="['drug:import-template:query']"
+            >
+              下载
+            </el-button>
+            <el-button
+              link
+              type="primary"
+              @click="openForm('update', row.id)"
+              v-hasPermi="['drug:import-template:update']"
+            >
+              编辑
+            </el-button>
+            <el-button
+              link
+              type="warning"
+              @click="handleCopy(row.id)"
+              v-hasPermi="['drug:import-template:create']"
+            >
+              复制
+            </el-button>
+            <el-button
+              link
+              type="danger"
+              @click="handleDelete(row.id)"
+              :disabled="row.isDefault"
+              v-hasPermi="['drug:import-template:delete']"
+            >
+              删除
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
-
       <!-- 分页 -->
-      <div class="pagination-wrapper">
-        <Pagination
-          v-model:limit="queryParams.pageSize"
-          v-model:page="queryParams.pageNo"
-          :total="total"
-          @pagination="getList"
-        />
-      </div>
-    </el-card>
+      <Pagination
+        :total="total"
+        v-model:page="queryParams.pageNo"
+        v-model:limit="queryParams.pageSize"
+        @pagination="getList"
+      />
+    </ContentWrap>
 
     <!-- 表单弹窗：添加/修改 -->
     <ImportTemplateForm ref="formRef" @success="handleFormSuccess" />
@@ -307,7 +238,6 @@
 
 <script lang="ts" setup>
 import { onMounted, reactive, ref } from 'vue'
-import { Download, Plus, Refresh, Search } from '@element-plus/icons-vue'
 import { dateFormatter } from '@/utils/formatTime'
 import download from '@/utils/download'
 import {
@@ -331,10 +261,8 @@ const { t } = useI18n()
 
 // ========================= 响应式数据 =========================
 const loading = ref(true)
-const refreshing = ref(false)
 const list = ref<ImportTemplateRespVO[]>([])
 const total = ref(0)
-const selectedIds = ref<number[]>([])
 const exportLoading = ref(false)
 
 const queryParams = reactive<ImportTemplatePageReqVO>({
@@ -402,22 +330,6 @@ const handleQuery = () => {
 const resetQuery = () => {
   queryFormRef.value.resetFields()
   handleQuery()
-}
-
-/** 刷新操作 */
-const handleRefresh = async () => {
-  refreshing.value = true
-  try {
-    await Promise.all([getList(), loadStatistics()])
-    message.success('刷新成功')
-  } finally {
-    refreshing.value = false
-  }
-}
-
-/** 表格选择变化 */
-const handleSelectionChange = (selection: ImportTemplateRespVO[]) => {
-  selectedIds.value = selection.map((item) => item.id)
 }
 
 /** 状态切换 */
@@ -539,37 +451,6 @@ const getTableTypeName = (tableType: number): string => {
   margin-bottom: 20px;
 }
 
-.search-card {
-  margin-bottom: 20px;
-  border-radius: 8px;
-}
-
-.search-form {
-  margin-bottom: 0;
-}
-
-.table-card {
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-}
-
-.table-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.table-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-}
-
-.table-actions {
-  display: flex;
-  gap: 8px;
-}
-
 /* 表格内容样式 */
 .template-info {
   text-align: left;
@@ -602,75 +483,10 @@ const getTableTypeName = (tableType: number): string => {
   color: #67c23a;
 }
 
-.action-buttons {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.pagination-wrapper {
-  display: flex;
-  justify-content: end;
-  margin-top: 20px;
-  padding: 20px;
-}
-
 /* 响应式设计 */
 @media (max-width: 768px) {
   .template-container {
     padding: 10px;
   }
-
-  .search-form :deep(.el-form-item) {
-    width: 100%;
-    margin-right: 0;
-  }
-
-  .table-header {
-    flex-direction: column;
-    gap: 12px;
-    align-items: flex-start;
-  }
-
-  .action-buttons {
-    flex-direction: column;
-    width: 100%;
-  }
-}
-
-/* 表格样式优化 */
-:deep(.el-table) {
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-:deep(.el-table th) {
-  background-color: #fafafa;
-  color: #606266;
-  font-weight: 600;
-}
-
-/* 标签样式 */
-:deep(.el-tag) {
-  border-radius: 4px;
-  font-weight: 500;
-}
-
-/* 开关样式 */
-:deep(.el-switch) {
-  --el-switch-on-color: #67c23a;
-  --el-switch-off-color: #dcdfe6;
-}
-
-/* 卡片样式 */
-:deep(.el-card) {
-  border: none;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-}
-
-:deep(.el-card__header) {
-  border-bottom: 1px solid #f0f0f0;
-  background-color: #fafafa;
 }
 </style>

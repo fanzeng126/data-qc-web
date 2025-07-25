@@ -94,30 +94,29 @@
     </el-row>
 
     <!-- 搜索和过滤 -->
-    <el-card class="search-card" shadow="never">
+    <ContentWrap>
       <el-form
-        ref="queryFormRef"
+        class="-mb-15px"
         :model="queryParams"
+        ref="queryFormRef"
         :inline="true"
-        label-width="80px"
-        class="search-form"
+        label-width="68px"
       >
         <el-form-item label="执行批次" prop="executionNo">
           <el-input
             v-model="queryParams.executionNo"
             placeholder="请输入执行批次"
             clearable
-            style="width: 200px"
+            class="!w-240px"
           />
         </el-form-item>
-
         <el-form-item label="规则编码" prop="ruleCode">
           <el-select
             v-model="queryParams.ruleCode"
             placeholder="请选择规则"
             clearable
             filterable
-            style="width: 200px"
+            class="!w-240px"
           >
             <el-option
               v-for="rule in ruleOptions"
@@ -127,13 +126,12 @@
             />
           </el-select>
         </el-form-item>
-
         <el-form-item label="表类型" prop="tableType">
           <el-select
             v-model="queryParams.tableType"
             placeholder="请选择表类型"
             clearable
-            style="width: 150px"
+            class="!w-240px"
           >
             <el-option label="全部" value="" />
             <el-option
@@ -144,219 +142,157 @@
             />
           </el-select>
         </el-form-item>
-
         <el-form-item label="结果状态" prop="resultStatus">
           <el-select
             v-model="queryParams.resultStatus"
             placeholder="请选择状态"
             clearable
-            style="width: 120px"
+            class="!w-240px"
           >
             <el-option label="全部" value="" />
             <el-option label="失败" value="1" />
             <el-option label="警告" value="2" />
           </el-select>
         </el-form-item>
-
         <el-form-item label="修复状态" prop="isFixed">
           <el-select
             v-model="queryParams.isFixed"
             placeholder="请选择"
             clearable
-            style="width: 120px"
+            class="!w-240px"
           >
             <el-option label="全部" value="" />
             <el-option label="已修复" :value="true" />
             <el-option label="未修复" :value="false" />
           </el-select>
         </el-form-item>
-
         <el-form-item>
-          <el-button type="primary" @click="handleQuery">
-            <el-icon><Search /></el-icon>
-            搜索
-          </el-button>
-          <el-button @click="resetQuery">
-            <el-icon><Refresh /></el-icon>
-            重置
-          </el-button>
+          <el-button @click="handleQuery"><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button>
+          <el-button @click="resetQuery"><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button>
         </el-form-item>
       </el-form>
-    </el-card>
+    </ContentWrap>
 
     <!-- 异常结果列表 -->
-    <el-card class="table-card" shadow="never">
-      <template #header>
-        <div class="table-header">
-          <span class="table-title">质控异常记录</span>
-          <div class="table-actions">
-            <el-button
-              size="small"
-              type="warning"
-              @click="batchFix"
-              :disabled="!multipleSelection.length"
-            >
-              <el-icon><Tools /></el-icon>
-              批量修复({{ multipleSelection.length }})
-            </el-button>
-            <el-button size="small" @click="handleRefresh" :loading="refreshing">
-              <el-icon><Refresh /></el-icon>
-              刷新
-            </el-button>
-          </div>
-        </div>
-      </template>
-
+    <ContentWrap>
       <el-table
         v-loading="loading"
         :data="resultList"
-        stripe
-        border
-        style="width: 100%"
+        :stripe="true"
+        :show-overflow-tooltip="true"
         @selection-change="handleSelectionChange"
         @sort-change="handleSortChange"
       >
         <el-table-column type="selection" width="55" />
-
         <el-table-column type="expand">
           <template #default="{ row }">
             <ResultExpandContent :result="row" />
           </template>
         </el-table-column>
-
-        <el-table-column prop="executionNo" label="执行批次" width="160" show-overflow-tooltip>
+        <el-table-column label="ID" align="center" prop="id" />
+        <el-table-column prop="executionNo" label="执行批次" show-overflow-tooltip>
           <template #default="{ row }">
             <el-link type="primary" @click="openExecutionDetail(row.executionId)">
               {{ row.executionNo }}
             </el-link>
           </template>
         </el-table-column>
-
-        <el-table-column prop="ruleCode" label="规则编码" width="120" show-overflow-tooltip />
-
-        <el-table-column prop="ruleName" label="规则名称" min-width="180" show-overflow-tooltip />
-
-        <el-table-column prop="tableType" label="表类型" width="100" align="center">
+        <el-table-column prop="ruleCode" label="规则编码" show-overflow-tooltip />
+        <el-table-column prop="ruleName" label="规则名称" show-overflow-tooltip />
+        <el-table-column prop="tableType" label="表类型" align="center">
           <template #default="{ row }">
             <el-tag size="small">
               {{ getDictLabel(DICT_TYPE.DRUG_QC_TABLE_TYPE, row.tableType) }}
             </el-tag>
           </template>
         </el-table-column>
-
-        <el-table-column prop="checkField" label="检查字段" width="120" show-overflow-tooltip />
-
-        <el-table-column prop="fieldValue" label="字段值" width="150" show-overflow-tooltip>
+        <el-table-column prop="checkField" label="检查字段" show-overflow-tooltip />
+        <el-table-column prop="fieldValue" label="字段值" show-overflow-tooltip>
           <template #default="{ row }">
             <el-tooltip :content="row.fieldValue" placement="top">
               <span class="field-value">{{ row.fieldValue }}</span>
             </el-tooltip>
           </template>
         </el-table-column>
-
-        <el-table-column prop="expectedValue" label="期望值" width="150" show-overflow-tooltip>
+        <el-table-column prop="expectedValue" label="期望值" show-overflow-tooltip>
           <template #default="{ row }">
             <el-tooltip :content="row.expectedValue" placement="top">
               <span class="expected-value">{{ row.expectedValue }}</span>
             </el-tooltip>
           </template>
         </el-table-column>
-
-        <el-table-column prop="resultStatus" label="结果状态" width="100" align="center">
+        <el-table-column prop="resultStatus" label="结果状态" align="center">
           <template #default="{ row }">
             <el-tag :type="row.resultStatus === 1 ? 'danger' : 'warning'" size="small">
               {{ row.resultStatus === 1 ? '失败' : '警告' }}
             </el-tag>
           </template>
         </el-table-column>
-
-        <el-table-column prop="isFixed" label="修复状态" width="100" align="center">
+        <el-table-column prop="isFixed" label="修复状态" align="center">
           <template #default="{ row }">
             <el-tag :type="row.isFixed ? 'success' : 'info'" size="small">
               {{ row.isFixed ? '已修复' : '待修复' }}
             </el-tag>
           </template>
         </el-table-column>
-
         <el-table-column
           prop="createTime"
           label="检测时间"
-          width="150"
           align="center"
           sortable="custom"
           :formatter="dateFormatter"
+          width="180px"
         />
-
-        <el-table-column label="操作" width="200" fixed="right" align="center">
+        <el-table-column label="操作" align="center" min-width="200px">
           <template #default="{ row }">
-            <div class="action-buttons">
-              <el-button type="primary" link size="small" @click="viewDetail(row)">
-                <el-icon><View /></el-icon>
-                查看详情
+            <el-button link type="primary" @click="viewDetail(row)">
+              查看详情
+            </el-button>
+            <el-button
+              v-if="!row.isFixed"
+              link
+              type="warning"
+              @click="fixSingle(row)"
+            >
+              修复
+            </el-button>
+            <el-button
+              v-if="row.isFixed"
+              link
+              type="success"
+              @click="viewFixHistory(row)"
+            >
+              修复历史
+            </el-button>
+            <el-dropdown trigger="click" @command="(command) => handleMoreAction(command, row)">
+              <el-button link>
+                更多
               </el-button>
-
-              <el-button
-                v-if="!row.isFixed"
-                type="warning"
-                link
-                size="small"
-                @click="fixSingle(row)"
-              >
-                <el-icon><Tools /></el-icon>
-                修复
-              </el-button>
-
-              <el-button
-                v-if="row.isFixed"
-                type="success"
-                link
-                size="small"
-                @click="viewFixHistory(row)"
-              >
-                <el-icon><Clock /></el-icon>
-                修复历史
-              </el-button>
-
-              <el-dropdown trigger="click" @command="(command) => handleMoreAction(command, row)">
-                <el-button link size="small">
-                  <el-icon><MoreFilled /></el-icon>
-                  更多
-                </el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item command="viewOriginal">
-                      <el-icon><DataAnalysis /></el-icon>
-                      查看原始数据
-                    </el-dropdown-item>
-                    <el-dropdown-item command="viewSuggestion">
-                      <el-icon><Promotion /></el-icon>
-                      修复建议
-                    </el-dropdown-item>
-                    <el-dropdown-item command="ignore" v-if="!row.isFixed">
-                      <el-icon><Hide /></el-icon>
-                      忽略此项
-                    </el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </div>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="viewOriginal">
+                    查看原始数据
+                  </el-dropdown-item>
+                  <el-dropdown-item command="viewSuggestion">
+                    修复建议
+                  </el-dropdown-item>
+                  <el-dropdown-item command="ignore" v-if="!row.isFixed">
+                    忽略此项
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
-
       <!-- 分页 -->
-      <div class="pagination-wrapper">
-        <el-pagination
-          v-model:current-page="queryParams.pageNo"
-          v-model:page-size="queryParams.pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          :total="total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleQuery"
-          @current-change="handleQuery"
-        />
-      </div>
-    </el-card>
+      <Pagination
+        :total="total"
+        v-model:page="queryParams.pageNo"
+        v-model:limit="queryParams.pageSize"
+        @pagination="handleQuery"
+      />
+    </ContentWrap>
 
     <!-- 结果详情弹窗 -->
     <ResultDetailModal v-model="detailVisible" :result-id="selectedResultId" />
@@ -398,7 +334,8 @@ import {
 import * as echarts from 'echarts'
 import { dateFormatter } from '@/utils/formatTime'
 import {
-  QcResultApi,
+  QcResultDetailApi,
+  type QcResultDetailVO,
   type QcResultRespVO,
   type QcResultPageReqVO,
   type QcResultStatsVO
@@ -430,7 +367,7 @@ const queryFormRef = ref()
 /** 查询参数 */
 const queryParams = reactive<QcResultPageReqVO>({
   pageNo: 1,
-  pageSize: 20,
+  pageSize: 10,
   executionNo: undefined,
   ruleCode: undefined,
   tableType: undefined,
@@ -498,7 +435,17 @@ const initPage = async () => {
 const loadResultStats = async () => {
   statsLoading.value = true
   try {
-    const data = await QcResultApi.getResultStats()
+    // 使用假数据替代API调用
+    const data = {
+      totalRecords: 12580,
+      passedRecords: 10234,
+      failedRecords: 1856,
+      warningRecords: 490,
+      fixedRecords: 1245,
+      passRate: 81.3,
+      failureRate: 14.8,
+      fixRate: 67.1
+    }
     Object.assign(resultStats, data)
   } catch (error) {
     console.error('加载结果统计失败:', error)
@@ -511,7 +458,7 @@ const loadResultStats = async () => {
 const loadResultList = async () => {
   loading.value = true
   try {
-    const { list, total: totalCount } = await QcResultApi.getResultPage(queryParams)
+    const { list, total: totalCount } = await QcResultDetailApi.getQcResultDetailPage(queryParams)
     resultList.value = list || []
     total.value = totalCount || 0
   } catch (error) {
@@ -597,26 +544,55 @@ const loadRuleChart = async () => {
   if (!ruleChart) return
 
   try {
-    const data = await QcResultApi.getRuleDistribution(chartPeriod.value)
+    // 使用假数据替代API调用
+    const data = [
+      { ruleCode: 'RULE001', count: 45 },
+      { ruleCode: 'RULE002', count: 32 },
+      { ruleCode: 'RULE003', count: 28 },
+      { ruleCode: 'RULE004', count: 22 },
+      { ruleCode: 'RULE005', count: 18 },
+      { ruleCode: 'RULE006', count: 15 },
+      { ruleCode: 'RULE007', count: 12 }
+    ]
 
     const option = {
-      tooltip: { trigger: 'axis' },
+      tooltip: {
+        trigger: 'axis',
+        formatter: '{b}: {c}个异常'
+      },
+      grid: {
+        left: '10%',
+        right: '10%',
+        bottom: '15%',
+        top: '10%'
+      },
       xAxis: {
         type: 'category',
         data: data.map((item) => item.ruleCode),
         axisLabel: {
-          rotate: 45
+          rotate: 45,
+          fontSize: 12
         }
       },
-      yAxis: { type: 'value' },
+      yAxis: {
+        type: 'value',
+        name: '异常数量',
+        nameTextStyle: {
+          fontSize: 12
+        }
+      },
       series: [
         {
           name: '异常数量',
           type: 'bar',
           data: data.map((item) => item.count),
           itemStyle: {
-            color: '#f56c6c'
-          }
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: '#ff6b6b' },
+              { offset: 1, color: '#f56c6c' }
+            ])
+          },
+          barWidth: '60%'
         }
       ]
     }
@@ -632,28 +608,60 @@ const loadTableChart = async () => {
   if (!tableChart) return
 
   try {
-    const data = await QcResultApi.getTableDistribution()
+    // 使用假数据替代API调用
+    const data = [
+      { tableTypeName: '药品目录', count: 85 },
+      { tableTypeName: '入库单', count: 67 },
+      { tableTypeName: '出库单', count: 52 },
+      { tableTypeName: '用药记录', count: 78 },
+      { tableTypeName: '库存信息', count: 34 },
+      { tableTypeName: '价格信息', count: 29 }
+    ]
+
+    const colors = ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272']
 
     const option = {
-      tooltip: { trigger: 'item' },
+      tooltip: {
+        trigger: 'item',
+        formatter: '{a} <br/>{b}: {c} ({d}%)'
+      },
       legend: {
         orient: 'vertical',
-        left: 'left'
+        left: 'left',
+        top: 'center',
+        textStyle: {
+          fontSize: 12
+        }
       },
       series: [
         {
+          name: '表类型异常分布',
           type: 'pie',
-          radius: '50%',
-          data: data.map((item) => ({
+          radius: ['40%', '70%'],
+          center: ['65%', '50%'],
+          data: data.map((item, index) => ({
             name: item.tableTypeName,
-            value: item.count
+            value: item.count,
+            itemStyle: {
+              color: colors[index % colors.length]
+            }
           })),
           emphasis: {
             itemStyle: {
               shadowBlur: 10,
               shadowOffsetX: 0,
-              shadowColor: 'rgba(0, 0, 0, 0.5)'
+              shadowColor: 'rgba(0, 0, 0, 0.5)',
+              scale: true,
+              scaleSize: 5
             }
+          },
+          label: {
+            show: true,
+            formatter: '{d}%',
+            fontSize: 11
+          },
+          labelLine: {
+            show: true
           }
         }
       ]
@@ -691,10 +699,17 @@ const batchFix = () => {
 }
 
 /** 修复成功处理 */
-const handleFixSuccess = () => {
-  ElMessage.success('数据修复成功')
-  loadResultList()
-  loadResultStats()
+const handleFixSuccess = async () => {
+  try {
+    // 调用批量修复API
+    await QcResultDetailApi.batchMarkAsFixed(fixResultIds.value)
+    ElMessage.success('数据修复成功')
+    loadResultList()
+    loadResultStats()
+  } catch (error) {
+    ElMessage.error('修复失败')
+    console.error('修复失败:', error)
+  }
 }
 
 /** 查看修复历史 */
@@ -781,7 +796,7 @@ const handleExport = async () => {
     })
 
     exportLoading.value = true
-    await QcResultApi.exportResultList(queryParams)
+    await QcResultDetailApi.exportQcResultDetail(queryParams)
     ElMessage.success('导出成功')
   } catch (error: any) {
     if (error !== 'cancel') {

@@ -587,7 +587,7 @@ export const QcRuleApi = {
    */
   async getQcRuleStatistics(): Promise<QcRuleStatisticsVO> {
     return request.get({
-      url: '/drug/qc-rule/statistics'
+      url: '/' + '' + '' + 'drug/qc-rule/statistics'
     })
   },
 
@@ -597,7 +597,7 @@ export const QcRuleApi = {
    */
   async getRuleExecutionStats(ruleId: number): Promise<QcRuleExecutionStatsVO> {
     return request.get({
-      url: `/drug/qc-rule/execution-stats/${ruleId}`
+      url: `/drug/qc-rule/test/execution-stats/${ruleId}`
     })
   },
 
@@ -610,7 +610,7 @@ export const QcRuleApi = {
     limit: number = 10
   ): Promise<QcRuleExecutionRecordVO[]> {
     return request.get({
-      url: `/drug/qc-rule/recent-executions/${ruleId}`,
+      url: `/drug/qc-rule/test/recent-executions/${ruleId}`,
       params: { limit }
     })
   },
@@ -621,7 +621,7 @@ export const QcRuleApi = {
    */
   async getOperationLogs(ruleId: number, limit: number = 20): Promise<QcRuleOperationLogVO[]> {
     return request.get({
-      url: `/drug/qc-rule/operation-logs/${ruleId}`,
+      url: `/drug/qc-rule/test/operation-logs/${ruleId}`,
       params: { limit }
     })
   },

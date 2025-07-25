@@ -27,6 +27,10 @@ export interface ImportProgressVO {
   estimatedRemainingTime?: number
   startTime?: string
   estimatedEndTime?: string
+  extractEndTime?: string     // 新增：解压完成时间
+  importEndTime?: string      // 新增：导入完成时间
+  qcEndTime?: string          // 新增：质控完成时间
+  endTime?: string            // 新增：任务结束时间
   totalFiles: number
   successFiles: number
   failedFiles: number
@@ -35,19 +39,25 @@ export interface ImportProgressVO {
   failedRecords: number
   tableProgress: TableProgressVO[]
   canRetry: boolean
+  // 新增：QC状态相关
+  qcStatus?: number           // 质控状态: 0-未开始,1-进行中,2-成功,3-失败
+  extractStatus?: number      // 解压状态: 0-未开始,1-进行中,2-成功,3-失败
+  importStatus?: number       // 导入状态: 0-未开始,1-进行中,2-成功,3-失败
 }
 
 /** 表级进度信息 */
 export interface TableProgressVO {
-  tableType: number
+  tableType: number | string  // 支持字符串类型的tableType
   tableName: string
   fileName?: string
-  status: number
+  status: number | string     // 支持字符串状态如 "PENDING", "PROCESSING", "SUCCESS", "FAILED"
   statusDisplay: string
   currentStage: string
   progress: number
+  progressPercent?: number    // 新增：进度百分比
   currentMessage: string
   totalRecords: number
+  processedRecords?: number   // 新增：已处理记录数
   successRecords: number
   failedRecords: number
   qcPassedRows?: number
