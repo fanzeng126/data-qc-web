@@ -18,6 +18,23 @@ export interface QcRuleVO {
   thresholdConfig: string // 阈值配置
   isSystem: number // 是否系统规则
   enabled: number // 是否启用
+  description: string // 说明
+  conditionGroups?: ConditionGroupVO[] // 条件组列表
+}
+
+// 条件组 VO
+export interface ConditionGroupVO {
+  id: number // 条件组ID
+  ruleId: number // 规则ID
+  groupName: string // 条件组名称
+  groupExpression: string // 条件组表达式
+  expressionJson: string // 可视化表达式JSON
+  priority: number // 优先级
+  executeAction: string // 执行动作
+  errorMessageTemplate: string // 错误信息模板
+  description: string // 说明
+  isActive: number // 是否启用
+  createTime: Date // 创建时间
 }
 
 // 质控规则 API

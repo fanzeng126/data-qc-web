@@ -98,8 +98,15 @@
           <div v-if="returnVariables.length > 0" class="return-variables">
             <div class="label mb-2">返回变量：</div>
             <el-table :data="returnVariables" border size="small">
-              <el-table-column label="变量名" prop="key" width="150" />
-              <el-table-column label="变量描述" prop="value" min-width="300" />
+              <el-table-column label="变量名" prop="key" width="120" />
+              <el-table-column label="变量类型" prop="type" width="100">
+                <template #default="scope">
+                  <el-tag size="small" :type="getReturnTypeColor(scope.row.type)">
+                    {{ scope.row.type }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="变量描述" prop="description" min-width="180" />
             </el-table>
           </div>
         </div>
@@ -274,6 +281,19 @@ const getParameterTypeColor = (type: string) => {
   return colorMap[type] || 'info'
 }
 
+// 获取返回类型颜色
+const getReturnTypeColor = (type: string) => {
+  const colorMap: Record<string, string> = {
+    STRING: 'primary',
+    INTEGER: 'success',
+    DECIMAL: 'warning',
+    BOOLEAN: 'info',
+    ARRAY: 'danger',
+    OBJECT: 'info'
+  }
+  return colorMap[type] || 'info'
+}
+
 // 解析参数配置
 const parseParameterConfig = (configStr: string) => {
   try {
@@ -289,12 +309,27 @@ const parseParameterConfig = (configStr: string) => {
 const parseReturnConfig = (configStr: string) => {
   try {
     const config = JSON.parse(configStr)
-    returnType.value = config.type || 'STRING'
-
-    returnVariables.value = Object.entries(config.variables || {}).map(([key, value]) => ({
-      key,
-      value: value as string
-    }))
+    
+    // 只支持新格式 {"variables": {"result": {"type": "BOOLEAN", "description": "描述"}}}
+    if (config.variables && typeof config.variables === 'object') {
+      const variableEntries = Object.entries(config.variables)
+      returnVariables.value = variableEntries.map(([key, varInfo]) => ({
+        key,
+        type: (varInfo as any).type || 'STRING',
+        description: (varInfo as any).description || ''
+      }))
+      
+      // 如果有变量，使用第一个变量的类型作为主返回类型显示
+      if (variableEntries.length > 0) {
+        const firstVar = variableEntries[0][1] as any
+        returnType.value = firstVar.type || 'STRING'
+      } else {
+        returnType.value = 'STRING'
+      }
+    } else {
+      returnType.value = 'STRING'
+      returnVariables.value = []
+    }
   } catch (error) {
     console.warn('解析返回值配置失败：', error)
     returnType.value = 'STRING'

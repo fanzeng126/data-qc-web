@@ -138,6 +138,14 @@ export const QcBuilderTableMetadataApi = {
   // 获取表字段列表
   getQcBuilderTableFields: async (tableId: number) => {
     return await request.get({ url: `/drug/qc-builder/tables/${tableId}/fields` })
+  },
+
+  // 根据分类查询表列表
+  getQcBuilderTablesByCategory: async (params) => {
+    return await request.get({
+      url: `/drug/qc-builder/tables/by-category?categoryId=`,
+      params
+    })
   }
 }
 

@@ -2,6 +2,12 @@
 import request from '@/config/axios'
 
 // ================== 基础数据类型定义 ==================
+// 规则最大信息响应 VO
+export interface QcRuleMaxInfoRespVO {
+  maxNumber: number // 最大编号
+  maxPriority: number // 最大优先级
+}
+
 // 数据源分类配置 VO (引用标准VO)
 export interface QcBuilderDatasourceCategoryVO {
   id: number // 分类ID
@@ -206,6 +212,16 @@ export const QcRuleApi = {
   // 测试规则表达式
   testRuleExpression: async (ruleId: number, data: TestRuleReqVO) => {
     return await request.post({ url: `/drug/qc-rules/${ruleId}/test`, data })
+  },
+
+  // 获取指定前缀的最大规则编码
+  getMaxRuleCode: async (prefix: string) => {
+    return await request.get({ url: `/drug/qc-rule/max-rule-code?prefix=${prefix}` })
+  },
+
+  // 获取指定前缀的最大规则编码和最大优先级
+  getMaxRuleInfo: async (prefix: string): Promise<QcRuleMaxInfoRespVO> => {
+    return await request.get({ url: `/drug/qc-rule/max-rule-info?prefix=${prefix}` })
   }
 }
 // ================== 构建器树形数据接口 ==================
@@ -451,3 +467,9 @@ export const updateQcRule = QcRuleApi.updateQcRule
 
 // @deprecated 使用 QcRuleApi.testRuleExpression 替代
 export const testRuleExpression = QcRuleApi.testRuleExpression
+
+// @deprecated 使用 QcRuleApi.getMaxRuleCode 替代
+export const getMaxRuleCode = QcRuleApi.getMaxRuleCode
+
+// @deprecated 使用 QcRuleApi.getMaxRuleInfo 替代
+export const getMaxRuleInfo = QcRuleApi.getMaxRuleInfo

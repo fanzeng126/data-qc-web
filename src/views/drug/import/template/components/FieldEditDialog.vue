@@ -76,7 +76,7 @@
         <el-input-number
           v-model="formData.sortOrder"
           :min="1"
-          :max="999"
+          :max="maxSortOrder"
           placeholder="字段显示顺序"
           style="width: 100%"
         />
@@ -212,6 +212,13 @@ import { TemplateFieldSaveReqVO, FIELD_TYPE_NAMES, FIELD_TYPE } from '@/api/drug
 
 defineOptions({ name: 'FieldEditDialog' })
 
+// ========================= Props =========================
+const props = defineProps<{
+  tableType?: number
+  templateId?: number
+  totalFieldsCount?: number
+}>()
+
 // ========================= 响应式数据 =========================
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
@@ -258,7 +265,12 @@ const formRules = reactive({
   fieldType: [{ required: true, message: '字段类型不能为空', trigger: 'change' }],
   sortOrder: [
     { required: true, message: '排序序号不能为空', trigger: 'blur' },
-    { type: 'number', min: 1, max: 999, message: '排序序号必须在1到999之间', trigger: 'blur' }
+    { 
+      type: 'number', 
+      min: 1, 
+      message: '排序序号必须大于等于1', 
+      trigger: 'blur' 
+    }
   ]
 })
 
@@ -266,6 +278,12 @@ const formRef = ref()
 
 // ========================= 计算属性 =========================
 const isCreateMode = computed(() => formType.value === 'create')
+const maxSortOrder = computed(() => {
+  // 编辑模式时，最大值为总字段数
+  // 新增模式时，最大值为总字段数+1
+  const total = props.totalFieldsCount || 1
+  return isCreateMode.value ? total + 1 : total
+})
 
 // ========================= 核心方法 =========================
 

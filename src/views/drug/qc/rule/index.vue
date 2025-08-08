@@ -95,6 +95,38 @@
           </el-select>
         </el-form-item>
 
+        <el-form-item label="规则分类" prop="ruleCategory">
+          <el-select
+            v-model="queryParams.ruleCategory"
+            class="!w-240px"
+            placeholder="请选择分类"
+            clearable
+          >
+            <el-option label="全部" value="" />
+            <el-option
+              v-for="dict in getIntDictOptions(DICT_TYPE.DRUG_QC_RULE_CATEGORY)"
+              :key="`category-${dict.value}`"
+              :label="dict.label"
+              :value="dict.value"
+            />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="检查维度" prop="checkDimension">
+          <el-select
+            v-model="queryParams.checkDimension"
+            class="!w-240px"
+            placeholder="请选择检查维度"
+            clearable
+          >
+            <el-option label="全部" value="" />
+            <el-option label="全局" value="GLOBAL" />
+            <el-option label="机构" value="ORGANIZATION" />
+            <el-option label="记录" value="RECORD" />
+            <el-option label="省份" value="PROVINCE" />
+          </el-select>
+        </el-form-item>
+
         <el-form-item label="适用表" prop="tableType">
           <el-select
             v-model="queryParams.tableType"
@@ -183,6 +215,14 @@
           </template>
         </el-table-column>
 
+        <el-table-column prop="checkDimension" label="检查维度" width="120" align="center">
+          <template #default="{ row }">
+            <el-tag size="small" :type="getCheckDimensionTagType(row.checkDimension)">
+              {{ getCheckDimensionLabel(row.checkDimension) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+
         <el-table-column align="center" label="适用表" prop="tableType" width="150">
           <template #default="{ row }">
             <div v-if="row.tableType !== null && row.tableType !== undefined">
@@ -198,7 +238,7 @@
                     class="table-tag"
                     size="small"
                   >
-                    {{ getDictLabel(DICT_TYPE.DRUG_QC_TABLE_TYPE, tableType) }}
+                    {{ getTableTypeChineseName(tableType) }}
                   </el-tag>
                 </div>
                 <el-popover v-else placement="top" trigger="hover" width="200">
@@ -210,7 +250,7 @@
                         class="table-tag-popup"
                         size="small"
                       >
-                        {{ getDictLabel(DICT_TYPE.DRUG_QC_TABLE_TYPE, tableType) }}
+                        {{ getTableTypeChineseName(tableType) }}
                       </el-tag>
                     </div>
                   </template>
@@ -226,57 +266,56 @@
           </template>
         </el-table-column>
 
-        <el-table-column align="center" label="检查字段" prop="fieldName" width="150">
+        <el-table-column align="center" label="检查字段" prop="fieldName" width="200">
           <template #default="{ row }">
             <div v-if="row.fieldName">
-              <!-- 解析逗号分隔的字段名字符串 -->
-              <div v-if="parseFieldNames(row.fieldName).length === 1" class="field-single">
+              <!-- 解析和展示字段名 -->
+              <div v-if="parseAndFormatFieldNames(row.fieldName).length === 1" class="field-single">
                 <el-tag size="small" type="success">
-                  {{ parseFieldNames(row.fieldName)[0] }}
+                  {{ parseAndFormatFieldNames(row.fieldName)[0].displayName }}
                 </el-tag>
               </div>
-              <div v-else-if="parseFieldNames(row.fieldName).length <= 2" class="field-tags">
+              <div
+                v-else-if="parseAndFormatFieldNames(row.fieldName).length <= 2"
+                class="field-tags"
+              >
                 <el-tag
-                  v-for="fieldName in parseFieldNames(row.fieldName)"
-                  :key="fieldName"
+                  v-for="field in parseAndFormatFieldNames(row.fieldName)"
+                  :key="field.fullName"
                   class="field-tag"
                   size="small"
                   type="success"
+                  :title="`${field.tableName}.${field.fieldName}`"
                 >
-                  {{ fieldName }}
+                  {{ field.displayName }}
                 </el-tag>
               </div>
-              <el-popover v-else placement="top" trigger="hover" width="250">
+              <el-popover v-else placement="top" trigger="hover" width="300">
                 <template #default>
                   <div class="field-names-popover">
                     <div class="popover-title">检查字段列表：</div>
-                    <el-tag
-                      v-for="fieldName in parseFieldNames(row.fieldName)"
-                      :key="fieldName"
-                      class="field-tag-popup"
-                      size="small"
-                      type="success"
-                    >
-                      {{ fieldName }}
-                    </el-tag>
+                    <div class="field-list">
+                      <div
+                        v-for="field in parseAndFormatFieldNames(row.fieldName)"
+                        :key="field.fullName"
+                        class="field-item"
+                      >
+                        <el-tag class="field-tag-popup" size="small" type="success">
+                          {{ field.displayName }}
+                        </el-tag>
+                        <span class="field-full-name">{{ field.fullName }}</span>
+                      </div>
+                    </div>
                   </div>
                 </template>
                 <template #reference>
                   <el-tag size="small" type="warning">
-                    {{ parseFieldNames(row.fieldName).length }}个字段
+                    {{ parseAndFormatFieldNames(row.fieldName).length }}个字段
                   </el-tag>
                 </template>
               </el-popover>
             </div>
             <span v-else class="text-muted">无字段</span>
-          </template>
-        </el-table-column>
-
-        <el-table-column prop="errorLevel" label="错误级别" width="100" align="center">
-          <template #default="{ row }">
-            <el-tag :type="row.errorLevel === 1 ? 'danger' : 'warning'" size="small">
-              {{ getDictLabel(DICT_TYPE.DRUG_QC_ERROR_LEVEL, row.errorLevel) }}
-            </el-tag>
           </template>
         </el-table-column>
 
@@ -301,47 +340,29 @@
           :formatter="dateFormatter"
         />
 
-        <el-table-column label="操作" width="200" fixed="right" align="center">
-          <template #default="{ row }">
-            <div class="action-buttons">
-              <el-button type="primary" link size="small" @click="handleView(row)">
-                <el-icon><View /></el-icon>
-                查看
-              </el-button>
+        <el-table-column label="操作" align="center" min-width="180px" fixed="right">
+          <template #default="scope">
+            <el-button link type="primary" @click="handleView(scope.row)"> 查看 </el-button>
 
-              <el-button type="primary" link size="small" @click="openForm('update', row.id)">
-                <el-icon><Edit /></el-icon>
-                编辑
-              </el-button>
+            <el-button link type="primary" @click="openForm('update', scope.row.id)">
+              编辑
+            </el-button>
 
-              <el-button type="warning" link size="small" @click="handleTest(row)">
-                <el-icon><Connection /></el-icon>
-                测试
-              </el-button>
+            <el-button link type="warning" @click="handleTest(scope.row)"> 测试 </el-button>
 
-              <el-dropdown trigger="click" @command="(command) => handleMoreAction(command, row)">
-                <el-button link size="small">
-                  <el-icon><MoreFilled /></el-icon>
-                  更多
-                </el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item command="copy">
-                      <el-icon><CopyDocument /></el-icon>
-                      复制规则
-                    </el-dropdown-item>
-                    <el-dropdown-item command="history">
-                      <el-icon><Clock /></el-icon>
-                      执行历史
-                    </el-dropdown-item>
-                    <el-dropdown-item command="delete" divided>
-                      <el-icon><Delete /></el-icon>
-                      删除规则
-                    </el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </div>
+            <el-dropdown
+              trigger="click"
+              @command="(command) => handleMoreAction(command, scope.row)"
+            >
+              <el-button link type="primary"> 更多 </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="copy"> 复制规则 </el-dropdown-item>
+                  <el-dropdown-item command="history"> 执行历史 </el-dropdown-item>
+                  <el-dropdown-item command="delete" divided> 删除规则 </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -397,6 +418,7 @@ import {
   type QcRuleRespVO,
   type QcRuleStatisticsVO
 } from '@/api/drug/qc/rule'
+import { QcBuilderTableMetadataApi } from '@/api/drug/qc/builder'
 import { DICT_TYPE, getDictLabel, getIntDictOptions } from '@/utils/dict'
 
 // 导入组件
@@ -427,6 +449,7 @@ const queryParams = reactive<QcRulePageReqVO>({
   ruleName: undefined,
   ruleType: undefined,
   ruleCategory: undefined,
+  checkDimension: undefined,
   tableType: undefined,
   fieldName: undefined, // 添加字段名搜索
   enabled: undefined
@@ -459,6 +482,15 @@ const historyVisible = ref(false)
 const selectedRuleId = ref<number>()
 const selectedRule = ref<QcRuleRespVO>()
 
+/** 表元数据映射缓存 */
+const tableMetadataMap = ref<Record<string, string>>({})
+
+/** 字段元数据映射缓存 - 格式: { "tableName.fieldName": "中文字段名" } */
+const fieldMetadataMap = ref<Record<string, string>>({})
+
+/** 表ID到表名的映射缓存 */
+const tableIdToNameMap = ref<Record<number, string>>({})
+
 // ========================= 生命周期 =========================
 
 onMounted(() => {
@@ -469,7 +501,7 @@ onMounted(() => {
 
 /** 初始化页面 */
 const initPage = async () => {
-  await Promise.all([loadRuleList(), loadStatistics()])
+  await Promise.all([loadRuleList(), loadStatistics(), loadTableAndFieldMetadata()])
 }
 
 /** 加载规则列表 */
@@ -502,6 +534,59 @@ const loadStatistics = async () => {
     })
   } catch (error) {
     console.error('加载统计数据失败:', error)
+  }
+}
+
+/** 加载表和字段元数据映射 */
+const loadTableAndFieldMetadata = async () => {
+  try {
+    // 1. 加载表元数据
+    const tableData = await QcBuilderTableMetadataApi.getQcBuilderTablesByCategory(null)
+    
+    // 构建表名到中文名的映射
+    const tableMapping: Record<string, string> = {}
+    const tableIdMapping: Record<number, string> = {}
+    
+    if (tableData && Array.isArray(tableData)) {
+      tableData.forEach((table) => {
+        if (table.tableName && table.chineseName) {
+          tableMapping[table.tableName] = table.chineseName
+          tableIdMapping[table.id] = table.tableName
+        }
+      })
+    }
+    
+    tableMetadataMap.value = tableMapping
+    tableIdToNameMap.value = tableIdMapping
+    
+    // 2. 加载字段元数据
+    const fieldMapping: Record<string, string> = {}
+    
+    // 为每个表加载字段信息
+    for (const table of tableData || []) {
+      try {
+        const fieldsData = await QcBuilderTableMetadataApi.getQcBuilderTableFields(table.id)
+        
+        if (fieldsData && Array.isArray(fieldsData)) {
+          fieldsData.forEach((field) => {
+            if (field.fieldName && field.chineseName && table.tableName) {
+              const key = `${table.tableName}.${field.fieldName}`
+              fieldMapping[key] = field.chineseName
+            }
+          })
+        }
+      } catch (error) {
+        console.warn(`加载表${table.tableName}的字段失败:`, error)
+      }
+    }
+    
+    fieldMetadataMap.value = fieldMapping
+    
+    console.log('表元数据映射:', tableMapping)
+    console.log('字段元数据映射:', fieldMapping)
+    
+  } catch (error) {
+    console.error('加载表和字段元数据失败:', error)
   }
 }
 
@@ -665,8 +750,30 @@ const handleImport = () => {
 
 // ========================= 工具方法 =========================
 
+/** 获取检查维度标签 */
+const getCheckDimensionLabel = (dimension: string): string => {
+  const dimensionMap = {
+    GLOBAL: '全局',
+    ORGANIZATION: '机构',
+    RECORD: '记录',
+    PROVINCE: '省份'
+  }
+  return dimensionMap[dimension] || dimension
+}
+
+/** 获取检查维度标签类型 */
+const getCheckDimensionTagType = (dimension: string): string => {
+  const typeMap = {
+    GLOBAL: 'danger',
+    ORGANIZATION: 'warning',
+    RECORD: 'success',
+    PROVINCE: 'info'
+  }
+  return typeMap[dimension] || ''
+}
+
 /** 解析表类型为数组 */
-const parseTableTypes = (tableType: string | number | null | undefined): number[] => {
+const parseTableTypes = (tableType: string | number | null | undefined): (string | number)[] => {
   if (!tableType) {
     return []
   }
@@ -681,10 +788,25 @@ const parseTableTypes = (tableType: string | number | null | undefined): number[
     if (tableType === '0' || !tableType.trim()) {
       return []
     }
-    return tableType
+
+    // 尝试按逗号分隔
+    const parts = tableType
       .split(',')
-      .map((t) => parseInt(t.trim()))
-      .filter((t) => !isNaN(t))
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0)
+
+    // 如果分隔后只有一个部分，且不是纯数字，那么可能是字符串标识符（如"CATALOG_DEFAULT"）
+    if (parts.length === 1 && isNaN(Number(parts[0]))) {
+      return [tableType.trim()]
+    }
+
+    // 否则尝试转换为数字
+    return parts
+      .map((t) => {
+        const num = parseInt(t)
+        return isNaN(num) ? t : num
+      })
+      .filter((t) => t !== null && t !== undefined)
   }
 
   return []
@@ -699,6 +821,69 @@ const parseFieldNames = (fieldNameStr: string): string[] => {
     .split(',')
     .map((f) => f.trim())
     .filter((f) => f.length > 0)
+}
+
+/** 解析并格式化字段名显示 */
+const parseAndFormatFieldNames = (
+  fieldNameStr: string
+): Array<{
+  fullName: string
+  tableName: string
+  fieldName: string
+  displayName: string
+}> => {
+  if (!fieldNameStr) {
+    return []
+  }
+
+  return fieldNameStr
+    .split(',')
+    .map((f) => f.trim())
+    .filter((f) => f.length > 0)
+    .map((fullName) => {
+      // 如果包含点号，说明是 "表名.字段名" 格式
+      if (fullName.includes('.')) {
+        const [tableName, fieldName] = fullName.split('.', 2)
+        
+        // 获取表的中文名称
+        const tableChineseName = tableMetadataMap.value[tableName] || tableName
+        
+        // 获取字段的中文名称
+        const fieldKey = `${tableName}.${fieldName}`
+        const fieldChineseName = fieldMetadataMap.value[fieldKey] || fieldName
+        
+        return {
+          fullName,
+          tableName,
+          fieldName,
+          displayName: `${tableChineseName}.${fieldChineseName}`
+        }
+      } else {
+        // 如果不包含点号，直接返回字段名
+        return {
+          fullName,
+          tableName: '',
+          fieldName: fullName,
+          displayName: fullName
+        }
+      }
+    })
+}
+
+/** 获取表类型的中文名称 */
+const getTableTypeChineseName = (tableType: string | number): string => {
+  // 如果tableType是字符串格式（如"CATALOG_DEFAULT"），先尝试从元数据映射中获取
+  if (typeof tableType === 'string' && tableMetadataMap.value[tableType]) {
+    return tableMetadataMap.value[tableType]
+  }
+
+  // 如果是数字，使用字典映射
+  if (typeof tableType === 'number' || !isNaN(Number(tableType))) {
+    return getDictLabel(DICT_TYPE.DRUG_QC_TABLE_TYPE, Number(tableType)) || `表类型${tableType}`
+  }
+
+  // fallback：返回原值或默认值
+  return String(tableType) || '未知表类型'
 }
 </script>
 
@@ -772,5 +957,32 @@ const parseFieldNames = (fieldNameStr: string): string[] => {
 .field-single {
   display: flex;
   justify-content: center;
+}
+
+.field-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.field-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 4px 0;
+}
+
+.field-item:last-child {
+  margin-bottom: 0;
+}
+
+.field-tag-popup {
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.field-full-name {
+  font-size: 12px;
+  color: #909399;
+  font-family: 'Courier New', monospace;
 }
 </style>

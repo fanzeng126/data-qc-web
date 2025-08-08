@@ -67,6 +67,27 @@
 
         <el-row :gutter="20">
           <el-col :span="12">
+            <el-form-item label="单位负责人" prop="unitManager">
+              <el-input
+                v-model="formData.unitManager"
+                placeholder="请输入单位负责人姓名"
+                maxlength="50"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="统计负责人" prop="statisticsManager">
+              <el-input
+                v-model="formData.statisticsManager"
+                placeholder="请输入统计负责人姓名"
+                maxlength="50"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
             <el-form-item label="数据上报日期" prop="uploadDate">
               <el-date-picker
                 v-model="formData.uploadDate"
@@ -348,6 +369,8 @@ const formData = ref({
   organizationCode: undefined,
   hospitalCode: undefined,
   organizationName: undefined,
+  unitManager: undefined,
+  statisticsManager: undefined,
   domainCode: undefined,
   bedCount: undefined,
   doctorCount: undefined,
@@ -486,6 +509,8 @@ const resetForm = () => {
     organizationCode: undefined,
     hospitalCode: undefined,
     organizationName: undefined,
+    unitManager: undefined,
+    statisticsManager: undefined,
     domainCode: undefined,
     bedCount: undefined,
     doctorCount: undefined,

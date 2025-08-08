@@ -118,6 +118,24 @@
             class="!w-240px"
           />
         </el-form-item>
+        <el-form-item label="单位负责人" prop="unitManager">
+          <el-input
+            v-model="queryParams.unitManager"
+            placeholder="请输入单位负责人"
+            clearable
+            @keyup.enter="handleQuery"
+            class="!w-240px"
+          />
+        </el-form-item>
+        <el-form-item label="统计负责人" prop="statisticsManager">
+          <el-input
+            v-model="queryParams.statisticsManager"
+            placeholder="请输入统计负责人"
+            clearable
+            @keyup.enter="handleQuery"
+            class="!w-240px"
+          />
+        </el-form-item>
         <el-form-item label="年度" prop="year">
           <el-select v-model="queryParams.year" placeholder="请选择年度" clearable class="!w-240px">
             <el-option
@@ -165,6 +183,20 @@
           align="center"
           prop="organizationName"
           min-width="200"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          label="单位负责人"
+          align="center"
+          prop="unitManager"
+          width="120"
+          show-overflow-tooltip
+        />
+        <el-table-column
+          label="统计负责人"
+          align="center"
+          prop="statisticsManager"
+          width="120"
           show-overflow-tooltip
         />
         <el-table-column label="年度药品总收入（元）" align="center" width="160">
@@ -261,6 +293,8 @@ const queryParams = reactive({
   pageSize: 10,
   hospitalCode: undefined,
   organizationName: undefined,
+  unitManager: undefined,
+  statisticsManager: undefined,
   domainCode: undefined,
   qcStatus: undefined,
   uploadDate: undefined,

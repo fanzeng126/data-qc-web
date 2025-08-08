@@ -67,7 +67,7 @@
           </el-row>
 
           <el-row :gutter="20">
-            <el-col :span="8">
+            <el-col :span="6">
               <el-form-item label="规则类型" prop="ruleType">
                 <el-radio-group v-model="ruleForm.ruleType" @change="handleRuleTypeChange">
                   <el-radio :value="1">前置质控</el-radio>
@@ -75,7 +75,51 @@
                 </el-radio-group>
               </el-form-item>
             </el-col>
-            <el-col :span="8">
+            <el-col :span="6">
+              <el-form-item label="规则分类" prop="ruleCategory">
+                <el-select v-model="ruleForm.ruleCategory" placeholder="请选择规则分类">
+                  <el-option label="全局控制" value="GLOBAL" />
+                  <el-option label="字段控制" value="FIELD" />
+                  <el-option label="逻辑控制" value="LOGIC" />
+                  <el-option label="算法控制" value="ALGORITHM" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="6">
+              <el-form-item label="检查字段" prop="checkFields">
+                <el-select
+                  v-model="ruleForm.checkFields"
+                  multiple
+                  clearable
+                  collapse-tags
+                  collapse-tags-tooltip
+                  placeholder="自动识别"
+                  disabled
+                >
+                  <el-option
+                    v-for="field in detectedFields"
+                    :key="field.value"
+                    :label="field.label"
+                    :value="field.value"
+                  />
+                </el-select>
+                <div class="form-tip">根据表达式自动识别使用的字段</div>
+              </el-form-item>
+            </el-col>
+            <el-col :span="6">
+              <el-form-item label="优先级" prop="priority">
+                <el-input-number
+                  v-model="ruleForm.priority"
+                  :min="1"
+                  :max="999"
+                  placeholder="数字越小优先级越高"
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <el-row :gutter="20">
+            <el-col :span="12">
               <el-form-item label="适用表" prop="tableType">
                 <el-select
                   v-model="selectedTableTypes"
@@ -87,7 +131,7 @@
                   disabled
                 >
                   <el-option
-                    v-for="table in availableTables"
+                    v-for="table in detectedTables"
                     :key="table.value"
                     :label="table.label"
                     :value="table.value"
@@ -96,14 +140,16 @@
                 <div class="form-tip">适用表将根据表达式中使用的表自动推导</div>
               </el-form-item>
             </el-col>
-            <el-col :span="8">
-              <el-form-item label="优先级" prop="priority">
-                <el-input-number
-                  v-model="ruleForm.priority"
-                  :min="1"
-                  :max="999"
-                  placeholder="数字越小优先级越高"
+            <el-col :span="12">
+              <el-form-item label="是否启用" prop="enabled">
+                <el-switch
+                  v-model="ruleForm.enabled"
+                  :active-value="1"
+                  :inactive-value="0"
+                  active-text="启用"
+                  inactive-text="禁用"
                 />
+                <span class="form-tip ml-2">新建规则默认启用</span>
               </el-form-item>
             </el-col>
           </el-row>
@@ -119,13 +165,7 @@
                 </el-select>
               </el-form-item>
             </el-col>
-            <el-col :span="8">
-              <el-form-item label="是否启用" prop="enabled">
-                <el-switch v-model="ruleForm.enabled" />
-                <span class="form-tip ml-2">新建规则默认启用</span>
-              </el-form-item>
-            </el-col>
-            <el-col :span="8">
+            <el-col :span="16">
               <el-form-item label="规则说明" prop="description">
                 <el-input
                   v-model="ruleForm.description"
@@ -221,7 +261,7 @@
                               }}</span>
                             </div>
                             <span v-if="data.tableName || data.fieldName" class="english-name">
-                              {{ data.tableName || data.fieldName }}
+                              {{ data.fieldName || data.tableName }}
                             </span>
                           </div>
                         </div>
@@ -382,10 +422,32 @@
           <div class="condition-groups-builder">
             <div class="section-header">
               <span>条件组配置</span>
-              <el-button type="primary" size="small" @click="addConditionGroup">
-                <Icon icon="ep:plus" class="mr-5px" />
-                添加条件组
-              </el-button>
+              <div class="header-actions">
+                <el-tooltip
+                  :content="
+                    isDescendingOrder
+                      ? '当前为降序排序（优先级高→优先级低）'
+                      : '当前为正序排序（优先级低→优先级高）'
+                  "
+                  placement="top"
+                >
+                  <el-button
+                    size="small"
+                    :type="isDescendingOrder ? 'primary' : 'success'"
+                    @click="toggleSortOrder"
+                  >
+                    <Icon
+                      :icon="isDescendingOrder ? 'ep:sort-down' : 'ep:sort-up'"
+                      class="mr-5px"
+                    />
+                    {{ isDescendingOrder ? '降序' : '正序' }}
+                  </el-button>
+                </el-tooltip>
+                <el-button type="primary" size="small" @click="addConditionGroup">
+                  <Icon icon="ep:plus" class="mr-5px" />
+                  添加条件组
+                </el-button>
+              </div>
             </div>
 
             <div class="condition-groups-scroll">
@@ -396,10 +458,18 @@
                   class="condition-group"
                   :class="{ active: activeGroupIndex === index }"
                   @click="setActiveGroup(index)"
+                  draggable="true"
+                  @dragstart="handleGroupDragStart($event, index)"
+                  @dragover="handleGroupDragOver($event, index)"
+                  @drop="handleGroupDrop($event, index)"
+                  @dragend="handleGroupDragEnd($event)"
                 >
                   <div class="group-header">
                     <div class="group-title">
-                      <span>{{ group.groupName || `条件组 ${index + 1}` }}</span>
+                      <div class="group-title-left">
+                        <span class="priority-badge">{{ group.priority }}</span>
+                        <span>{{ group.groupName || `条件组 ${index + 1}` }}</span>
+                      </div>
                       <el-tag size="small" :type="getActionType(group.executeAction)">
                         {{ getActionText(group.executeAction) }}
                       </el-tag>
@@ -658,7 +728,7 @@
                     placeholder="支持变量模板，如：${tableName}的字段${fieldName}不能为空"
                   />
                   <div class="template-help">
-                    <el-popover placement="top" :width="300" trigger="click">
+                    <el-popover placement="top" :width="400" trigger="click">
                       <template #reference>
                         <el-button text size="small" class="mt-5px">
                           <Icon icon="ep:question-filled" class="mr-5px" />
@@ -666,14 +736,41 @@
                         </el-button>
                       </template>
                       <div class="variable-help">
-                        <p><strong>可用变量：</strong></p>
-                        <ul>
-                          <li><code>${tableName}</code> - 表名</li>
-                          <li><code>${fieldName}</code> - 字段名</li>
-                          <li><code>${functionName.result}</code> - 函数返回值</li>
-                          <li><code>${COUNT.result}</code> - 计数结果</li>
-                          <li><code>${HAS_NULL_FIELDS.nullFieldsList}</code> - 空值字段列表</li>
-                        </ul>
+                        <div class="variable-header">
+                          <strong>可用变量（点击插入）：</strong>
+                          <el-tag size="small" type="info"
+                            >{{ getAvailableVariables(activeGroup).length }} 个</el-tag
+                          >
+                        </div>
+                        <div class="variable-list">
+                          <div
+                            v-for="variable in getAvailableVariables(activeGroup)"
+                            :key="variable.name"
+                            class="variable-item"
+                          >
+                            <div class="variable-main">
+                              <a
+                                href="#"
+                                class="variable-link"
+                                :class="`variable-${variable.type}`"
+                                @click.prevent="insertVariable(variable.name)"
+                                @mouseenter="$event.target.style.textDecoration = 'underline'"
+                                @mouseleave="$event.target.style.textDecoration = 'none'"
+                              >
+                                {{ variable.name }}
+                              </a>
+                              <span class="variable-desc">{{ variable.description }}</span>
+                            </div>
+                            <div v-if="variable.example" class="variable-example">
+                              {{ variable.example }}
+                            </div>
+                          </div>
+                        </div>
+                        <div class="variable-footer">
+                          <el-text size="small" type="info"
+                            >提示：根据当前条件组表达式自动识别</el-text
+                          >
+                        </div>
                       </div>
                     </el-popover>
                   </div>
@@ -780,7 +877,7 @@
                                   }}</span>
                                 </div>
                                 <span v-if="data.tableName || data.fieldName" class="english-name">
-                                  {{ data.tableName || data.fieldName }}
+                                  {{ data.fieldName || data.tableName }}
                                 </span>
                               </div>
                             </div>
@@ -1235,6 +1332,14 @@
                 <div v-if="!currentEditFunction.component?.parameters?.length" class="empty-params">
                   <p>暂无参数，点击上方"添加参数"按钮添加</p>
                 </div>
+
+                <!-- 参数列表底部添加参数按钮 -->
+                <div v-if="currentEditFunction.component?.parameters?.length" class="add-param-bottom">
+                  <el-button size="small" type="primary" @click="addFunctionParameter" plain>
+                    <Icon icon="ep:plus" />
+                    添加参数
+                  </el-button>
+                </div>
               </div>
 
               <el-divider />
@@ -1244,8 +1349,12 @@
                 class="returns-section"
                 v-if="currentEditFunction.component?.returnOptions?.length > 1"
               >
-                <h5>选择返回值</h5>
-                <el-radio-group v-model="currentEditFunction.component.selectedReturn">
+                <h5>选择返回值 <span class="required-mark">*</span></h5>
+                <p class="return-hint">此函数有多个返回值，请选择一个作为表达式结果</p>
+                <el-radio-group
+                  v-model="currentEditFunction.component.selectedReturn"
+                  :class="{ 'required-field': !currentEditFunction.component.selectedReturn }"
+                >
                   <el-radio
                     v-for="(returnItem, radioIndex) in currentEditFunction.component.returnOptions"
                     :key="radioIndex"
@@ -1359,7 +1468,7 @@
                                   }}</span>
                                 </div>
                                 <span v-if="data.tableName || data.fieldName" class="english-name">
-                                  {{ data.tableName || data.fieldName }}
+                                  {{ data.fieldName || data.tableName }}
                                 </span>
                               </div>
                             </div>
@@ -1623,7 +1732,15 @@
                     v-if="!nestedEditFunction.component?.parameters?.length"
                     class="empty-params"
                   >
-                    <p>暂无参数，点击上方“添加参数”按钮添加</p>
+                    <p>暂无参数，点击上方"添加参数"按钮添加</p>
+                  </div>
+
+                  <!-- 嵌套抽屉参数列表底部添加参数按钮 -->
+                  <div v-if="nestedEditFunction.component?.parameters?.length" class="add-param-bottom">
+                    <el-button size="small" type="primary" @click="addFunctionParameter" plain>
+                      <Icon icon="ep:plus" />
+                      添加参数
+                    </el-button>
                   </div>
                 </div>
 
@@ -1634,8 +1751,12 @@
                   class="returns-section"
                   v-if="nestedEditFunction.component?.returnOptions?.length > 1"
                 >
-                  <h5>选择返回值</h5>
-                  <el-radio-group v-model="nestedEditFunction.component.selectedReturn">
+                  <h5>选择返回值 <span class="required-mark">*</span></h5>
+                  <p class="return-hint">此函数有多个返回值，请选择一个作为表达式结果</p>
+                  <el-radio-group
+                    v-model="nestedEditFunction.component.selectedReturn"
+                    :class="{ 'required-field': !nestedEditFunction.component.selectedReturn }"
+                  >
                     <el-radio
                       v-for="(returnItem, radioIndex) in nestedEditFunction.component.returnOptions"
                       :key="radioIndex"
@@ -1656,21 +1777,35 @@
               </div>
             </div>
 
-            <template>
-              <div class="drawer-footer">
-                <el-button @click="closeNestedDrawer">取消</el-button>
-                <el-button
-                  type="primary"
-                  @click="saveNestedFunctionEdit"
-                  :disabled="!nestedEditFunction"
-                >
-                  保存
-                </el-button>
-              </div>
-            </template>
+            <div class="drawer-footer">
+              <el-button @click="closeNestedDrawer">取消</el-button>
+              <el-button
+                type="primary"
+                @click="saveNestedFunctionEdit"
+                :disabled="!nestedEditFunction"
+              >
+                保存
+              </el-button>
+            </div>
           </div>
         </div>
       </el-drawer>
+
+      <!-- 表达式预览对话框 -->
+      <ExpressionPreviewDialog
+        v-model="showPreviewDialog"
+        :rule-form="ruleForm"
+        :condition-groups="conditionGroups"
+        @save="handlePreviewSave"
+      />
+
+      <!-- 规则测试对话框 -->
+      <RuleTestDialog
+        v-model="showTestDialog"
+        :rule-form="ruleForm"
+        :condition-groups="conditionGroups"
+        @apply="handleTestApply"
+      />
     </el-card>
   </div>
 </template>
@@ -1681,15 +1816,20 @@ import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import { View, Cpu, Document, Check, InfoFilled, Setting, Tools } from '@element-plus/icons-vue'
 import PageHeader from '@/components/PageHeader/index.vue'
+import ExpressionPreviewDialog from './components/ExpressionPreviewDialog.vue'
+import RuleTestDialog from './components/RuleTestDialog.vue'
 
 import {
   getDataSourceCategories,
   createQcRule,
   updateQcRule,
-  getQcRule
+  getQcRule,
+  getMaxRuleCode,
+  getMaxRuleInfo
 } from '@/api/drug/qc/rule/builder'
 
 import { QcFunctionConfigApi, QcOperatorConfigApi, QcExpressionApi } from '@/api/drug/qc/builder'
+import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
 
 // 路由和基础状态
 const route = useRoute()
@@ -1738,6 +1878,8 @@ const availableTables = ref([
 ])
 
 const selectedTableTypes = ref<string[]>([])
+const detectedFields = ref<{ value: string; label: string }[]>([])
+const detectedTables = ref<{ value: string; label: string }[]>([])
 
 // 侧边栏状态
 const activeTab = ref('datasource')
@@ -1757,20 +1899,25 @@ const ruleForm = reactive({
   ruleCode: '',
   ruleName: '',
   ruleType: 1,
+  ruleCategory: 'GLOBAL',
   checkDimension: 'RECORD',
-  ruleCategory: 'FIELD',
+  checkFields: [],
   tableType: '',
   priority: 100,
   executeAction: 'RECORD_ERROR',
-  enabled: true,
+  enabled: 1, // 使用整数类型，1为启用，0为禁用
   description: ''
 })
 
 const ruleRules = {
   ruleName: [{ required: true, message: '请输入规则名称', trigger: 'blur' }],
   ruleType: [{ required: true, message: '请选择规则类型', trigger: 'change' }],
+  ruleCategory: [{ required: true, message: '请选择规则分类', trigger: 'change' }],
   checkDimension: [{ required: true, message: '请选择检查维度', trigger: 'change' }]
 }
+
+// 条件组排序方式（true: 降序，false: 正序）
+const isDescendingOrder = ref(true)
 
 // 条件组数据
 const conditionGroups = ref([])
@@ -1828,6 +1975,9 @@ const nestedActiveTab = ref('datasource')
 const globalDragData = ref(null)
 const isDragging = ref(false)
 
+// 条件组拖拽相关状态
+const draggedGroupIndex = ref(-1)
+
 // 初始化
 onMounted(async () => {
   try {
@@ -1836,9 +1986,12 @@ onMounted(async () => {
     if (isEdit.value) {
       await loadRuleData(route.params.id)
     } else {
-      updateRuleCode()
+      await updateRuleCode() // 使用await
       addConditionGroup()
     }
+
+    // 初始化时检测表和字段
+    detectTablesAndFields()
 
     const handleGlobalDragEnd = () => {
       if (isDragging.value) {
@@ -1877,7 +2030,7 @@ const loadDataSource = async () => {
   }
 }
 
-const processTreeData = (treeData) => {
+const processTreeData = (treeData, parentTableName = null) => {
   return treeData.map((node) => {
     const processedNode = {
       id: node.id,
@@ -1888,7 +2041,7 @@ const processTreeData = (treeData) => {
       isActive: node.isActive,
       sortOrder: node.sortOrder,
       categoryCode: node.categoryCode,
-      tableName: node.tableName,
+      tableName: node.tableName || parentTableName, // 字段节点从父表节点继承表名
       fieldName: node.fieldName,
       fieldType: node.fieldType,
       dataType: node.fieldType,
@@ -1896,7 +2049,10 @@ const processTreeData = (treeData) => {
     }
 
     if (node.children && node.children.length > 0) {
-      processedNode.children = processTreeData(node.children)
+      // 如果当前节点是表，将其表名传递给子节点
+      const currentTableName =
+        node.type === 'table' ? node.tableName || node.tableCode : parentTableName
+      processedNode.children = processTreeData(node.children, currentTableName)
     }
 
     return processedNode
@@ -1975,28 +2131,47 @@ const loadOperators = async () => {
 
 const loadRuleData = async (ruleId) => {
   try {
-    const { data } = await getQcRule(ruleId)
+    console.log('开始加载规则数据，规则ID:', ruleId)
+    const data = await getQcRule(ruleId)
+    console.log('获取到规则数据:', data)
+
+    // 确保 ruleType 为数字类型，避免单选框回显问题
+    if (data.ruleType) {
+      data.ruleType = Number(data.ruleType)
+    }
+
     Object.assign(ruleForm, data)
+    console.log('规则基本信息已赋值:', ruleForm)
 
     if (data.conditionGroups && data.conditionGroups.length > 0) {
+      console.log('开始处理条件组数据:', data.conditionGroups)
       conditionGroups.value = data.conditionGroups.map((group) => ({
         ...group,
         expressionComponents: parseExpressionJson(group.expressionJson) || []
       }))
       activeGroupIndex.value = 0
+      console.log('条件组数据处理完成:', conditionGroups.value)
+
+      // 加载后检测表和字段
+      detectTablesAndFields()
+    } else {
+      console.log('没有条件组数据')
     }
   } catch (error) {
     console.error('加载规则数据失败:', error)
-    // ElMessage.error('加载规则数据失败')
+    ElMessage.error('加载规则数据失败')
   }
 }
 
 // 条件组操作
 const addConditionGroup = () => {
+  const currentMaxPriority =
+    conditionGroups.value.length > 0 ? Math.max(...conditionGroups.value.map((g) => g.priority)) : 0
+
   const newGroup = {
     id: Date.now(),
     groupName: `条件组 ${conditionGroups.value.length + 1}`,
-    priority: conditionGroups.value.length + 1,
+    priority: currentMaxPriority + 1, // 优先级增长1，留出调整空间
     executeAction: 'RECORD_ERROR',
     errorMessageTemplate: '',
     description: '',
@@ -2004,8 +2179,15 @@ const addConditionGroup = () => {
     compilationResult: null
   }
 
-  conditionGroups.value.push(newGroup)
-  activeGroupIndex.value = conditionGroups.value.length - 1
+  if (isDescendingOrder.value) {
+    // 降序：在数组顶部添加
+    conditionGroups.value.unshift(newGroup)
+    activeGroupIndex.value = 0
+  } else {
+    // 正序：在数组底部添加
+    conditionGroups.value.push(newGroup)
+    activeGroupIndex.value = conditionGroups.value.length - 1
+  }
 }
 
 const removeGroup = (index) => {
@@ -2015,6 +2197,7 @@ const removeGroup = (index) => {
   }
 
   conditionGroups.value.splice(index, 1)
+  // 不需要更新优先级，优先级不再是连续的
   if (activeGroupIndex.value >= index) {
     activeGroupIndex.value = Math.max(0, activeGroupIndex.value - 1)
   }
@@ -2028,17 +2211,143 @@ const duplicateGroup = (index) => {
     ...originalGroup,
     id: Date.now(),
     groupName: `${originalGroup.groupName} (副本)`,
+    priority: originalGroup.priority + 1, // 优先级略高一些
     expressionComponents: JSON.parse(JSON.stringify(originalGroup.expressionComponents || []))
   }
 
-  conditionGroups.value.splice(index + 1, 0, newGroup)
-  activeGroupIndex.value = index + 1
+  if (isDescendingOrder.value) {
+    // 降序：在当前组的上方插入新组
+    conditionGroups.value.splice(index, 0, newGroup)
+    activeGroupIndex.value = index
+  } else {
+    // 正序：在当前组的下方插入新组
+    conditionGroups.value.splice(index + 1, 0, newGroup)
+    activeGroupIndex.value = index + 1
+  }
 }
 
+// 排序方式切换
+const toggleSortOrder = () => {
+  isDescendingOrder.value = !isDescendingOrder.value
+
+  // 根据排序方式重新排序条件组
+  conditionGroups.value.sort((a, b) => {
+    if (isDescendingOrder.value) {
+      return b.priority - a.priority // 降序：优先级高的在前
+    } else {
+      return a.priority - b.priority // 正序：优先级低的在前
+    }
+  })
+
+  ElMessage.success(`已切换为${isDescendingOrder.value ? '降序' : '正序'}排序`)
+}
+
+// 条件组拖拽处理方法
+const handleGroupDragStart = (event, index) => {
+  draggedGroupIndex.value = index
+  event.dataTransfer.effectAllowed = 'move'
+  event.dataTransfer.setData('text/plain', index.toString())
+
+  // 设置拖拽数据类型为条件组，避免与其他拖拽冲突
+  event.dataTransfer.setData(
+    'application/condition-group',
+    JSON.stringify({ type: 'condition-group', index })
+  )
+
+  // 添加拖拽样式
+  const draggedElement = event.currentTarget
+  draggedElement.style.opacity = '0.5'
+
+  // 设置拖拽图像
+  const dragImage = draggedElement.cloneNode(true)
+  dragImage.style.opacity = '0.8'
+  dragImage.style.transform = 'rotate(2deg)'
+  document.body.appendChild(dragImage)
+  event.dataTransfer.setDragImage(dragImage, 0, 0)
+
+  setTimeout(() => {
+    document.body.removeChild(dragImage)
+  }, 100)
+}
+
+const handleGroupDragOver = (event, index) => {
+  event.preventDefault()
+  const draggedIndex = draggedGroupIndex.value
+
+  if (draggedIndex !== -1 && draggedIndex !== index) {
+    event.dataTransfer.dropEffect = 'move'
+
+    // 添加视觉反馈
+    const targetElement = event.currentTarget
+    const rect = targetElement.getBoundingClientRect()
+    const mouseY = event.clientY
+    const elementY = rect.top + rect.height / 2
+
+    // 清除之前的样式
+    document.querySelectorAll('.condition-group').forEach((el) => {
+      el.classList.remove('drag-over-top', 'drag-over-bottom')
+    })
+
+    // 根据鼠标位置决定显示插入的位置
+    if (mouseY < elementY) {
+      targetElement.classList.add('drag-over-top')
+    } else {
+      targetElement.classList.add('drag-over-bottom')
+    }
+  }
+}
+
+const handleGroupDrop = (event, targetIndex) => {
+  event.preventDefault()
+  event.stopPropagation()
+
+  const draggedIndex = draggedGroupIndex.value
+
+  // 只处理条件组的拖拽
+  const conditionGroupData = event.dataTransfer.getData('application/condition-group')
+  if (!conditionGroupData) return
+
+  if (draggedIndex !== -1 && draggedIndex !== targetIndex) {
+    const rect = event.currentTarget.getBoundingClientRect()
+    const mouseY = event.clientY
+    const elementY = rect.top + rect.height / 2
+
+    let newIndex = targetIndex
+
+    // 根据鼠标位置决定插入位置
+    if (mouseY >= elementY) {
+      newIndex = targetIndex + 1
+    }
+
+    // 调整数组顺序
+    const movedGroup = conditionGroups.value.splice(draggedIndex, 1)[0]
+    const insertIndex = draggedIndex < newIndex ? newIndex - 1 : newIndex
+    conditionGroups.value.splice(insertIndex, 0, movedGroup)
+
+    // 不需要更新优先级，保持原有的优先级值
+
+    // 更新活跃索引
+    activeGroupIndex.value = insertIndex
+
+    ElMessage.success('条件组顺序调整成功')
+  }
+
+  // 清理拖拽状态
+  handleGroupDragEnd(event)
+}
+
+const handleGroupDragEnd = (event) => {
+  draggedGroupIndex.value = -1
+
+  // 清除所有视觉反馈
+  document.querySelectorAll('.condition-group').forEach((el) => {
+    el.classList.remove('drag-over-top', 'drag-over-bottom')
+    el.style.opacity = ''
+  })
+}
 const setActiveGroup = (index) => {
   activeGroupIndex.value = index
 }
-
 // 判断节点是否可拖拽
 const isDraggableNode = (node) => {
   if (!node || !node.data) return false
@@ -2055,10 +2364,16 @@ const handleDragStart = (event, node) => {
     return
   }
 
+  // 如果是字段节点但没有表名，尝试从父节点获取
+  let nodeData = { ...node.data }
+  if (nodeData.type === 'field' && !nodeData.tableName && node.parent && node.parent.data) {
+    nodeData.tableName = node.parent.data.tableName || node.parent.data.tableCode
+  }
+
   const dragData = {
     type: 'datasource',
-    nodeType: node.data.type,
-    data: node.data
+    nodeType: nodeData.type,
+    data: nodeData
   }
 
   event.dataTransfer.setData('application/json', JSON.stringify(dragData))
@@ -2138,29 +2453,48 @@ const handleDrop = (event, groupId) => {
     switch (dragData.type) {
       case 'datasource':
         if (dragData.nodeType === 'field') {
+          // 如果没有表名，尝试从字段名中推断或使用默认值
+          let tableName = dragData.data.tableName
+          if (!tableName && dragData.data.fieldName) {
+            // 如果字段名包含点号，提取表名部分
+            if (dragData.data.fieldName.includes('.')) {
+              const parts = dragData.data.fieldName.split('.')
+              tableName = parts[0]
+            } else {
+              // 使用默认表名或根据上下文推断
+              tableName = 'CATALOG_DEFAULT' // 可以根据实际情况调整
+            }
+          }
+
           component = {
             type: 'field',
-            value: `${dragData.data.tableName || ''}.${dragData.data.fieldName || ''}`,
+            value: `${tableName || ''}.${dragData.data.fieldName || ''}`,
             label: dragData.data.label || '',
-            dataType: dragData.data.dataType || dragData.data.fieldType || ''
+            dataType: dragData.data.dataType || dragData.data.fieldType || '',
+            tableName: tableName,
+            fieldName: dragData.data.fieldName
           }
         } else if (dragData.nodeType === 'table') {
           component = {
             type: 'table',
             value: dragData.data.tableName || '',
-            label: dragData.data.label || ''
+            label: dragData.data.label || '',
+            tableName: dragData.data.tableName
           }
         }
         break
 
       case 'function':
+        const functionReturnOptions = getFunctionReturns(dragData.data)
         component = {
           type: 'function',
           value: dragData.data.functionName || '',
           label: dragData.data.chineseName || dragData.data.displayName || '',
           parameters: [],
           config: dragData.data,
-          returnOptions: getFunctionReturns(dragData.data)
+          returnOptions: functionReturnOptions,
+          selectedReturn:
+            functionReturnOptions.length > 0 ? functionReturnOptions[0].name : 'result'
         }
         break
 
@@ -2182,6 +2516,7 @@ const handleDrop = (event, groupId) => {
 
     if (component && component.value) {
       group.expressionComponents.push(component)
+      detectTablesAndFields() // 添加组件后检测表和字段
       console.log('成功添加组件:', component)
       ElMessage.success(`已添加${component.label || component.value}`)
     } else {
@@ -2329,6 +2664,30 @@ const filterDataSourceNode = (value, data) => {
 
 const handleFunctionClick = (func) => {
   console.log('函数点击:', func)
+
+  // 如果函数有多个返回值选项，需要通过抽屉配置
+  const returnOptions = getFunctionReturns(func)
+  if (returnOptions.length > 1) {
+    // 创建临时函数组件用于配置
+    const tempComponent = {
+      type: 'function',
+      value: func.functionName || '',
+      label: func.chineseName || func.displayName || '',
+      parameters: [],
+      config: func,
+      returnOptions: returnOptions,
+      selectedReturn: returnOptions[0].name // 默认选择第一项
+    }
+
+    activeTab.value = 'datasource'
+    currentEditFunction.value = {
+      component: tempComponent,
+      groupId: null,
+      componentIndex: -1,
+      isNewFunction: true
+    }
+    showCombinedDrawer.value = true
+  }
 }
 
 // 组件编辑处理
@@ -2340,6 +2699,16 @@ const editComponent = (groupId, compIndex) => {
     if (component.type === 'function') {
       // 设置默认激活tab为数据源
       activeTab.value = 'datasource'
+
+      // 确保有返回值选项时默认选择第一项
+      if (
+        component.returnOptions &&
+        component.returnOptions.length > 0 &&
+        !component.selectedReturn
+      ) {
+        component.selectedReturn = component.returnOptions[0].name
+      }
+
       currentEditFunction.value = {
         component: component,
         groupId: groupId,
@@ -2383,20 +2752,12 @@ const getFunctionReturns = (func) => {
     const config =
       typeof func.returnConfig === 'string' ? JSON.parse(func.returnConfig) : func.returnConfig
 
-    if (config.type && !config.variables) {
-      return [
-        {
-          name: 'result',
-          type: config.type
-        }
-      ]
-    }
-
-    if (config.variables) {
-      return Object.entries(config.variables).map(([key, description]) => ({
+    // 只支持新格式 {"variables": {"result": {"type": "BOOLEAN", "description": "描述"}}}
+    if (config.variables && typeof config.variables === 'object') {
+      return Object.entries(config.variables).map(([key, varInfo]) => ({
         name: key,
-        type: config.type || 'unknown',
-        description: description
+        type: (varInfo as any).type || 'STRING',
+        description: (varInfo as any).description || key
       }))
     }
 
@@ -2596,12 +2957,22 @@ const updateParameterDisplay = (param) => {
 const saveFunctionEdit = () => {
   if (!currentEditFunction.value) return
 
+  // 检查是否有多个返回值选项且未选择任何一项
+  if (
+    currentEditFunction.value.component.returnOptions?.length > 1 &&
+    !currentEditFunction.value.component.selectedReturn
+  ) {
+    ElMessage.error('请选择一个返回值选项')
+    return
+  }
+
   if (currentEditFunction.value.component.parameters) {
     currentEditFunction.value.component.parameters.forEach((param) => {
       updateParameterDisplay(param)
     })
   }
 
+  // 确保有返回值选项时至少选择了一项
   if (
     currentEditFunction.value.component.returnOptions?.length > 1 &&
     !currentEditFunction.value.component.selectedReturn
@@ -2610,6 +2981,7 @@ const saveFunctionEdit = () => {
       currentEditFunction.value.component.returnOptions[0].name
   }
 
+  detectTablesAndFields() // 保存函数编辑后检测表和字段(包括嵌套)
   ElMessage.success('函数配置已保存')
   closeCombinedDrawer()
 }
@@ -2617,12 +2989,22 @@ const saveFunctionEdit = () => {
 const saveNestedFunctionEdit = () => {
   if (!nestedEditFunction.value) return
 
+  // 检查是否有多个返回值选项且未选择任何一项
+  if (
+    nestedEditFunction.value.component.returnOptions?.length > 1 &&
+    !nestedEditFunction.value.component.selectedReturn
+  ) {
+    ElMessage.error('请选择一个返回值选项')
+    return
+  }
+
   if (nestedEditFunction.value.component.parameters) {
     nestedEditFunction.value.component.parameters.forEach((param) => {
       updateParameterDisplay(param)
     })
   }
 
+  // 确保有返回值选项时至少选择了一项
   if (
     nestedEditFunction.value.component.returnOptions?.length > 1 &&
     !nestedEditFunction.value.component.selectedReturn
@@ -2636,6 +3018,7 @@ const saveNestedFunctionEdit = () => {
     updateParameterDisplay(nestedEditFunction.value.parameterContext)
   }
 
+  detectTablesAndFields() // 保存嵌套函数编辑后检测表和字段
   ElMessage.success('函数配置已保存')
   closeNestedDrawer()
 }
@@ -2664,29 +3047,48 @@ const handleParameterDrop = (event, param) => {
     switch (dragData.type) {
       case 'datasource':
         if (dragData.nodeType === 'field') {
+          // 如果没有表名，尝试从字段名中推断或使用默认值
+          let tableName = dragData.data.tableName
+          if (!tableName && dragData.data.fieldName) {
+            // 如果字段名包含点号，提取表名部分
+            if (dragData.data.fieldName.includes('.')) {
+              const parts = dragData.data.fieldName.split('.')
+              tableName = parts[0]
+            } else {
+              // 使用默认表名或根据上下文推断
+              tableName = 'CATALOG_DEFAULT' // 可以根据实际情况调整
+            }
+          }
+
           component = {
             type: 'field',
-            value: `${dragData.data.tableName || ''}.${dragData.data.fieldName || ''}`,
+            value: `${tableName || ''}.${dragData.data.fieldName || ''}`,
             label: dragData.data.label || '',
-            dataType: dragData.data.dataType || dragData.data.fieldType || ''
+            dataType: dragData.data.dataType || dragData.data.fieldType || '',
+            tableName: tableName,
+            fieldName: dragData.data.fieldName
           }
         } else if (dragData.nodeType === 'table') {
           component = {
             type: 'table',
             value: dragData.data.tableName || '',
-            label: dragData.data.label || ''
+            label: dragData.data.label || '',
+            tableName: dragData.data.tableName
           }
         }
         break
 
       case 'function':
+        const paramFunctionReturnOptions = getFunctionReturns(dragData.data)
         component = {
           type: 'function',
           value: dragData.data.functionName || '',
           label: dragData.data.chineseName || dragData.data.displayName || '',
           parameters: [],
           config: dragData.data,
-          returnOptions: getFunctionReturns(dragData.data)
+          returnOptions: paramFunctionReturnOptions,
+          selectedReturn:
+            paramFunctionReturnOptions.length > 0 ? paramFunctionReturnOptions[0].name : 'result'
         }
         break
 
@@ -2709,6 +3111,7 @@ const handleParameterDrop = (event, param) => {
     if (component && component.value) {
       param.components.push(component)
       updateParameterDisplay(param)
+      detectTablesAndFields() // 添加组件后检测表和字段(包括嵌套)
       console.log('成功添加组件到参数:', component)
       ElMessage.success(`已添加${component.label || component.value}`)
     } else {
@@ -2867,6 +3270,7 @@ const removeComponent = (groupId, compIndex) => {
   const group = conditionGroups.value.find((g) => g.id === groupId)
   if (group && group.expressionComponents) {
     group.expressionComponents.splice(compIndex, 1)
+    detectTablesAndFields() // 删除组件后检测表和字段
   }
 }
 
@@ -2893,6 +3297,18 @@ const generateExpressionText = (components) => {
       } else if (comp.type === 'operator' && comp.tolerance) {
         return `${comp.value}(${comp.tolerance})`
       } else if (comp.type === 'literal') {
+        return comp.value || comp.label || ''
+      } else if (comp.type === 'field') {
+        // 确保字段显示为 表中文名.字段名(表名.字段名) 的格式
+        if (comp.value) {
+          const [tableName, fieldName] = comp.value.split('.')
+          const tableInfo = getTableInfo(tableName)
+          const fieldInfo = getFieldInfo(comp.value)
+
+          if (tableInfo && fieldInfo) {
+            return `${tableInfo.chineseName}.${fieldInfo.chineseName}(${comp.value})`
+          }
+        }
         return comp.value || comp.label || ''
       }
       return comp.value || comp.label || ''
@@ -2975,20 +3391,295 @@ const handlePrefixChange = (prefix: string) => {
 }
 
 // 更新规则编码
-const updateRuleCode = () => {
-  if (!isEdit.value && !ruleForm.ruleCode.includes('_')) {
-    const timestamp = Date.now().toString().slice(-6)
-    ruleForm.ruleCode = `${ruleCodePrefix.value}_${timestamp}`
+const updateRuleCode = async () => {
+  if (!isEdit.value) {
+    try {
+      // 获取当前类型的最大编号和最大优先级
+      const prefix = ruleCodePrefix.value
+      const maxInfo = await getMaxRuleInfo(prefix)
+      const nextNumber = String(maxInfo.maxNumber + 1).padStart(3, '0')
+      ruleForm.ruleCode = `${prefix}_${nextNumber}`
+      // 自动填入最大优先级 + 1
+      ruleForm.priority = maxInfo.maxPriority + 1
+    } catch (error) {
+      console.error('生成规则编码失败:', error)
+      // 降级方案：使用时间戳
+      const timestamp = Date.now().toString().slice(-6)
+      ruleForm.ruleCode = `${ruleCodePrefix.value}_${timestamp}`
+      // 降级时仍然尝试设置合理的优先级
+      ruleForm.priority = 100
+    }
   }
 }
 
+// 预览和测试对话框状态
+const showPreviewDialog = ref(false)
+const showTestDialog = ref(false)
+
 // 主要操作方法
 const handlePreview = () => {
-  ElMessage.info('表达式预览功能正在开发中')
+  showPreviewDialog.value = true
 }
 
 const handleTest = () => {
-  ElMessage.info('规则测试功能正在开发中')
+  showTestDialog.value = true
+}
+
+// 处理预览保存
+const handlePreviewSave = () => {
+  // 预览后确认保存逻辑
+  ElMessage.success('预览确认，即将保存规则')
+  // 可以在这里调用保存逻辑
+}
+
+// 处理测试应用
+const handleTestApply = (testResult: any) => {
+  ElMessage.success('测试通过，规则已验证')
+  console.log('测试结果:', testResult)
+}
+
+// 递归分析组件，提取所有函数、表和字段
+const analyzeComponentRecursively = (
+  component: any,
+  functionsUsed: Set<string>,
+  tablesUsed: Set<string>,
+  fieldsUsed: Set<string>,
+  functionsWithConfig: Map<string, any>
+) => {
+  if (!component) return
+
+  if (component.type === 'function') {
+    functionsUsed.add(component.value)
+    // 保存函数配置信息，以便后续生成返回值变量
+    if (component.config) {
+      functionsWithConfig.set(component.value, component.config)
+    }
+
+    // 递归分析函数参数
+    if (component.parameters) {
+      component.parameters.forEach((param: any) => {
+        if (param.components) {
+          param.components.forEach((subComp: any) => {
+            analyzeComponentRecursively(
+              subComp,
+              functionsUsed,
+              tablesUsed,
+              fieldsUsed,
+              functionsWithConfig
+            )
+          })
+        }
+      })
+    }
+  } else if (component.type === 'field') {
+    // 处理字段组件，支持两种格式：
+    // 1. 有单独的 tableName 和 fieldName 属性
+    // 2. 只有 value 属性，格式为 "表名.字段名"
+    if (component.tableName && component.fieldName) {
+      tablesUsed.add(component.tableName)
+      fieldsUsed.add(`${component.tableName}.${component.fieldName}`)
+    } else if (component.value && component.value.includes('.')) {
+      // 解析 value 格式的字段 "表名.字段名"
+      const [tableName, fieldName] = component.value.split('.')
+      if (tableName && fieldName) {
+        tablesUsed.add(tableName)
+        fieldsUsed.add(component.value)
+      }
+    }
+  } else if (component.type === 'table') {
+    // 处理表组件，支持两种格式：
+    // 1. 有 tableName 属性
+    // 2. 有 value 属性
+    if (component.tableName) {
+      tablesUsed.add(component.tableName)
+    } else if (component.value) {
+      tablesUsed.add(component.value)
+    }
+  }
+
+  // 处理嵌套结构
+  if (component.components) {
+    component.components.forEach((subComp: any) => {
+      analyzeComponentRecursively(
+        subComp,
+        functionsUsed,
+        tablesUsed,
+        fieldsUsed,
+        functionsWithConfig
+      )
+    })
+  }
+}
+
+// 获取可用变量列表
+const getAvailableVariables = (group: any) => {
+  if (!group || !group.expressionComponents || !group.expressionComponents.length) {
+    return []
+  }
+
+  const variables = []
+  const functionsUsed = new Set<string>()
+  const tablesUsed = new Set<string>()
+  const fieldsUsed = new Set<string>()
+  const functionsWithConfig = new Map<string, any>()
+
+  // 递归分析所有表达式组件
+  group.expressionComponents.forEach((component: any) => {
+    analyzeComponentRecursively(
+      component,
+      functionsUsed,
+      tablesUsed,
+      fieldsUsed,
+      functionsWithConfig
+    )
+  })
+
+  // 函数返回值变量 - 根据函数的实际返回值配置生成
+  functionsUsed.forEach((funcName: string) => {
+    const functionConfig = functionsWithConfig.get(funcName)
+    if (functionConfig) {
+      // 获取函数的所有返回值选项
+      const returnOptions = getFunctionReturns(functionConfig)
+
+      if (returnOptions.length > 0) {
+        // 为每个返回值创建变量
+        returnOptions.forEach((returnOption: any) => {
+          variables.push({
+            name: `\${${funcName}.${returnOption.name}}`,
+            type: 'function',
+            description: `${getFunctionDisplayName(funcName)}的${returnOption.name}${returnOption.description ? `(${returnOption.description})` : ''}`,
+            example: `${getFunctionExample(funcName)} - ${returnOption.name}返回值`
+          })
+        })
+      } else {
+        // 如果没有特定的返回值配置，使用默认的result
+        variables.push({
+          name: `\${${funcName}.result}`,
+          type: 'function',
+          description: `${getFunctionDisplayName(funcName)}结果`,
+          example: getFunctionExample(funcName)
+        })
+      }
+    } else {
+      // 如果没有配置信息，使用默认的result
+      variables.push({
+        name: `\${${funcName}.result}`,
+        type: 'function',
+        description: `${getFunctionDisplayName(funcName)}结果`,
+        example: getFunctionExample(funcName)
+      })
+    }
+  })
+
+  // 表级别变量
+  tablesUsed.forEach((tableName: string) => {
+    variables.push({
+      name: `\${${tableName}}`,
+      type: 'table',
+      description: `${getTableDisplayName(tableName)}表`,
+      example: `示例：CATALOG_DEFAULT`
+    })
+  })
+
+  // 字段级别变量
+  fieldsUsed.forEach((fieldPath: string) => {
+    const [tableName, fieldName] = fieldPath.split('.')
+    variables.push({
+      name: `\${${tableName}.${fieldName}}`,
+      type: 'field',
+      description: `${getTableDisplayName(tableName)}.${getFieldDisplayName(fieldName)}`,
+      example: `示例：${tableName}.${fieldName}`
+    })
+  })
+
+  return variables
+}
+
+// 获取函数显示名称
+const getFunctionDisplayName = (funcName: string) => {
+  const functionNames: Record<string, string> = {
+    COUNT: '计数函数',
+    SUM: '求和函数',
+    AVG: '平均值函数',
+    MAX: '最大值函数',
+    MIN: '最小值函数',
+    CONCAT: '字符串拼接函数',
+    HAS_NULL_FIELDS: '空值检查函数',
+    IS_VALID_DATE: '日期验证函数',
+    LENGTH: '长度函数'
+  }
+  return functionNames[funcName] || funcName
+}
+
+// 获取函数示例
+const getFunctionExample = (funcName: string) => {
+  const examples: Record<string, string> = {
+    COUNT: '统计结果数量（如：125）',
+    SUM: '数值求和结果（如：1250.50）',
+    AVG: '平均值结果（如：85.3）',
+    MAX: '最大值结果（如：999）',
+    MIN: '最小值结果（如：1）',
+    CONCAT: '拼接后的字符串（如：2024-01-01_ORG001_DRUG123）',
+    HAS_NULL_FIELDS: '检查结果（如：true/false）',
+    IS_VALID_DATE: '验证结果（如：true/false）',
+    LENGTH: '字符串长度（如：12）'
+  }
+  return examples[funcName] || '函数执行结果'
+}
+
+// 获取表显示名称
+const getTableDisplayName = (tableName: string) => {
+  const tableNames: Record<string, string> = {
+    CATALOG_DEFAULT: '药品目录',
+    INBOUND: '药品入库',
+    OUTBOUND: '药品出库',
+    USAGE: '临床用药',
+    HOSPITAL_INFO: '医院信息'
+  }
+  return tableNames[tableName] || tableName
+}
+
+// 获取字段显示名称
+const getFieldDisplayName = (fieldName: string) => {
+  const fieldNames: Record<string, string> = {
+    report_date: '填报日期',
+    organization_code: '机构代码',
+    hospital_drug_code: '院内药品编码',
+    drug_name: '药品名称',
+    manufacturer: '生产厂家',
+    specification: '规格',
+    quantity: '数量',
+    amount: '金额',
+    unit_price: '单价'
+  }
+  return fieldNames[fieldName] || fieldName
+}
+
+// 获取变量类型对应的tag类型
+
+// 插入变量到错误信息模板
+const insertVariable = (variableName: string) => {
+  if (!activeGroup.value) return
+
+  const textarea = document.querySelector(
+    '.el-textarea__inner[placeholder*="支持变量模板"]'
+  ) as HTMLTextAreaElement
+  if (textarea) {
+    const cursorPos = textarea.selectionStart
+    const textBefore = activeGroup.value.errorMessageTemplate?.substring(0, cursorPos) || ''
+    const textAfter = activeGroup.value.errorMessageTemplate?.substring(cursorPos) || ''
+
+    activeGroup.value.errorMessageTemplate = textBefore + variableName + textAfter
+
+    // 设置新的光标位置
+    nextTick(() => {
+      const newPos = cursorPos + variableName.length
+      textarea.focus()
+      textarea.setSelectionRange(newPos, newPos)
+    })
+
+    ElMessage.success(`已插入变量：${variableName}`)
+  }
 }
 
 const handleSaveDraft = async () => {
@@ -3003,7 +3694,9 @@ const handleSave = async () => {
 
     const ruleData = {
       ...ruleForm,
+      enabled: Number(ruleForm.enabled), // 确保是整数类型
       tableType: selectedTableTypes.value.join(','),
+      checkFields: ruleForm.checkFields, // 明确传递检查字段
       conditionGroups: conditionGroups.value.map((group) => ({
         ...group,
         expressionJson: {
@@ -3022,7 +3715,7 @@ const handleSave = async () => {
       ElMessage.success('规则创建成功')
     }
 
-    router.push('/drug/qc-rules')
+    router.push('/drug-qc/rule')
   } catch (error) {
     console.error('保存失败:', error)
     ElMessage.error('保存失败: ' + (error.message || '未知错误'))
@@ -3040,6 +3733,7 @@ const addParameterElement = (param, type) => {
   const element = createElementByType(type)
   param.components.push(element)
   updateParameterDisplay(param)
+  detectTablesAndFields() // 添加元素后检测表和字段(包括嵌套)
 
   ElMessage.success(`已添加${getParameterTypeName(type)}元素`)
 }
@@ -3048,6 +3742,7 @@ const removeParameterComponent = (param, compIndex) => {
   if (param.components && param.components.length > compIndex) {
     param.components.splice(compIndex, 1)
     updateParameterDisplay(param)
+    detectTablesAndFields() // 删除组件后检测表和字段(包括嵌套)
   }
 }
 
@@ -3059,6 +3754,16 @@ const editParameterComponent = (param, compIndex) => {
   if (component.type === 'function') {
     // 设置嵌套抽屉默认激活tab为数据源
     nestedActiveTab.value = 'datasource'
+
+    // 确保有返回值选项时默认选择第一项
+    if (
+      component.returnOptions &&
+      component.returnOptions.length > 0 &&
+      !component.selectedReturn
+    ) {
+      component.selectedReturn = component.returnOptions[0].name
+    }
+
     // 为参数中的函数组件创建嵌套编辑上下文
     nestedEditFunction.value = {
       component: component,
@@ -3101,6 +3806,18 @@ const generateParameterExpressionText = (components) => {
       } else if (comp.type === 'operator' && comp.tolerance) {
         return `${comp.value}(${comp.tolerance})`
       } else if (comp.type === 'literal') {
+        return comp.value || comp.label || ''
+      } else if (comp.type === 'field') {
+        // 确保字段显示为 表中文名.字段名(表名.字段名) 的格式
+        if (comp.value) {
+          const [tableName, fieldName] = comp.value.split('.')
+          const tableInfo = getTableInfo(tableName)
+          const fieldInfo = getFieldInfo(comp.value)
+
+          if (tableInfo && fieldInfo) {
+            return `${tableInfo.chineseName}.${fieldInfo.chineseName}(${comp.value})`
+          }
+        }
         return comp.value || comp.label || ''
       }
       return comp.value || comp.label || ''
@@ -3153,6 +3870,187 @@ const handleNestedParameterDrop = (event, param) => {
   handleParameterDrop(event, param)
 }
 
+// 实时检测表达式中的表和字段
+const detectTablesAndFields = () => {
+  const tables = new Set<string>()
+  const fields = new Set<string>()
+
+  // 递归检测组件中的表和字段
+  const detectInComponent = (component, depth = 0, path = '') => {
+    if (!component || depth > 2) return // 限制嵌套深度为2层
+
+    const currentPath = path ? `${path} -> ${component.type}` : component.type
+
+    if (component.type === 'field' && component.value) {
+      // 解析字段格式: 表名.字段名
+      const [tableName, fieldName] = component.value.split('.')
+      if (tableName && fieldName) {
+        tables.add(tableName)
+        fields.add(component.value)
+        console.log(`[${currentPath}] 检测到字段: ${component.value}`)
+      }
+    } else if (component.type === 'table' && component.value) {
+      tables.add(component.value)
+      console.log(`[${currentPath}] 检测到表: ${component.value}`)
+    }
+
+    // 检查函数参数中的嵌套表达式
+    if (component.type === 'function' && component.parameters) {
+      console.log(`[${currentPath}] 检测函数参数, 参数数量: ${component.parameters.length}`)
+
+      component.parameters.forEach((param, paramIndex) => {
+        const paramPath = `${currentPath}.param[${paramIndex}]`
+
+        // 检查参数的components（表达式类型参数）
+        if (param.components && Array.isArray(param.components)) {
+          console.log(`[${paramPath}] 检测参数组件, 组件数量: ${param.components.length}`)
+          param.components.forEach((subComp, subIndex) => {
+            const subPath = `${paramPath}.comp[${subIndex}]`
+            detectInComponent(subComp, depth + 1, subPath)
+          })
+        }
+
+        // 检查参数本身如果也是表达式
+        if (param.type === 'expression' && param.value) {
+          console.log(`[${paramPath}] 检测表达式参数: ${param.value}`)
+          // 如果参数值包含表.字段格式，也需要解析
+          const fieldMatches = param.value.match(/([A-Z_]+)\.([a-z_]+)/g)
+          if (fieldMatches) {
+            fieldMatches.forEach((match) => {
+              const [tableName, fieldName] = match.split('.')
+              if (tableName && fieldName) {
+                tables.add(tableName)
+                fields.add(match)
+                console.log(`[${paramPath}] 从表达式中解析到字段: ${match}`)
+              }
+            })
+          }
+        }
+      })
+    }
+  }
+
+  console.log('=== 开始检测表和字段 ===')
+
+  // 遍历所有条件组的表达式组件
+  conditionGroups.value.forEach((group, groupIndex) => {
+    console.log(`检测条件组 ${groupIndex + 1}: ${group.groupName || '无名'}`)
+    if (group.expressionComponents) {
+      group.expressionComponents.forEach((component, compIndex) => {
+        const path = `group[${groupIndex}].comp[${compIndex}]`
+        detectInComponent(component, 0, path)
+      })
+    }
+  })
+
+  console.log(
+    `检测完成，表: [${Array.from(tables).join(', ')}], 字段: [${Array.from(fields).join(', ')}]`
+  )
+
+  // 更新检测到的表和字段
+  detectedTables.value = Array.from(tables).map((table) => {
+    const tableInfo = getTableInfo(table)
+    return {
+      value: table,
+      label: tableInfo ? `${tableInfo.chineseName}(${table})` : table
+    }
+  })
+
+  detectedFields.value = Array.from(fields).map((field) => {
+    const fieldInfo = getFieldInfo(field)
+    return {
+      value: field,
+      label: fieldInfo ? `${fieldInfo.chineseName}(${field})` : field
+    }
+  })
+
+  // 更新适用表选择
+  selectedTableTypes.value = Array.from(tables)
+  ruleForm.checkFields = Array.from(fields)
+
+  console.log('=== 检测结束 ===')
+}
+
+// 获取表信息
+const getTableInfo = (tableName: string) => {
+  const tableMap = {
+    CATALOG_DEFAULT: { chineseName: '药品目录表' },
+    INBOUND: { chineseName: '采购入库表' },
+    OUTBOUND: { chineseName: '药品发放表' },
+    USAGE: { chineseName: '临床用药表' }
+  }
+  return tableMap[tableName] || null
+}
+
+// 获取字段信息
+const getFieldInfo = (fullFieldName: string) => {
+  const [tableName, fieldName] = fullFieldName.split('.')
+  const fieldMap = {
+    ypid: { chineseName: '药品编码' },
+    ypmc: { chineseName: '药品名称' },
+    ypgg: { chineseName: '药品规格' },
+    ypdw: { chineseName: '药品单位' },
+    ypjg: { chineseName: '药品价格' },
+    ypsl: { chineseName: '药品数量' }
+  }
+  const fieldInfo = fieldMap[fieldName]
+  return fieldInfo ? { ...fieldInfo, tableName } : null
+}
+
+// 调试函数：打印检测到的嵌套结构
+const debugNestedStructure = () => {
+  console.log('=== 检测嵌套结构调试信息 ===')
+  conditionGroups.value.forEach((group, groupIndex) => {
+    console.log(`条件组 ${groupIndex + 1}:`, group.groupName)
+    if (group.expressionComponents) {
+      group.expressionComponents.forEach((component, compIndex) => {
+        console.log(
+          `  组件 ${compIndex + 1} (${component.type}):`,
+          component.value || component.label
+        )
+
+        if (component.type === 'function' && component.parameters) {
+          component.parameters.forEach((param, paramIndex) => {
+            console.log(
+              `    参数 ${paramIndex + 1} (${param.type}):`,
+              param.value || param.displayValue
+            )
+
+            if (param.components && Array.isArray(param.components)) {
+              param.components.forEach((subComp, subIndex) => {
+                console.log(
+                  `      嵌套组件 ${subIndex + 1} (${subComp.type}):`,
+                  subComp.value || subComp.label
+                )
+
+                // 检查二层嵌套
+                if (subComp.type === 'function' && subComp.parameters) {
+                  subComp.parameters.forEach((subParam, subParamIndex) => {
+                    console.log(
+                      `        二层参数 ${subParamIndex + 1} (${subParam.type}):`,
+                      subParam.value || subParam.displayValue
+                    )
+
+                    if (subParam.components && Array.isArray(subParam.components)) {
+                      subParam.components.forEach((deepComp, deepIndex) => {
+                        console.log(
+                          `          二层嵌套组件 ${deepIndex + 1} (${deepComp.type}):`,
+                          deepComp.value || deepComp.label
+                        )
+                      })
+                    }
+                  })
+                }
+              })
+            }
+          })
+        }
+      })
+    }
+  })
+  console.log('=== 调试信息结束 ===')
+}
+
 // 监听数据源过滤
 watch(dataSourceFilter, (val) => {
   nextTick(() => {
@@ -3161,6 +4059,15 @@ watch(dataSourceFilter, (val) => {
     }
   })
 })
+
+// 监听条件组变化，实时检测表和字段
+watch(
+  () => conditionGroups.value,
+  () => {
+    detectTablesAndFields()
+  },
+  { deep: true }
+)
 </script>
 
 <style lang="scss" scoped>
@@ -3383,6 +4290,12 @@ watch(dataSourceFilter, (val) => {
         font-size: 16px;
         font-weight: 500;
         flex-shrink: 0;
+
+        .header-actions {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
       }
 
       .condition-groups-scroll {
@@ -3421,12 +4334,42 @@ watch(dataSourceFilter, (val) => {
         border: 2px solid #e4e7ed;
         border-radius: 8px;
         overflow: hidden;
-        cursor: pointer;
+        cursor: grab;
         transition: all 0.3s;
+        position: relative;
+
+        &:active {
+          cursor: grabbing;
+        }
 
         &.active {
           border-color: #409eff;
           box-shadow: 0 2px 8px rgba(64, 158, 255, 0.2);
+        }
+
+        // 拖拽视觉反馈
+        &.drag-over-top::before {
+          content: '';
+          position: absolute;
+          top: -2px;
+          left: 0;
+          right: 0;
+          height: 4px;
+          background: linear-gradient(90deg, #409eff, #67c23a);
+          border-radius: 2px;
+          z-index: 10;
+        }
+
+        &.drag-over-bottom::after {
+          content: '';
+          position: absolute;
+          bottom: -2px;
+          left: 0;
+          right: 0;
+          height: 4px;
+          background: linear-gradient(90deg, #409eff, #67c23a);
+          border-radius: 2px;
+          z-index: 10;
         }
 
         .group-header {
@@ -3440,8 +4383,29 @@ watch(dataSourceFilter, (val) => {
           .group-title {
             display: flex;
             align-items: center;
-            gap: 8px;
+            justify-content: space-between;
             font-weight: 500;
+
+            .group-title-left {
+              display: flex;
+              align-items: center;
+              gap: 12px;
+
+              .priority-badge {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 24px;
+                height: 24px;
+                background: linear-gradient(135deg, #409eff, #67c23a);
+                color: white;
+                border-radius: 50%;
+                font-size: 12px;
+                font-weight: 600;
+                box-shadow: 0 2px 4px rgba(64, 158, 255, 0.3);
+                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+              }
+            }
           }
 
           .group-actions {
@@ -3967,6 +4931,148 @@ watch(dataSourceFilter, (val) => {
 // 帮助样式
 .template-help {
   .variable-help {
+    padding: 12px 0;
+
+    .variable-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #ebeef5;
+
+      strong {
+        color: #303133;
+        font-size: 14px;
+      }
+    }
+
+    .variable-list {
+      max-height: 400px;
+      overflow-y: auto;
+      margin-bottom: 12px;
+
+      &::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      &::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+      }
+
+      &::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+
+        &:hover {
+          background: #a8a8a8;
+        }
+      }
+
+      .variable-item {
+        padding: 8px 12px;
+        margin: 4px 0;
+        border: 1px solid #e4e7ed;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background: #ffffff;
+
+        &:hover {
+          background: #f5f7fa;
+          border-color: #409eff;
+          box-shadow: 0 2px 4px rgba(64, 158, 255, 0.12);
+          transform: translateY(-1px);
+        }
+
+        .variable-main {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 4px;
+
+          .variable-link {
+            font-family: 'Fira Code', Consolas, monospace;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            display: inline-block;
+
+            &.variable-function {
+              color: #409eff;
+              background: #ecf5ff;
+              border: 1px solid #d9ecff;
+
+              &:hover {
+                background: #409eff;
+                color: white;
+                transform: translateY(-1px);
+              }
+            }
+
+            &.variable-table {
+              color: #67c23a;
+              background: #f0f9ff;
+              border: 1px solid #c2e7b0;
+
+              &:hover {
+                background: #67c23a;
+                color: white;
+                transform: translateY(-1px);
+              }
+            }
+
+            &.variable-field {
+              color: #e6a23c;
+              background: #fdf6ec;
+              border: 1px solid #f5dab1;
+
+              &:hover {
+                background: #e6a23c;
+                color: white;
+                transform: translateY(-1px);
+              }
+            }
+          }
+
+          .variable-desc {
+            color: #606266;
+            font-size: 13px;
+            flex: 1;
+          }
+        }
+
+        .variable-example {
+          font-size: 12px;
+          color: #909399;
+          font-style: italic;
+          margin-top: 4px;
+          padding-left: 4px;
+          border-left: 2px solid #e4e7ed;
+
+          &:hover {
+            border-left-color: #409eff;
+          }
+        }
+      }
+    }
+
+    .variable-footer {
+      text-align: center;
+      padding-top: 8px;
+      border-top: 1px solid #ebeef5;
+
+      .el-text {
+        font-size: 12px;
+      }
+    }
+
+    // 兼容旧版本样式
     ul {
       margin: 8px 0;
       padding-left: 20px;
@@ -4228,19 +5334,69 @@ watch(dataSourceFilter, (val) => {
           padding: 40px;
           color: #909399;
         }
+
+        .add-param-bottom {
+          text-align: center;
+          padding: 16px 0;
+          border-top: 1px solid #f0f0f0;
+          margin-top: 12px;
+        }
       }
 
       .returns-section {
+        margin-top: 20px;
+
         h5 {
           font-size: 16px;
           font-weight: 500;
           margin: 0 0 12px 0;
           color: #303133;
+
+          .required-mark {
+            color: #f56c6c;
+            margin-left: 4px;
+          }
+        }
+
+        .return-hint {
+          font-size: 13px;
+          color: #909399;
+          margin: 0 0 12px 0;
+          padding: 8px 12px;
+          background: #f5f7fa;
+          border-radius: 4px;
+          border-left: 3px solid #409eff;
         }
 
         .return-desc {
           color: #909399;
           font-size: 12px;
+          margin-left: 4px;
+        }
+
+        .required-field {
+          border: 1px solid #f56c6c;
+          border-radius: 4px;
+          padding: 8px;
+          background: rgba(245, 108, 108, 0.05);
+        }
+
+        :deep(.el-radio-group) {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+
+          .el-radio {
+            margin-right: 0 !important;
+            margin-bottom: 8px !important;
+            line-height: 1.5 !important;
+
+            .el-radio__label {
+              font-size: 14px !important;
+              line-height: 1.4 !important;
+              padding-left: 8px !important;
+            }
+          }
         }
       }
     }
@@ -5549,6 +6705,13 @@ watch(dataSourceFilter, (val) => {
           padding: 40px;
           color: #909399;
         }
+
+        .add-param-bottom {
+          text-align: center;
+          padding: 16px 0;
+          border-top: 1px solid #f0f0f0;
+          margin-top: 12px;
+        }
       }
 
       .returns-section {
@@ -5559,12 +6722,34 @@ watch(dataSourceFilter, (val) => {
           font-weight: 500;
           margin: 0 0 12px 0;
           color: #303133;
+
+          .required-mark {
+            color: #f56c6c;
+            margin-left: 4px;
+          }
+        }
+
+        .return-hint {
+          font-size: 13px;
+          color: #909399;
+          margin: 0 0 12px 0;
+          padding: 8px 12px;
+          background: #f5f7fa;
+          border-radius: 4px;
+          border-left: 3px solid #409eff;
         }
 
         .return-desc {
           color: #909399;
           font-size: 12px;
           margin-left: 4px;
+        }
+
+        .required-field {
+          border: 1px solid #f56c6c;
+          border-radius: 4px;
+          padding: 8px;
+          background: rgba(245, 108, 108, 0.05);
         }
 
         :deep(.el-radio-group) {

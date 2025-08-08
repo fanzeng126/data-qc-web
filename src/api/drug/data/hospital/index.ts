@@ -9,6 +9,8 @@ export interface HospitalInfoVO {
   organizationCode: string // 组织机构代码（9位）
   hospitalCode: string // 医疗机构代码（22位）
   organizationName: string // 组织机构名称
+  unitManager: string // 单位负责人
+  statisticsManager: string // 统计负责人
   domainCode: string // 省级行政区划代码（6位）
   bedCount: number // 实有床位数
   doctorCount: number // 执业医师数

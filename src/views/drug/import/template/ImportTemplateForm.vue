@@ -299,6 +299,7 @@
       ref="fieldEditRef"
       :table-type="formData.tableType"
       :template-id="formData.id"
+      :total-fields-count="fieldCount"
       @confirm="handleFieldEdit"
     />
 
@@ -506,7 +507,7 @@ const addField = () => {
     isRequired: false,
     exampleValue: '',
     sortOrder: fieldCount.value + 1,
-    remark: ''
+    helpText: ''
   })
 }
 
@@ -534,15 +535,67 @@ const removeField = async (index: number) => {
 const handleFieldEdit = (field: TemplateFieldSaveReqVO, index?: number) => {
   if (index !== undefined) {
     // 编辑现有字段
-    formData.value.fields![index] = { ...field }
+    const currentField = formData.value.fields![index]
+    const oldSortOrder = currentField.sortOrder
+    const newSortOrder = field.sortOrder
+    
+    // 如果排序序号发生变化，需要调整其他字段的序号
+    if (oldSortOrder !== newSortOrder) {
+      // 更新当前字段信息
+      formData.value.fields![index] = { ...field }
+      
+      // 调整其他字段的序号
+      formData.value.fields!.forEach((f, i) => {
+        if (i !== index) {
+          if (newSortOrder <= oldSortOrder) {
+            // 序号变小，原来在新序号和旧序号之间的字段序号+1
+            if (f.sortOrder >= newSortOrder && f.sortOrder < oldSortOrder) {
+              f.sortOrder += 1
+            }
+          } else {
+            // 序号变大，原来在旧序号和新序号之间的字段序号-1
+            if (f.sortOrder > oldSortOrder && f.sortOrder <= newSortOrder) {
+              f.sortOrder -= 1
+            }
+          }
+        }
+      })
+      
+      // 重新排序字段
+      reorderFieldsBySortOrder()
+    } else {
+      // 排序序号未变化，直接更新字段信息
+      formData.value.fields![index] = { ...field }
+    }
   } else {
     // 添加新字段
     if (!formData.value.fields) {
       formData.value.fields = []
     }
+    
+    const newSortOrder = field.sortOrder
+    
+    // 调整现有字段的序号
+    formData.value.fields.forEach((f) => {
+      if (f.sortOrder >= newSortOrder) {
+        f.sortOrder += 1
+      }
+    })
+    
     formData.value.fields.push({ ...field })
+    // 重新排序字段
+    reorderFieldsBySortOrder()
   }
-  updateFieldOrder()
+}
+
+/** 根据排序序号重新排序字段 */
+const reorderFieldsBySortOrder = () => {
+  if (!formData.value.fields || formData.value.fields.length === 0) {
+    return
+  }
+  
+  // 直接按 sortOrder 排序，保持用户输入的序号
+  formData.value.fields.sort((a, b) => a.sortOrder - b.sortOrder)
 }
 
 /** 更新字段排序 */
@@ -945,11 +998,11 @@ const refreshPreview = () => {
 }
 
 .sortable-chosen {
-  transform: rotate(5deg);
+  /* 移除倾斜动画 */
 }
 
 .sortable-drag {
-  transform: rotate(5deg);
+  /* 移除倾斜动画 */
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 

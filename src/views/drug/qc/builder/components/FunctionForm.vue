@@ -195,14 +195,26 @@
                 </div>
 
                 <el-table :data="returnVariableList" border size="small">
-                  <el-table-column label="变量名" width="150">
+                  <el-table-column label="变量名" width="120">
                     <template #default="{ row }">
                       <el-input v-model="row.key" placeholder="变量名" size="small" />
                     </template>
                   </el-table-column>
-                  <el-table-column label="变量描述" min-width="200">
+                  <el-table-column label="变量类型" width="120">
                     <template #default="{ row }">
-                      <el-input v-model="row.value" placeholder="变量描述" size="small" />
+                      <el-select v-model="row.type" placeholder="变量类型" size="small" class="w-full">
+                        <el-option label="字符串" value="STRING" />
+                        <el-option label="整数" value="INTEGER" />
+                        <el-option label="小数" value="DECIMAL" />
+                        <el-option label="布尔值" value="BOOLEAN" />
+                        <el-option label="数组" value="ARRAY" />
+                        <el-option label="对象" value="OBJECT" />
+                      </el-select>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="变量描述" min-width="160">
+                    <template #default="{ row }">
+                      <el-input v-model="row.description" placeholder="变量描述" size="small" />
                     </template>
                   </el-table-column>
                   <el-table-column label="操作" width="80">
@@ -353,7 +365,8 @@ const removeParameter = (index: number) => {
 const addReturnVariable = () => {
   returnVariableList.value.push({
     key: '',
-    value: ''
+    type: 'STRING',
+    description: ''
   })
 }
 
@@ -371,15 +384,18 @@ const buildParameterConfig = () => {
 
 // 构建返回值配置JSON
 const buildReturnConfig = () => {
-  const variables: Record<string, string> = {}
+  // 构建新格式的返回值配置
+  const variables: Record<string, { type: string; description: string }> = {}
   returnVariableList.value.forEach((variable) => {
-    if (variable.key && variable.value) {
-      variables[variable.key] = variable.value
+    if (variable.key) {
+      variables[variable.key] = {
+        type: variable.type || 'STRING',
+        description: variable.description || ''
+      }
     }
   })
 
   return {
-    type: returnConfig.value.type,
     variables
   }
 }
@@ -399,15 +415,20 @@ const parseParameterConfig = (configStr: string) => {
 const parseReturnConfig = (configStr: string) => {
   try {
     const config = JSON.parse(configStr)
-    returnConfig.value.type = config.type || 'STRING'
-
-    returnVariableList.value = Object.entries(config.variables || {}).map(([key, value]) => ({
-      key,
-      value: value as string
-    }))
+    
+    // 只支持新格式 {"variables": {"result": {"type": "BOOLEAN", "description": "描述"}}}
+    if (config.variables && typeof config.variables === 'object') {
+      const variableEntries = Object.entries(config.variables)
+      returnVariableList.value = variableEntries.map(([key, varInfo]) => ({
+        key,
+        type: (varInfo as any).type || 'STRING',
+        description: (varInfo as any).description || ''
+      }))
+    } else {
+      returnVariableList.value = []
+    }
   } catch (error) {
     console.warn('解析返回值配置失败：', error)
-    returnConfig.value.type = 'STRING'
     returnVariableList.value = []
   }
 }
