@@ -223,7 +223,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column align="center" label="适用表" prop="tableType" width="150">
+        <el-table-column align="center" label="适用表" prop="tableType" width="200">
           <template #default="{ row }">
             <div v-if="row.tableType !== null && row.tableType !== undefined">
               <!-- 检查是否为"全部表"的情况 -->
@@ -266,7 +266,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column align="center" label="检查字段" prop="fieldName" width="200">
+        <el-table-column align="center" label="检查字段" prop="fieldName" width="280">
           <template #default="{ row }">
             <div v-if="row.fieldName">
               <!-- 解析和展示字段名 -->
@@ -294,17 +294,15 @@
                 <template #default>
                   <div class="field-names-popover">
                     <div class="popover-title">检查字段列表：</div>
-                    <div class="field-list">
-                      <div
-                        v-for="field in parseAndFormatFieldNames(row.fieldName)"
-                        :key="field.fullName"
-                        class="field-item"
-                      >
-                        <el-tag class="field-tag-popup" size="small" type="success">
-                          {{ field.displayName }}
-                        </el-tag>
-                        <span class="field-full-name">{{ field.fullName }}</span>
-                      </div>
+                    <div
+                      v-for="field in parseAndFormatFieldNames(row.fieldName)"
+                      :key="field.fullName"
+                      class="field-item"
+                    >
+                      <el-tag class="field-tag-popup" size="small" type="success">
+                        {{ field.displayName }}
+                      </el-tag>
+                      <span class="field-full-name">{{ field.fullName }}</span>
                     </div>
                   </div>
                 </template>
@@ -542,11 +540,11 @@ const loadTableAndFieldMetadata = async () => {
   try {
     // 1. 加载表元数据
     const tableData = await QcBuilderTableMetadataApi.getQcBuilderTablesByCategory(null)
-    
+
     // 构建表名到中文名的映射
     const tableMapping: Record<string, string> = {}
     const tableIdMapping: Record<number, string> = {}
-    
+
     if (tableData && Array.isArray(tableData)) {
       tableData.forEach((table) => {
         if (table.tableName && table.chineseName) {
@@ -555,18 +553,18 @@ const loadTableAndFieldMetadata = async () => {
         }
       })
     }
-    
+
     tableMetadataMap.value = tableMapping
     tableIdToNameMap.value = tableIdMapping
-    
+
     // 2. 加载字段元数据
     const fieldMapping: Record<string, string> = {}
-    
+
     // 为每个表加载字段信息
     for (const table of tableData || []) {
       try {
         const fieldsData = await QcBuilderTableMetadataApi.getQcBuilderTableFields(table.id)
-        
+
         if (fieldsData && Array.isArray(fieldsData)) {
           fieldsData.forEach((field) => {
             if (field.fieldName && field.chineseName && table.tableName) {
@@ -579,12 +577,11 @@ const loadTableAndFieldMetadata = async () => {
         console.warn(`加载表${table.tableName}的字段失败:`, error)
       }
     }
-    
+
     fieldMetadataMap.value = fieldMapping
-    
+
     console.log('表元数据映射:', tableMapping)
     console.log('字段元数据映射:', fieldMapping)
-    
   } catch (error) {
     console.error('加载表和字段元数据失败:', error)
   }
@@ -844,14 +841,14 @@ const parseAndFormatFieldNames = (
       // 如果包含点号，说明是 "表名.字段名" 格式
       if (fullName.includes('.')) {
         const [tableName, fieldName] = fullName.split('.', 2)
-        
+
         // 获取表的中文名称
         const tableChineseName = tableMetadataMap.value[tableName] || tableName
-        
+
         // 获取字段的中文名称
         const fieldKey = `${tableName}.${fieldName}`
         const fieldChineseName = fieldMetadataMap.value[fieldKey] || fieldName
-        
+
         return {
           fullName,
           tableName,
@@ -957,11 +954,6 @@ const getTableTypeChineseName = (tableType: string | number): string => {
 .field-single {
   display: flex;
   justify-content: center;
-}
-
-.field-list {
-  max-height: 200px;
-  overflow-y: auto;
 }
 
 .field-item {

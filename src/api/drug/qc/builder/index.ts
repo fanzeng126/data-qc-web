@@ -181,7 +181,7 @@ export const QcBuilderFieldMetadataApi = {
 
   // 新增构建器字段元数据
   createQcBuilderFieldMetadata: async (data: QcBuilderFieldMetadataVO) => {
-    return await request.put({ url: `/drug/qc-builder/fields/create`, data })
+    return await request.post({ url: `/drug/qc-builder/fields/create`, data })
   },
 
   // 修改构建器字段元数据

@@ -561,6 +561,9 @@
                               v-model="component.numericValue"
                               size="small"
                               style="width: 120px"
+                              :precision="2"
+                              :step="1"
+                              :controls="true"
                               @change="updateLiteralValue(component, $event)"
                               @click.stop
                             />
@@ -1100,6 +1103,9 @@
                       v-model="param.value"
                       placeholder="输入数值"
                       style="width: 100%"
+                      :precision="2"
+                      :step="1"
+                      :controls="true"
                       @change="updateParameterDisplay(param)"
                     />
                     <el-select
@@ -1187,6 +1193,9 @@
                                   v-model="component.numericValue"
                                   size="small"
                                   style="width: 120px"
+                                  :precision="2"
+                                  :step="1"
+                                  :controls="true"
                                   @change="updateLiteralValue(component, $event)"
                                   @click.stop
                                 />
@@ -1334,7 +1343,10 @@
                 </div>
 
                 <!-- 参数列表底部添加参数按钮 -->
-                <div v-if="currentEditFunction.component?.parameters?.length" class="add-param-bottom">
+                <div
+                  v-if="currentEditFunction.component?.parameters?.length"
+                  class="add-param-bottom"
+                >
                   <el-button size="small" type="primary" @click="addFunctionParameter" plain>
                     <Icon icon="ep:plus" />
                     添加参数
@@ -1594,6 +1606,9 @@
                         v-model="param.value"
                         placeholder="输入数值"
                         style="width: 100%"
+                        :precision="2"
+                        :step="1"
+                        :controls="true"
                         @change="updateParameterDisplay(param)"
                       />
                       <el-select
@@ -1736,7 +1751,10 @@
                   </div>
 
                   <!-- 嵌套抽屉参数列表底部添加参数按钮 -->
-                  <div v-if="nestedEditFunction.component?.parameters?.length" class="add-param-bottom">
+                  <div
+                    v-if="nestedEditFunction.component?.parameters?.length"
+                    class="add-param-bottom"
+                  >
                     <el-button size="small" type="primary" @click="addFunctionParameter" plain>
                       <Icon icon="ep:plus" />
                       添加参数
@@ -2466,10 +2484,12 @@ const handleDrop = (event, groupId) => {
             }
           }
 
+          const fieldKey = `${tableName}.${dragData.data.fieldName}`
+
           component = {
             type: 'field',
-            value: `${tableName || ''}.${dragData.data.fieldName || ''}`,
-            label: dragData.data.label || '',
+            value: fieldKey,
+            label: dragData.data.label || fieldKey,
             dataType: dragData.data.dataType || dragData.data.fieldType || '',
             tableName: tableName,
             fieldName: dragData.data.fieldName
@@ -3060,10 +3080,12 @@ const handleParameterDrop = (event, param) => {
             }
           }
 
+          const fieldKey = `${tableName}.${dragData.data.fieldName}`
+
           component = {
             type: 'field',
-            value: `${tableName || ''}.${dragData.data.fieldName || ''}`,
-            label: dragData.data.label || '',
+            value: fieldKey,
+            label: dragData.data.label || fieldKey,
             dataType: dragData.data.dataType || dragData.data.fieldType || '',
             tableName: tableName,
             fieldName: dragData.data.fieldName
@@ -3299,16 +3321,7 @@ const generateExpressionText = (components) => {
       } else if (comp.type === 'literal') {
         return comp.value || comp.label || ''
       } else if (comp.type === 'field') {
-        // 确保字段显示为 表中文名.字段名(表名.字段名) 的格式
-        if (comp.value) {
-          const [tableName, fieldName] = comp.value.split('.')
-          const tableInfo = getTableInfo(tableName)
-          const fieldInfo = getFieldInfo(comp.value)
-
-          if (tableInfo && fieldInfo) {
-            return `${tableInfo.chineseName}.${fieldInfo.chineseName}(${comp.value})`
-          }
-        }
+        // 保持原有格式，直接返回 value 值
         return comp.value || comp.label || ''
       }
       return comp.value || comp.label || ''
@@ -3808,16 +3821,7 @@ const generateParameterExpressionText = (components) => {
       } else if (comp.type === 'literal') {
         return comp.value || comp.label || ''
       } else if (comp.type === 'field') {
-        // 确保字段显示为 表中文名.字段名(表名.字段名) 的格式
-        if (comp.value) {
-          const [tableName, fieldName] = comp.value.split('.')
-          const tableInfo = getTableInfo(tableName)
-          const fieldInfo = getFieldInfo(comp.value)
-
-          if (tableInfo && fieldInfo) {
-            return `${tableInfo.chineseName}.${fieldInfo.chineseName}(${comp.value})`
-          }
-        }
+        // 保持原有格式，直接返回 value 值
         return comp.value || comp.label || ''
       }
       return comp.value || comp.label || ''
@@ -3975,26 +3979,45 @@ const detectTablesAndFields = () => {
 const getTableInfo = (tableName: string) => {
   const tableMap = {
     CATALOG_DEFAULT: { chineseName: '药品目录表' },
+    CATALOG: { chineseName: '药品目录表' },
     INBOUND: { chineseName: '采购入库表' },
     OUTBOUND: { chineseName: '药品发放表' },
-    USAGE: { chineseName: '临床用药表' }
+    USAGE: { chineseName: '临床用药表' },
+    HOSPITAL_INFO: { chineseName: '医院信息表' }
   }
-  return tableMap[tableName] || null
+  return tableMap[tableName] || { chineseName: tableName }
 }
 
 // 获取字段信息
 const getFieldInfo = (fullFieldName: string) => {
   const [tableName, fieldName] = fullFieldName.split('.')
   const fieldMap = {
+    // 药品目录表字段
     ypid: { chineseName: '药品编码' },
     ypmc: { chineseName: '药品名称' },
     ypgg: { chineseName: '药品规格' },
     ypdw: { chineseName: '药品单位' },
     ypjg: { chineseName: '药品价格' },
-    ypsl: { chineseName: '药品数量' }
+    ypsl: { chineseName: '药品数量' },
+    // 通用字段
+    report_date: { chineseName: '填报日期' },
+    organization_code: { chineseName: '机构代码' },
+    hospital_drug_code: { chineseName: '院内药品编码' },
+    drug_name: { chineseName: '药品名称' },
+    manufacturer: { chineseName: '生产厂家' },
+    specification: { chineseName: '规格' },
+    quantity: { chineseName: '数量' },
+    amount: { chineseName: '金额' },
+    unit_price: { chineseName: '单价' },
+    batch_number: { chineseName: '批号' },
+    expiry_date: { chineseName: '有效期' },
+    purchase_date: { chineseName: '采购日期' },
+    supplier: { chineseName: '供应商' }
   }
   const fieldInfo = fieldMap[fieldName]
-  return fieldInfo ? { ...fieldInfo, tableName } : null
+  return fieldInfo
+    ? { ...fieldInfo, tableName, fieldName }
+    : { chineseName: fieldName, tableName, fieldName }
 }
 
 // 调试函数：打印检测到的嵌套结构
@@ -4163,6 +4186,7 @@ watch(
 .builder-body {
   flex: 1;
   display: flex;
+  height: calc(100vh - 300px); /* 设置固定高度 */
   overflow: hidden;
 
   .builder-sidebar {
@@ -4171,21 +4195,27 @@ watch(
     border-right: 1px solid #e4e7ed;
     display: flex;
     flex-direction: column;
+    flex-shrink: 0; /* 防止缩小 */
+    height: 100%; /* 明确设置高度 */
 
     .sidebar-tabs {
-      .tab-label {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: 0 8px;
+      display: flex;
+      height: 100%;
+      //flex-direction: column;
 
-        i {
-          font-size: 14px;
-        }
+      :deep(.el-tabs__header) {
+        flex-shrink: 0;
+        margin: 0;
+      }
 
-        span {
-          font-size: 13px;
-        }
+      :deep(.el-tabs__content) {
+        flex: 1;
+        overflow: hidden;
+      }
+
+      :deep(.el-tab-pane) {
+        height: 100%;
+        overflow: hidden;
       }
     }
 
@@ -4200,6 +4230,7 @@ watch(
         overflow: hidden;
         display: flex;
         flex-direction: column;
+        min-height: 0;
 
         .search-row {
           display: flex;
@@ -4220,7 +4251,7 @@ watch(
         .tree-container,
         .function-container,
         .operator-container {
-          height: 850px;
+          flex: 1;
           overflow-y: auto;
           overflow-x: hidden;
 
@@ -4274,13 +4305,14 @@ watch(
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    min-width: 0; /* 允许flex item缩小 */
 
     .condition-groups-builder {
       flex: 1;
-      padding: 20px;
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      padding: 20px;
 
       .section-header {
         display: flex;
@@ -4289,7 +4321,7 @@ watch(
         margin-bottom: 16px;
         font-size: 16px;
         font-weight: 500;
-        flex-shrink: 0;
+        flex-shrink: 0; /* 标题不缩小 */
 
         .header-actions {
           display: flex;
@@ -4301,32 +4333,44 @@ watch(
       .condition-groups-scroll {
         flex: 1;
         overflow-y: auto;
+        overflow-x: hidden;
         padding-right: 8px;
+        min-height: 0; /* 确保flex item能正确缩小 */
 
         &::-webkit-scrollbar {
-          width: 6px;
+          width: 8px;
         }
 
         &::-webkit-scrollbar-track {
-          background: #f1f1f1;
-          border-radius: 3px;
+          background: #f5f5f5;
+          border-radius: 4px;
+          margin: 4px 0;
         }
 
         &::-webkit-scrollbar-thumb {
           background: #c1c1c1;
-          border-radius: 3px;
+          border-radius: 4px;
+          border: 1px solid #f5f5f5;
 
           &:hover {
             background: #a8a8a8;
           }
+
+          &:active {
+            background: #999;
+          }
         }
+
+        /* 确保滚动平滑 */
+        scroll-behavior: smooth;
       }
 
       .condition-groups {
         display: flex;
         flex-direction: column;
         gap: 16px;
-        min-height: min-content;
+        padding: 4px 0;
+        min-height: fit-content;
       }
 
       .condition-group {
@@ -4630,6 +4674,9 @@ watch(
     width: 300px;
     background: white;
     border-left: 1px solid #e4e7ed;
+    flex-shrink: 0; /* 防止缩小 */
+    display: flex;
+    flex-direction: column;
 
     .config-panel {
       height: 100%;
@@ -4640,6 +4687,7 @@ watch(
         padding: 16px;
         border-bottom: 1px solid #e4e7ed;
         font-weight: 500;
+        flex-shrink: 0;
       }
 
       .panel-body {
