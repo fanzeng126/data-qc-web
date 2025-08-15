@@ -204,5 +204,9 @@ export enum DICT_TYPE {
   // 质控执行状态
   DRUG_QC_EXECUTION_STATUS = 'drug_qc_execution_status',
   // 质控错误级别
-  DRUG_QC_ERROR_LEVEL = 'drug_qc_error_level'
+  DRUG_QC_ERROR_LEVEL = 'drug_qc_error_level',
+  
+  // ========== 机构标准库字典 ==========
+  INSTITUTION_CATEGORY = 'institution_category', // 机构类别
+  INSTITUTION_LEVEL = 'institution_level' // 机构等级
 }

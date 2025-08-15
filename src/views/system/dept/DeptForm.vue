@@ -7,19 +7,19 @@
       :rules="formRules"
       label-width="80px"
     >
-      <el-form-item label="上级部门" prop="parentId">
+      <el-form-item label="上级机构" prop="parentId">
         <el-tree-select
           v-model="formData.parentId"
           :data="deptTree"
           :props="defaultProps"
           check-strictly
           default-expand-all
-          placeholder="请选择上级部门"
+          placeholder="请选择上级机构"
           value-key="deptId"
         />
       </el-form-item>
-      <el-form-item label="部门名称" prop="name">
-        <el-input v-model="formData.name" placeholder="请输入部门名称" />
+      <el-form-item label="机构名称" prop="name">
+        <el-input v-model="formData.name" placeholder="请输入机构名称" />
       </el-form-item>
       <el-form-item label="显示排序" prop="sort">
         <el-input-number v-model="formData.sort" :min="0" controls-position="right" />
@@ -50,6 +50,24 @@
           />
         </el-select>
       </el-form-item>
+      
+      <!-- 机构扩展信息 -->
+      <el-form-item label="行政区域">
+        <el-input v-model="formData.deptExt.areaCode" placeholder="请输入行政区域代码" />
+      </el-form-item>
+      <el-form-item label="机构类别">
+        <el-select v-model="formData.deptExt.institutionCategory" clearable placeholder="请选择机构类别">
+          <el-option label="医院(A)" value="A" />
+          <el-option label="社区卫生服务中心(B1)" value="B1" />
+          <el-option label="乡镇卫生院(C)" value="C" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="信用代码">
+        <el-input v-model="formData.deptExt.socialCreditCode" placeholder="请输入统一社会信用代码" />
+      </el-form-item>
+      <el-form-item label="医院等级">
+        <el-input v-model="formData.deptExt.hospitalLevel" placeholder="请输入医院等级" />
+      </el-form-item>
     </el-form>
     <template #footer>
       <el-button type="primary" @click="submitForm">确 定</el-button>
@@ -61,6 +79,7 @@
 import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
 import { defaultProps, handleTree } from '@/utils/tree'
 import * as DeptApi from '@/api/system/dept'
+import * as DeptExtApi from '@/api/system/dept/deptext'
 import * as UserApi from '@/api/system/user'
 import { CommonStatusEnum } from '@/utils/constants'
 import { FormRules } from 'element-plus'
@@ -83,11 +102,22 @@ const formData = ref({
   leaderUserId: undefined,
   phone: undefined,
   email: undefined,
-  status: CommonStatusEnum.ENABLE
+  status: CommonStatusEnum.ENABLE,
+  // 机构扩展数据
+  deptExt: {
+    id: undefined,
+    deptId: undefined,
+    deptType: undefined,
+    areaCode: undefined,
+    institutionId: undefined,
+    institutionCategory: undefined,
+    socialCreditCode: undefined,
+    hospitalLevel: undefined
+  }
 })
 const formRules = reactive<FormRules>({
-  parentId: [{ required: true, message: '上级部门不能为空', trigger: 'blur' }],
-  name: [{ required: true, message: '部门名称不能为空', trigger: 'blur' }],
+  parentId: [{ required: true, message: '上级机构不能为空', trigger: 'blur' }],
+  name: [{ required: true, message: '机构名称不能为空', trigger: 'blur' }],
   sort: [{ required: true, message: '显示排序不能为空', trigger: 'blur' }],
   email: [{ type: 'email', message: '请输入正确的邮箱地址', trigger: ['blur', 'change'] }],
   phone: [
@@ -109,7 +139,32 @@ const open = async (type: string, id?: number) => {
   if (id) {
     formLoading.value = true
     try {
-      formData.value = await DeptApi.getDept(id)
+      // 获取部门基本信息
+      const deptData = await DeptApi.getDept(id)
+      formData.value = {
+        ...deptData,
+        deptExt: {
+          id: undefined,
+          deptId: undefined,
+          deptType: undefined,
+          areaCode: undefined,
+          institutionId: undefined,
+          institutionCategory: undefined,
+          socialCreditCode: undefined,
+          hospitalLevel: undefined
+        }
+      }
+      
+      // 获取部门扩展信息
+      try {
+        const extData = await DeptExtApi.getDeptExtByDeptId(id)
+        if (extData) {
+          formData.value.deptExt = extData
+        }
+      } catch (error) {
+        // 如果没有扩展信息，保持默认值
+        console.log('该部门暂无扩展信息')
+      }
     } finally {
       formLoading.value = false
     }
@@ -132,13 +187,36 @@ const submitForm = async () => {
   formLoading.value = true
   try {
     const data = formData.value as unknown as DeptApi.DeptVO
+    let deptId: number
+    
     if (formType.value === 'create') {
-      await DeptApi.createDept(data)
+      deptId = await DeptApi.createDept(data)
       message.success(t('common.createSuccess'))
     } else {
       await DeptApi.updateDept(data)
+      deptId = data.id!
       message.success(t('common.updateSuccess'))
     }
+    
+    // 处理扩展数据
+    if (formData.value.deptExt && (
+      formData.value.deptExt.deptType || 
+      formData.value.deptExt.institutionId || 
+      formData.value.deptExt.areaCode ||
+      formData.value.deptExt.institutionCategory
+    )) {
+      const extData = { ...formData.value.deptExt }
+      extData.deptId = deptId
+      
+      if (extData.id) {
+        // 更新扩展信息
+        await DeptExtApi.updateDeptExt(extData)
+      } else {
+        // 创建扩展信息
+        await DeptExtApi.createDeptExt(extData)
+      }
+    }
+    
     dialogVisible.value = false
     // 发送操作成功的事件
     emit('success')
@@ -158,16 +236,27 @@ const resetForm = () => {
     leaderUserId: undefined,
     phone: undefined,
     email: undefined,
-    status: CommonStatusEnum.ENABLE
+    status: CommonStatusEnum.ENABLE,
+    // 机构扩展数据
+    deptExt: {
+      id: undefined,
+      deptId: undefined,
+      deptType: undefined,
+      areaCode: undefined,
+      institutionId: undefined,
+      institutionCategory: undefined,
+      socialCreditCode: undefined,
+      hospitalLevel: undefined
+    }
   }
   formRef.value?.resetFields()
 }
 
-/** 获得部门树 */
+/** 获得机构树 */
 const getTree = async () => {
   deptTree.value = []
   const data = await DeptApi.getSimpleDeptList()
-  let dept: Tree = { id: 0, name: '顶级部门', children: [] }
+  let dept: Tree = { id: 0, name: '顶级机构', children: [] }
   dept.children = handleTree(data)
   deptTree.value.push(dept)
 }

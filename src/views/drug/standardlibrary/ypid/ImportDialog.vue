@@ -128,7 +128,7 @@
 
 <script setup lang="ts">
 import { ElMessage } from 'element-plus'
-import { YpidVersionApi, YpidVersionVO } from '@/api/drug/ypid/version'
+import { YpidVersionApi, StandardVersionVO } from '@/api/drug/standardlibrary/version'
 
 defineOptions({ name: 'ImportDialog' })
 
@@ -145,7 +145,7 @@ const currentVersionId = ref<number | null>(null)
 // 导入模式
 const importMode = ref<'new' | 'existing'>('new')
 const hasExistingVersions = ref(false)
-const availableVersions = ref<YpidVersionVO[]>([])
+const availableVersions = ref<StandardVersionVO[]>([])
 
 // 表单数据
 const formData = ref({

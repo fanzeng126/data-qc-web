@@ -8,19 +8,19 @@
       :inline="true"
       label-width="68px"
     >
-      <el-form-item label="部门名称" prop="name">
+      <el-form-item label="机构名称" prop="name">
         <el-input
           v-model="queryParams.name"
-          placeholder="请输入部门名称"
+          placeholder="请输入机构名称"
           clearable
           @keyup.enter="handleQuery"
           class="!w-240px"
         />
       </el-form-item>
-      <el-form-item label="部门状态" prop="status">
+      <el-form-item label="机构状态" prop="status">
         <el-select
           v-model="queryParams.status"
-          placeholder="请选择部门状态"
+          placeholder="请选择机构状态"
           clearable
           class="!w-240px"
         >
@@ -46,6 +46,13 @@
         <el-button type="danger" plain @click="toggleExpandAll">
           <Icon icon="ep:sort" class="mr-5px" /> 展开/折叠
         </el-button>
+        <el-button
+          type="success"
+          plain
+          @click="openSyncModal"
+        >
+          <Icon icon="ep:download" class="mr-5px" /> 从标准库同步
+        </el-button>
       </el-form-item>
     </el-form>
   </ContentWrap>
@@ -59,7 +66,19 @@
       :default-expand-all="isExpandAll"
       v-if="refreshTable"
     >
-      <el-table-column prop="name" label="部门名称" />
+      <el-table-column prop="name" label="机构名称" />
+      <el-table-column prop="deptType" label="机构层级" width="100">
+        <template #default="scope">
+          <el-tag v-if="scope.row.deptExt?.deptType" :type="getDeptTypeTagType(scope.row.deptExt.deptType)">
+            {{ getDeptTypeLabel(scope.row.deptExt.deptType) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="institutionCategory" label="机构类别" width="100">
+        <template #default="scope">
+          <span v-if="scope.row.deptExt?.institutionCategory">{{ scope.row.deptExt.institutionCategory }}</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="leader" label="负责人">
         <template #default="scope">
           {{ userList.find((user) => user.id === scope.row.leaderUserId)?.nickname }}
@@ -103,13 +122,18 @@
 
   <!-- 表单弹窗：添加/修改 -->
   <DeptForm ref="formRef" @success="getList" />
+  
+  <!-- 同步弹窗：从标准库同步 -->
+  <InstitutionSyncModal ref="syncModalRef" @success="getList" />
 </template>
 <script lang="ts" setup>
 import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
 import { dateFormatter } from '@/utils/formatTime'
 import { handleTree } from '@/utils/tree'
 import * as DeptApi from '@/api/system/dept'
+import * as DeptExtApi from '@/api/system/dept/deptext'
 import DeptForm from './DeptForm.vue'
+import InstitutionSyncModal from './InstitutionSyncModal.vue'
 import * as UserApi from '@/api/system/user'
 
 defineOptions({ name: 'SystemDept' })
@@ -135,10 +159,56 @@ const getList = async () => {
   loading.value = true
   try {
     const data = await DeptApi.getDeptPage(queryParams)
-    list.value = handleTree(data)
+    const deptTree = handleTree(data)
+    
+    // 为每个部门获取扩展信息
+    await loadDeptExtensions(deptTree)
+    
+    list.value = deptTree
   } finally {
     loading.value = false
   }
+}
+
+/** 递归加载部门扩展信息 */
+const loadDeptExtensions = async (depts: any[]) => {
+  for (const dept of depts) {
+    try {
+      const extData = await DeptExtApi.getDeptExtByDeptId(dept.id)
+      dept.deptExt = extData || null
+    } catch (error) {
+      dept.deptExt = null
+    }
+    
+    // 递归处理子部门
+    if (dept.children && dept.children.length > 0) {
+      await loadDeptExtensions(dept.children)
+    }
+  }
+}
+
+/** 获取部门类型标签类型 */
+const getDeptTypeTagType = (deptType: string) => {
+  const typeMap: Record<string, string> = {
+    'NORMAL': 'info',
+    'PROVINCE': 'success',
+    'CITY': 'warning',
+    'DISTRICT': 'primary',
+    'HOSPITAL': 'danger'
+  }
+  return typeMap[deptType] || 'info'
+}
+
+/** 获取部门类型标签文本 */
+const getDeptTypeLabel = (deptType: string) => {
+  const typeMap: Record<string, string> = {
+    'NORMAL': '普通',
+    'PROVINCE': '省级',
+    'CITY': '市级',
+    'DISTRICT': '区县',
+    'HOSPITAL': '医院'
+  }
+  return typeMap[deptType] || deptType
 }
 
 /** 展开/折叠操作 */
@@ -166,6 +236,12 @@ const resetQuery = () => {
 const formRef = ref()
 const openForm = (type: string, id?: number) => {
   formRef.value.open(type, id)
+}
+
+/** 打开同步弹窗 */
+const syncModalRef = ref()
+const openSyncModal = () => {
+  syncModalRef.value.open()
 }
 
 /** 删除按钮操作 */

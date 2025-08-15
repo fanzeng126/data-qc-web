@@ -138,7 +138,7 @@
 </template>
 
 <script setup lang="ts">
-import { StandardLibraryApi, StandardLibraryVO } from '@/api/drug/ypid/standardlibrary'
+import { StandardLibraryApi, StandardLibraryVO } from '@/api/drug/standardlibrary/ypid'
 
 defineOptions({ name: 'StandardLibraryForm' })
 

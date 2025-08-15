@@ -1,6 +1,6 @@
 <template>
   <div class="head-container">
-    <el-input v-model="deptName" class="mb-20px" clearable placeholder="请输入部门名称">
+    <el-input v-model="deptName" class="mb-20px" clearable placeholder="请输入机构名称">
       <template #prefix>
         <Icon icon="ep:search" />
       </template>

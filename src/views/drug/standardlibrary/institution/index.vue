@@ -2,7 +2,7 @@
   <div class="app-container">
     <!-- 页面头部 -->
     <PageHeader
-      title="药品标准库管理"
+      title="机构标准库管理"
       :content="pageHeaderContent"
       :tag="currentVersion ? `版本: ${currentVersion.versionCode}` : undefined"
       :tag-type="currentVersion ? getVersionStatusType(currentVersion.status) : 'info'"
@@ -16,7 +16,6 @@
             <el-button
               type="primary"
               @click="openImportDialog"
-              v-hasPermi="['drug:ypid-version:import']"
             >
               <Icon icon="ep:upload" class="mr-5px" />
               导入标准库
@@ -83,56 +82,47 @@
         :inline="true"
         label-width="100px"
       >
-        <el-form-item label="YPID" prop="ypid">
+        <el-form-item label="机构ID" prop="institutionId">
           <el-input
-            v-model="queryParams.ypid"
-            placeholder="请输入YPID"
+            v-model="queryParams.institutionId"
+            placeholder="请输入医疗机构ID"
             clearable
             @keyup.enter="handleQuery"
             class="!w-240px"
           />
         </el-form-item>
-        <el-form-item label="产品名称" prop="productName">
+        <el-form-item label="机构名称" prop="institutionName">
           <el-input
-            v-model="queryParams.productName"
-            placeholder="请输入产品名称"
+            v-model="queryParams.institutionName"
+            placeholder="请输入机构名称"
             clearable
             @keyup.enter="handleQuery"
             class="!w-240px"
           />
         </el-form-item>
-        <el-form-item label="通用名" prop="genericNameCn">
-          <el-input
-            v-model="queryParams.genericNameCn"
-            placeholder="请输入通用名"
-            clearable
-            @keyup.enter="handleQuery"
-            class="!w-240px"
-          />
-        </el-form-item>
-        <el-form-item label="生产企业" prop="manufacturerName">
-          <el-input
-            v-model="queryParams.manufacturerName"
-            placeholder="请输入生产企业"
-            clearable
-            @keyup.enter="handleQuery"
-            class="!w-240px"
-          />
-        </el-form-item>
-        <el-form-item label="药品类别" prop="drugCategory">
+        <el-form-item label="机构类别" prop="institutionCategory">
           <el-select
-            v-model="queryParams.drugCategory"
-            placeholder="请选择药品类别"
+            v-model="queryParams.institutionCategory"
+            placeholder="请选择机构类别"
             clearable
             class="!w-240px"
           >
             <el-option
-              v-for="category in drugCategoryList"
+              v-for="category in institutionCategoryList"
               :key="category"
               :label="category"
               :value="category"
             />
           </el-select>
+        </el-form-item>
+        <el-form-item label="行政区划" prop="adminDivisionCode">
+          <el-input
+            v-model="queryParams.adminDivisionCode"
+            placeholder="请输入行政区划代码"
+            clearable
+            @keyup.enter="handleQuery"
+            class="!w-240px"
+          />
         </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-select
@@ -151,7 +141,7 @@
           <el-button
             type="primary"
             @click="openForm('create')"
-            v-hasPermi="['drug:standard-library:create']"
+            v-hasPermi="['drug:institution-standard:create']"
           >
             <Icon icon="ep:plus" class="mr-5px" /> 新增
           </el-button>
@@ -159,7 +149,7 @@
             type="success"
             @click="handleExport"
             :loading="exportLoading"
-            v-hasPermi="['drug:standard-library:export']"
+            v-hasPermi="['drug:institution-standard:export']"
           >
             <Icon icon="ep:download" class="mr-5px" /> 导出
           </el-button>
@@ -215,44 +205,26 @@
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="55" />
-        <el-table-column label="YPID" prop="ypid" width="120" fixed="left" />
-        <el-table-column label="产品名称" prop="productName" width="200" show-overflow-tooltip />
-        <el-table-column
-          label="标化产品名称"
-          prop="standardProductName"
-          width="200"
-          show-overflow-tooltip
-        />
-        <el-table-column label="通用名" prop="genericNameCn" width="150" />
-        <el-table-column label="商品名" prop="tradeName" width="150" />
-        <el-table-column
-          label="生产企业"
-          prop="manufacturerName"
-          width="200"
-          show-overflow-tooltip
-        />
-        <el-table-column label="规格" prop="specification" width="120" />
-        <el-table-column label="规格标化" prop="standardSpecification" width="120" />
-        <el-table-column label="制剂单位" prop="dosageUnit" width="100" />
-        <el-table-column label="最小包装单位" prop="minPackageUnit" width="120" />
-        <el-table-column label="包装材质" prop="packagingMaterial" width="100" />
-        <el-table-column label="转换系数" prop="conversionFactor" width="100" />
-        <el-table-column label="药品类别" prop="drugCategory" width="100" />
-        <el-table-column
-          label="通用名（英文）"
-          prop="genericNameEn"
-          width="150"
-          show-overflow-tooltip
-        />
-        <el-table-column label="批准文号" prop="approvalNumber" width="150" show-overflow-tooltip />
-        <el-table-column label="剂型分类" prop="dosageForm" width="100" />
-        <el-table-column
-          label="药理/功效分类"
-          prop="pharmacologyCategory"
-          width="150"
-          show-overflow-tooltip
-        />
-        <el-table-column label="国家医保药品编码" prop="medicalInsuranceCode" width="150" />
+        <el-table-column label="机构唯一编码" prop="orgId" width="120" fixed="left" />
+        <el-table-column label="机构名称" prop="institutionName" width="200" show-overflow-tooltip />
+        <el-table-column label="机构类别" prop="institutionCategoryName" width="150" show-overflow-tooltip>
+        <template #default="scope">
+          {{ getDictLabel(DICT_TYPE.INSTITUTION_CATEGORY, scope.row.institutionCategoryName) || scope.row.institutionCategoryName }}
+        </template>
+        </el-table-column>
+        <el-table-column label="行政区划代码" prop="adminDivisionCode" width="120" />
+        <el-table-column label="行政区划名称" prop="adminDivisionName" width="150" show-overflow-tooltip />
+        <el-table-column label="负责人" prop="director" width="100" />
+        <el-table-column label="联系人" prop="contactPerson" width="100" />
+        <el-table-column label="联系电话" prop="contactPhone" width="130" />
+        <el-table-column label="机构代码" prop="institutionCode" width="120" />
+        <el-table-column label="统一社会信用代码" prop="socialCreditCode" width="160" show-overflow-tooltip />
+        <el-table-column label="医院等级(等)" prop="hospitalLevelGrade" width="100" />
+        <el-table-column label="医院等级(级)" prop="hospitalLevelClass" width="110">
+          <template #default="scope">
+            {{ getDictLabel(DICT_TYPE.INSTITUTION_LEVEL, scope.row.hospitalLevelClass) || scope.row.hospitalLevelClass }}
+          </template>
+        </el-table-column>
         <el-table-column label="状态" width="80">
           <template #default="scope">
             <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'" size="small">
@@ -272,7 +244,7 @@
               link
               type="primary"
               @click="openForm('update', scope.row.id)"
-              v-hasPermi="['drug:standard-library:update']"
+              v-hasPermi="['drug:institution-standard:update']"
             >
               编辑
             </el-button>
@@ -280,7 +252,7 @@
               link
               type="danger"
               @click="handleDelete(scope.row.id)"
-              v-hasPermi="['drug:standard-library:delete']"
+              v-hasPermi="['drug:institution-standard:delete']"
             >
               删除
             </el-button>
@@ -301,7 +273,7 @@
     <ImportDialog ref="importDialogRef" @success="handleImportSuccess" />
 
     <!-- 表单弹窗：添加/修改 -->
-    <StandardLibraryForm ref="formRef" @success="getList" />
+    <InstitutionStandardForm ref="formRef" @success="getList" />
   </div>
 </template>
 
@@ -309,38 +281,39 @@
 import { dateFormatter } from '@/utils/formatTime'
 import download from '@/utils/download'
 import dayjs from 'dayjs'
-import { StandardLibraryApi, StandardLibraryVO } from '@/api/drug/ypid/standardlibrary'
-import { YpidVersionApi, YpidVersionVO } from '@/api/drug/ypid/version'
-import StandardLibraryForm from './StandardLibraryForm.vue'
+import { InstitutionStandardApi, InstitutionStandardVO } from '@/api/drug/standardlibrary/institution'
+import { InstitutionVersionApi, StandardVersionVO } from '@/api/drug/standardlibrary/version'
+import InstitutionStandardForm from './InstitutionStandardForm.vue'
 import ImportDialog from './ImportDialog.vue'
 import PageHeader from '@/components/PageHeader/index.vue'
+import { DICT_TYPE, getDictLabel } from '@/utils/dict'
 
-defineOptions({ name: 'StandardLibraryIndex' })
+defineOptions({ name: 'InstitutionStandardIndex' })
 
 const message = useMessage()
 const { t } = useI18n()
 
 // 数据状态
 const loading = ref(true)
-const list = ref<StandardLibraryVO[]>([])
+const list = ref<InstitutionStandardVO[]>([])
 const total = ref(0)
 const exportLoading = ref(false)
-const selectedRows = ref<StandardLibraryVO[]>([])
-const drugCategoryList = ref<string[]>([])
-
-// 版本相关
-const versionList = ref<YpidVersionVO[]>([])
-const currentVersionId = ref<number>()
-const currentVersion = ref<YpidVersionVO>()
+const selectedRows = ref<InstitutionStandardVO[]>([])
+const institutionCategoryList = ref<string[]>([])
 
 // 导入进度相关
 const isImporting = ref(false)
 const importProgressInfo = ref<any>({})
 const progressTimer = ref<NodeJS.Timeout | null>(null)
 
+// 版本相关
+const versionList = ref<StandardVersionVO[]>([])
+const currentVersionId = ref<number>()
+const currentVersion = ref<StandardVersionVO>()
+
 // PageHeader相关数据
 const pageHeaderContent = computed(() => {
-  const baseContent = '管理和维护YPID标准库数据，包括版本管理、数据导入和质量控制'
+  const baseContent = '管理和维护医疗机构标准库数据，包括版本管理、数据导入和质量控制'
   if (currentVersion.value?.versionDescription) {
     return `${baseContent} | ${currentVersion.value.versionDescription}`
   }
@@ -366,11 +339,6 @@ const versionMeta = computed(() => {
       icon: 'ep:edit'
     },
     {
-      label: '导入类型',
-      value: currentVersion.value.importType === 1 ? '全量导入' : '增量导入',
-      icon: 'ep:upload'
-    },
-    {
       label: '创建时间',
       value: formatDateTime(currentVersion.value.createTime),
       icon: 'ep:calendar'
@@ -394,11 +362,10 @@ const queryParams = reactive({
   pageNo: 1,
   pageSize: 10,
   versionId: undefined,
-  ypid: undefined,
-  productName: undefined,
-  genericNameCn: undefined,
-  manufacturerName: undefined,
-  drugCategory: undefined,
+  institutionId: undefined,
+  institutionName: undefined,
+  institutionCategory: undefined,
+  adminDivisionCode: undefined,
   status: undefined
 })
 
@@ -415,15 +382,15 @@ onMounted(async () => {
     currentVersionId.value = publishedVersion?.id || versionList.value[0].id
     await handleVersionChange(currentVersionId.value)
   } else {
-    // 如果没有版本，也加载药品类别列表
-    await loadDrugCategories()
+    // 如果没有版本，也加载机构类别列表
+    await loadInstitutionCategories()
   }
 })
 
 /** 加载版本列表 */
 const loadVersionList = async () => {
   try {
-    versionList.value = await YpidVersionApi.getYpidVersionList()
+    versionList.value = await InstitutionVersionApi.getInstitutionVersionList()
   } catch (error) {
     console.error('加载版本列表失败:', error)
   }
@@ -435,19 +402,19 @@ const handleVersionChange = async (versionId: number) => {
 
   try {
     // 获取版本详情
-    currentVersion.value = await YpidVersionApi.getYpidVersion(versionId)
+    currentVersion.value = await InstitutionVersionApi.getInstitutionVersion(versionId)
 
     // 更新查询参数
     queryParams.versionId = versionId
 
-    // 加载药品类别列表
-    await loadDrugCategories(versionId)
+    // 加载机构类别列表
+    await loadInstitutionCategories(versionId)
 
     // 刷新数据列表
     await getList()
 
     // 如果版本正在导入中，开始轮询进度
-    if (currentVersion.value?.status === 1) {
+    if (currentVersion.value?.status === 1 && !isImporting.value) {
       startProgressPolling(versionId)
     }
   } catch (error) {
@@ -455,31 +422,13 @@ const handleVersionChange = async (versionId: number) => {
   }
 }
 
-/** 加载药品类别列表 */
-const loadDrugCategories = async (versionId?: number) => {
+/** 加载机构类别列表 */
+const loadInstitutionCategories = async (versionId?: number) => {
   try {
-    drugCategoryList.value = await StandardLibraryApi.getDrugCategories(versionId)
+    institutionCategoryList.value = await InstitutionStandardApi.getInstitutionCategories(versionId)
   } catch (error) {
-    console.error('加载药品类别列表失败:', error)
+    console.error('加载机构类别列表失败:', error)
   }
-}
-
-/** 查询列表 */
-const getList = async () => {
-  loading.value = true
-  try {
-    const data = await StandardLibraryApi.getStandardLibraryPage(queryParams)
-    list.value = data.list
-    total.value = data.total
-  } finally {
-    loading.value = false
-  }
-}
-
-/** 搜索按钮操作 */
-const handleQuery = () => {
-  queryParams.pageNo = 1
-  getList()
 }
 
 /** 开始进度轮询 */
@@ -489,21 +438,22 @@ const startProgressPolling = (versionId: number) => {
 
   progressTimer.value = setInterval(async () => {
     try {
-      const progress = await YpidVersionApi.getImportProgress(versionId.toString())
+      const progress = await InstitutionVersionApi.getImportProgress(versionId.toString())
       importProgressInfo.value = progress
 
       // 如果完成或失败，停止轮询
       if (progress.overallStatus === 2 || progress.overallStatus === 3) {
         stopProgressPolling()
+        
         if (progress.overallStatus === 2) {
           message.success('数据导入完成')
         } else {
           message.error('数据导入失败: ' + progress.errorMessage)
         }
+        
         // 刷新数据
-        // await getList()
         await handleVersionChange(versionId)
-        // await loadVersionDetails(versionId)
+        return // 确保不再执行后续代码
       }
     } catch (error) {
       console.error('查询进度失败:', error)
@@ -513,11 +463,11 @@ const startProgressPolling = (versionId: number) => {
 
 /** 停止进度轮询 */
 const stopProgressPolling = () => {
-  isImporting.value = false
   if (progressTimer.value) {
     clearInterval(progressTimer.value)
     progressTimer.value = null
   }
+  isImporting.value = false
 }
 
 /** 获取进度状态 */
@@ -532,6 +482,24 @@ const getProgressStatus = (status: number) => {
   }
 }
 
+/** 查询列表 */
+const getList = async () => {
+  loading.value = true
+  try {
+    const data = await InstitutionStandardApi.getInstitutionStandardPage(queryParams)
+    list.value = data.list
+    total.value = data.total
+  } finally {
+    loading.value = false
+  }
+}
+
+/** 搜索按钮操作 */
+const handleQuery = () => {
+  queryParams.pageNo = 1
+  getList()
+}
+
 /** 重置按钮操作 */
 const resetQuery = () => {
   queryFormRef.value.resetFields()
@@ -540,7 +508,7 @@ const resetQuery = () => {
 }
 
 /** 多选 */
-const handleSelectionChange = (selection: StandardLibraryVO[]) => {
+const handleSelectionChange = (selection: InstitutionStandardVO[]) => {
   selectedRows.value = selection
 }
 
@@ -553,7 +521,7 @@ const openForm = (type: string, id?: number) => {
 const handleDelete = async (id: number) => {
   try {
     await message.delConfirm()
-    await StandardLibraryApi.deleteStandardLibrary(id)
+    await InstitutionStandardApi.deleteInstitutionStandard(id)
     message.success(t('common.delSuccess'))
     await getList()
   } catch {}
@@ -564,8 +532,8 @@ const handleExport = async () => {
   try {
     await message.exportConfirm()
     exportLoading.value = true
-    const data = await StandardLibraryApi.exportStandardLibrary(queryParams)
-    download.excel(data, `药品标准库_${currentVersion.value?.versionCode}.xls`)
+    const data = await InstitutionStandardApi.exportInstitutionStandard(queryParams)
+    download.excel(data, `机构标准库_${currentVersion.value?.versionCode}.xls`)
   } catch {
   } finally {
     exportLoading.value = false
@@ -578,7 +546,7 @@ const openImportDialog = () => {
 }
 
 /** 导入成功回调 */
-const handleImportSuccess = async (result: YpidVersionVO) => {
+const handleImportSuccess = async (result: StandardVersionVO) => {
   await loadVersionList()
 
   // 如果是新创建的版本，切换到该版本
@@ -602,7 +570,7 @@ const importToCurrentVersion = () => {
 const publishVersion = async () => {
   try {
     await message.confirm('确认发布此版本？发布后将成为当前有效版本。')
-    await YpidVersionApi.publishVersion(currentVersionId.value!)
+    await InstitutionVersionApi.publishVersion(currentVersionId.value!)
     message.success('版本发布成功')
     await loadVersionList()
     await handleVersionChange(currentVersionId.value!)
@@ -612,8 +580,8 @@ const publishVersion = async () => {
 /** 下载模板 */
 const downloadTemplate = async () => {
   try {
-    const data = await YpidVersionApi.getImportTemplate()
-    download.excel(data, 'YPID标准库导入模板.xls')
+    const data = await InstitutionVersionApi.getImportTemplate()
+    download.excel(data, '机构标准库导入模板.xls')
   } catch {
     message.error('下载模板失败')
   }
