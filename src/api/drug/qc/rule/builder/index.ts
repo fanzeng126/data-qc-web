@@ -159,14 +159,41 @@ export interface CompileExpressionReqVO {
 
 // 测试规则请求类型
 export interface TestRuleReqVO {
-  ruleId?: number
-  ruleExpression?: string
-  expressionJson?: any
-  testData?: {
+  ruleId: number
+  testData: {
     tableName: string
     sampleSize: number
+    timeout?: number
     mockData?: any[]
   }
+}
+
+// 生成模拟数据请求类型
+export interface GenerateMockDataReqVO {
+  applicableTables: string[]
+  sampleSize: number
+}
+
+// 模拟数据响应类型
+export interface MockDataRespVO {
+  applicableTables: string[]
+  defaultTable: string
+  tableDataMap: Record<string, TableMockData>
+}
+
+export interface TableMockData {
+  tableName: string
+  tableChineseName: string
+  mockData: any[]
+  fieldDefinitions: FieldDefinition[]
+}
+
+export interface FieldDefinition {
+  name: string
+  label: string
+  type: string
+  width?: number
+  options?: Array<{label: string; value: any}>
 }
 
 // ================== 基础数据API（采用统一的接口调用方式） ==================
@@ -210,8 +237,13 @@ export const QcRuleApi = {
   },
 
   // 测试规则表达式
-  testRuleExpression: async (ruleId: number, data: TestRuleReqVO) => {
-    return await request.post({ url: `/drug/qc-rules/${ruleId}/test`, data })
+  testRuleExpression: async (data: TestRuleReqVO) => {
+    return await request.post({ url: `/drug/qc-rule/test`, data })
+  },
+
+  // 生成模拟测试数据
+  generateMockTestData: async (data: GenerateMockDataReqVO) => {
+    return await request.post({ url: `/drug/qc-rule/test/mock-data`, data })
   },
 
   // 获取指定前缀的最大规则编码
@@ -467,6 +499,9 @@ export const updateQcRule = QcRuleApi.updateQcRule
 
 // @deprecated 使用 QcRuleApi.testRuleExpression 替代
 export const testRuleExpression = QcRuleApi.testRuleExpression
+
+// 生成模拟测试数据
+export const generateMockTestData = QcRuleApi.generateMockTestData
 
 // @deprecated 使用 QcRuleApi.getMaxRuleCode 替代
 export const getMaxRuleCode = QcRuleApi.getMaxRuleCode

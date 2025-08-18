@@ -76,50 +76,16 @@
               </el-form-item>
             </el-col>
             <el-col :span="6">
-              <el-form-item label="规则分类" prop="ruleCategory">
-                <el-select v-model="ruleForm.ruleCategory" placeholder="请选择规则分类">
-                  <el-option label="全局控制" value="GLOBAL" />
-                  <el-option label="字段控制" value="FIELD" />
-                  <el-option label="逻辑控制" value="LOGIC" />
-                  <el-option label="算法控制" value="ALGORITHM" />
+              <el-form-item label="检查维度" prop="checkDimension">
+                <el-select v-model="ruleForm.checkDimension" placeholder="请选择检查维度">
+                  <el-option label="记录维度" value="RECORD" />
+                  <el-option label="机构维度" value="ORGANIZATION" />
+                  <el-option label="全局维度" value="GLOBAL" />
+                  <el-option label="省份维度" value="PROVINCE" />
                 </el-select>
               </el-form-item>
             </el-col>
             <el-col :span="6">
-              <el-form-item label="检查字段" prop="checkFields">
-                <el-select
-                  v-model="ruleForm.checkFields"
-                  multiple
-                  clearable
-                  collapse-tags
-                  collapse-tags-tooltip
-                  placeholder="自动识别"
-                  disabled
-                >
-                  <el-option
-                    v-for="field in detectedFields"
-                    :key="field.value"
-                    :label="field.label"
-                    :value="field.value"
-                  />
-                </el-select>
-                <div class="form-tip">根据表达式自动识别使用的字段</div>
-              </el-form-item>
-            </el-col>
-            <el-col :span="6">
-              <el-form-item label="优先级" prop="priority">
-                <el-input-number
-                  v-model="ruleForm.priority"
-                  :min="1"
-                  :max="999"
-                  placeholder="数字越小优先级越高"
-                />
-              </el-form-item>
-            </el-col>
-          </el-row>
-
-          <el-row :gutter="20">
-            <el-col :span="12">
               <el-form-item label="适用表" prop="tableType">
                 <el-select
                   v-model="selectedTableTypes"
@@ -140,6 +106,40 @@
                 <div class="form-tip">适用表将根据表达式中使用的表自动推导</div>
               </el-form-item>
             </el-col>
+            <el-col :span="6">
+              <el-form-item label="优先级" prop="priority">
+                <el-input-number
+                  v-model="ruleForm.priority"
+                  :min="1"
+                  :max="999"
+                  placeholder="数字越小优先级越高"
+                />
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="检查字段" prop="checkFields">
+                <el-select
+                  v-model="ruleForm.checkFields"
+                  multiple
+                  clearable
+                  collapse-tags
+                  collapse-tags-tooltip
+                  placeholder="根据表达式自动识别"
+                  disabled
+                >
+                  <el-option
+                    v-for="field in detectedFields"
+                    :key="field.value"
+                    :label="field.label"
+                    :value="field.value"
+                  />
+                </el-select>
+                <div class="form-tip">根据表达式自动识别使用的字段</div>
+              </el-form-item>
+            </el-col>
             <el-col :span="12">
               <el-form-item label="是否启用" prop="enabled">
                 <el-switch
@@ -155,17 +155,7 @@
           </el-row>
 
           <el-row :gutter="20">
-            <el-col :span="8">
-              <el-form-item label="检查维度" prop="checkDimension">
-                <el-select v-model="ruleForm.checkDimension" placeholder="请选择">
-                  <el-option label="记录维度" value="RECORD" />
-                  <el-option label="机构维度" value="ORGANIZATION" />
-                  <el-option label="全局维度" value="GLOBAL" />
-                  <el-option label="省份维度" value="PROVINCE" />
-                </el-select>
-              </el-form-item>
-            </el-col>
-            <el-col :span="16">
+            <el-col :span="24">
               <el-form-item label="规则说明" prop="description">
                 <el-input
                   v-model="ruleForm.description"
@@ -1822,6 +1812,7 @@
         v-model="showTestDialog"
         :rule-form="ruleForm"
         :condition-groups="conditionGroups"
+        :table-mapping="getTableMappingForDialog()"
         @apply="handleTestApply"
       />
     </el-card>
@@ -1846,7 +1837,7 @@ import {
   getMaxRuleInfo
 } from '@/api/drug/qc/rule/builder'
 
-import { QcFunctionConfigApi, QcOperatorConfigApi, QcExpressionApi } from '@/api/drug/qc/builder'
+import { QcFunctionConfigApi, QcOperatorConfigApi, QcExpressionApi, QcBuilderTableMetadataApi } from '@/api/drug/qc/builder'
 import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
 
 // 路由和基础状态
@@ -1887,13 +1878,9 @@ const headerActions = ref([
 // 编码前缀
 const ruleCodePrefix = ref('PRE_QC')
 
-// 可用表选项
-const availableTables = ref([
-  { value: 'inbound', label: '采购入库表' },
-  { value: 'outbound', label: '药品发放表' },
-  { value: 'usage', label: '临床用药表' },
-  { value: 'catalog', label: '药品目录表' }
-])
+// 可用表和字段选项（从数据源接口动态获取）
+const availableTableOptions = ref([])
+const availableFieldOptions = ref([])
 
 const selectedTableTypes = ref<string[]>([])
 const detectedFields = ref<{ value: string; label: string }[]>([])
@@ -1917,7 +1904,6 @@ const ruleForm = reactive({
   ruleCode: '',
   ruleName: '',
   ruleType: 1,
-  ruleCategory: 'GLOBAL',
   checkDimension: 'RECORD',
   checkFields: [],
   tableType: '',
@@ -1930,12 +1916,15 @@ const ruleForm = reactive({
 const ruleRules = {
   ruleName: [{ required: true, message: '请输入规则名称', trigger: 'blur' }],
   ruleType: [{ required: true, message: '请选择规则类型', trigger: 'change' }],
-  ruleCategory: [{ required: true, message: '请选择规则分类', trigger: 'change' }],
   checkDimension: [{ required: true, message: '请选择检查维度', trigger: 'change' }]
 }
 
 // 条件组排序方式（true: 降序，false: 正序）
 const isDescendingOrder = ref(true)
+
+// 表和字段元数据映射
+const tableMetadataMap = ref<Record<string, string>>({})
+const fieldMetadataMap = ref<Record<string, string>>({})
 
 // 条件组数据
 const conditionGroups = ref([])
@@ -1999,7 +1988,7 @@ const draggedGroupIndex = ref(-1)
 // 初始化
 onMounted(async () => {
   try {
-    await Promise.all([loadDataSource(), loadFunctions(), loadOperators()])
+    await Promise.all([loadDataSource(), loadFunctions(), loadOperators(), loadTableAndFieldMetadata()])
 
     if (isEdit.value) {
       await loadRuleData(route.params.id)
@@ -2040,6 +2029,9 @@ const loadDataSource = async () => {
     const { treeData: response } = await getDataSourceCategories()
     const treeData = processTreeData(response || [])
     dataSourceTreeData.value = treeData
+    
+    // 提取表和字段选项
+    extractTableAndFieldOptions(treeData)
   } catch (error) {
     console.error('加载数据源失败:', error)
     ElMessage.error('加载数据源失败')
@@ -2075,6 +2067,57 @@ const processTreeData = (treeData, parentTableName = null) => {
 
     return processedNode
   })
+}
+
+// 从数据源树中提取表和字段选项
+const extractTableAndFieldOptions = (treeData) => {
+  const tables = new Set()
+  const fields = new Set()
+  
+  const traverseTree = (nodes, currentCategoryCode = null) => {
+    nodes.forEach(node => {
+      // 更新当前分类代码
+      const nodeCategory = node.categoryCode || currentCategoryCode
+      
+      // 排除标准库分类
+      const isStandardLibrary = nodeCategory === 'STANDARD_TABLES'
+      
+      if (!isStandardLibrary) {
+        if (node.type === 'table' && node.tableName) {
+          tables.add(node.tableName)
+        } else if (node.type === 'field' && node.tableName && node.fieldName) {
+          const fieldKey = `${node.tableName}.${node.fieldName}`
+          fields.add(fieldKey)
+        }
+      }
+      
+      if (node.children && node.children.length > 0) {
+        traverseTree(node.children, nodeCategory)
+      }
+    })
+  }
+  
+  traverseTree(treeData)
+  
+  // 更新可用选项
+  availableTableOptions.value = Array.from(tables).map(tableName => {
+    const tableInfo = getTableInfo(tableName)
+    return {
+      value: tableName,
+      label: tableInfo ? `${tableInfo.chineseName}(${tableName})` : tableName
+    }
+  })
+
+  availableFieldOptions.value = Array.from(fields).map(fieldKey => {
+    const fieldInfo = getFieldInfo(fieldKey)
+    return {
+      value: fieldKey,
+      label: fieldInfo ? `${fieldInfo.chineseName}(${fieldKey})` : fieldKey
+    }
+  })
+  
+  console.log('提取到的表选项:', availableTableOptions.value)
+  console.log('提取到的字段选项:', availableFieldOptions.value)
 }
 
 const loadFunctions = async () => {
@@ -2144,6 +2187,49 @@ const loadOperators = async () => {
   } catch (error) {
     console.error('加载操作符失败:', error)
     ElMessage.error('加载操作符失败')
+  }
+}
+
+// 加载表和字段元数据映射
+const loadTableAndFieldMetadata = async () => {
+  try {
+    // 1. 加载表元数据
+    const tableData = await QcBuilderTableMetadataApi.getQcBuilderTablesByCategory(null)
+    // 构建表名到中文名的映射
+    const tableMapping: Record<string, string> = {}
+    if (tableData && Array.isArray(tableData)) {
+      tableData.forEach((table) => {
+        if (table.tableName && table.chineseName) {
+          tableMapping[table.tableName] = table.chineseName
+        }
+      })
+    }
+    tableMetadataMap.value = tableMapping
+    
+    // 2. 加载字段元数据
+    const fieldMapping: Record<string, string> = {}
+    // 为每个表加载字段信息
+    for (const table of tableData || []) {
+      try {
+        const fieldsData = await QcBuilderTableMetadataApi.getQcBuilderTableFields(table.id)
+        if (fieldsData && Array.isArray(fieldsData)) {
+          fieldsData.forEach((field) => {
+            if (field.fieldName && field.chineseName && table.tableName) {
+              const key = `${table.tableName}.${field.fieldName}`
+              fieldMapping[key] = field.chineseName
+            }
+          })
+        }
+      } catch (error) {
+        console.warn(`加载表${table.tableName}的字段失败:`, error)
+      }
+    }
+    fieldMetadataMap.value = fieldMapping
+    
+    console.log('表元数据映射:', tableMapping)
+    console.log('字段元数据映射:', fieldMapping)
+  } catch (error) {
+    console.error('加载表和字段元数据失败:', error)
   }
 }
 
@@ -3975,49 +4061,35 @@ const detectTablesAndFields = () => {
   console.log('=== 检测结束 ===')
 }
 
+// 获取表映射供对话框使用
+const getTableMappingForDialog = () => {
+  const mapping = {}
+  
+  // 将检测到的表转换为映射格式
+  detectedTables.value.forEach(table => {
+    mapping[table.value] = {
+      label: table.label,
+      value: table.value
+    }
+  })
+  
+  return mapping
+}
+
 // 获取表信息
 const getTableInfo = (tableName: string) => {
-  const tableMap = {
-    CATALOG_DEFAULT: { chineseName: '药品目录表' },
-    CATALOG: { chineseName: '药品目录表' },
-    INBOUND: { chineseName: '采购入库表' },
-    OUTBOUND: { chineseName: '药品发放表' },
-    USAGE: { chineseName: '临床用药表' },
-    HOSPITAL_INFO: { chineseName: '医院信息表' }
-  }
-  return tableMap[tableName] || { chineseName: tableName }
+  const chineseName = tableMetadataMap.value[tableName]
+  return chineseName ? { chineseName } : null
 }
 
 // 获取字段信息
 const getFieldInfo = (fullFieldName: string) => {
-  const [tableName, fieldName] = fullFieldName.split('.')
-  const fieldMap = {
-    // 药品目录表字段
-    ypid: { chineseName: '药品编码' },
-    ypmc: { chineseName: '药品名称' },
-    ypgg: { chineseName: '药品规格' },
-    ypdw: { chineseName: '药品单位' },
-    ypjg: { chineseName: '药品价格' },
-    ypsl: { chineseName: '药品数量' },
-    // 通用字段
-    report_date: { chineseName: '填报日期' },
-    organization_code: { chineseName: '机构代码' },
-    hospital_drug_code: { chineseName: '院内药品编码' },
-    drug_name: { chineseName: '药品名称' },
-    manufacturer: { chineseName: '生产厂家' },
-    specification: { chineseName: '规格' },
-    quantity: { chineseName: '数量' },
-    amount: { chineseName: '金额' },
-    unit_price: { chineseName: '单价' },
-    batch_number: { chineseName: '批号' },
-    expiry_date: { chineseName: '有效期' },
-    purchase_date: { chineseName: '采购日期' },
-    supplier: { chineseName: '供应商' }
+  const chineseName = fieldMetadataMap.value[fullFieldName]
+  if (chineseName) {
+    const [tableName, fieldName] = fullFieldName.split('.')
+    return { chineseName, tableName, fieldName }
   }
-  const fieldInfo = fieldMap[fieldName]
-  return fieldInfo
-    ? { ...fieldInfo, tableName, fieldName }
-    : { chineseName: fieldName, tableName, fieldName }
+  return null
 }
 
 // 调试函数：打印检测到的嵌套结构

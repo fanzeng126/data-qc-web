@@ -17,38 +17,31 @@
 
         <el-form :model="testConfig" :rules="testRules" ref="testFormRef" label-width="120px">
           <el-row :gutter="20">
-            <el-col :span="12">
-              <el-form-item label="测试模式" prop="testMode">
-                <el-select v-model="testConfig.testMode" @change="handleTestModeChange">
-                  <el-option label="模拟数据测试" value="mock" />
-                  <el-option label="样本数据测试" value="sample" />
-                  <el-option label="真实数据测试" value="real" />
-                </el-select>
+            <el-col :span="8">
+              <el-form-item label="机构数量" prop="hospitalCount">
+                <el-input-number
+                  v-model="testConfig.hospitalCount"
+                  :min="1"
+                  :max="10"
+                  controls-position="right"
+                  placeholder="每个机构生成多少条数据"
+                />
+                <div class="form-tip">生成测试用的医疗机构数量</div>
               </el-form-item>
             </el-col>
-            <el-col :span="12">
-              <el-form-item label="数据源表" prop="tableName">
-                <el-select v-model="testConfig.tableName" placeholder="请选择测试表">
-                  <el-option
-                    v-for="table in availableTables"
-                    :key="table.value"
-                    :label="table.label"
-                    :value="table.value"
-                  />
-                </el-select>
-              </el-form-item>
-            </el-col>
-            <el-col :span="12">
-              <el-form-item label="样本大小" prop="sampleSize">
+            <el-col :span="8">
+              <el-form-item label="每机构样本数" prop="sampleSize">
                 <el-input-number
                   v-model="testConfig.sampleSize"
                   :min="1"
-                  :max="1000"
+                  :max="200"
                   controls-position="right"
+                  placeholder="每个机构的样本数据量"
                 />
+                <div class="form-tip">每个机构对应的样本数量</div>
               </el-form-item>
             </el-col>
-            <el-col :span="12">
+            <el-col :span="8">
               <el-form-item label="测试超时" prop="timeout">
                 <el-input-number
                   v-model="testConfig.timeout"
@@ -70,7 +63,6 @@
           <span class="header-title">测试数据</span>
           <div class="header-actions">
             <el-button
-              v-if="testConfig.testMode === 'mock'"
               size="small"
               @click="generateMockData"
               :loading="generatingMockData"
@@ -78,168 +70,98 @@
               <Icon icon="ep:refresh" class="mr-5px" />
               生成模拟数据
             </el-button>
-            <el-button v-if="testConfig.testMode === 'mock'" size="small" @click="addMockRecord">
+            <el-button size="small" @click="addMockRecord" :disabled="!currentTableName">
               <Icon icon="ep:plus" class="mr-5px" />
               添加记录
             </el-button>
-            <el-button v-if="testConfig.testMode !== 'real'" size="small" @click="importTestData">
-              <Icon icon="ep:upload" class="mr-5px" />
-              导入数据
-            </el-button>
           </div>
         </div>
 
-        <!-- 模拟数据编辑 -->
-        <div v-if="testConfig.testMode === 'mock'" class="mock-data-editor">
-          <div class="data-table-container">
-            <el-table
-              :data="testConfig.mockData"
-              border
-              stripe
-              max-height="300"
-              class="mock-data-table"
+        <!-- 适用表 Tab 导航 -->
+        <div v-if="applicableTables.length > 0" class="table-tabs">
+          <el-tabs v-model="currentTableName" type="border-card">
+            <el-tab-pane 
+              v-for="table in applicableTables" 
+              :key="table.value"
+              :label="table.label"
+              :name="table.value"
             >
-              <el-table-column type="index" label="#" width="50" />
-              <el-table-column
-                v-for="field in mockDataFields"
-                :key="field.name"
-                :prop="field.name"
-                :label="field.label"
-                :width="field.width"
-                show-overflow-tooltip
-              >
-                <template #default="{ row, $index }">
-                  <el-input
-                    v-if="field.type === 'string'"
-                    v-model="row[field.name]"
-                    size="small"
-                    @input="validateMockData($index, field.name)"
-                  />
-                  <el-input-number
-                    v-else-if="field.type === 'number'"
-                    v-model="row[field.name]"
-                    size="small"
-                    controls-position="right"
-                    @change="validateMockData($index, field.name)"
-                  />
-                  <el-date-picker
-                    v-else-if="field.type === 'date'"
-                    v-model="row[field.name]"
-                    type="date"
-                    size="small"
-                    format="YYYY-MM-DD"
-                    value-format="YYYY-MM-DD"
-                    @change="validateMockData($index, field.name)"
-                  />
-                  <el-select
-                    v-else-if="field.type === 'select'"
-                    v-model="row[field.name]"
-                    size="small"
-                    @change="validateMockData($index, field.name)"
+              <!-- 当前表的模拟数据编辑器 -->
+              <div class="mock-data-editor">
+                <div class="data-table-container">
+                  <el-table
+                    :data="getCurrentTableMockData(table.value)"
+                    border
+                    stripe
+                    max-height="300"
+                    class="mock-data-table"
                   >
-                    <el-option
-                      v-for="option in field.options"
-                      :key="option.value"
-                      :label="option.label"
-                      :value="option.value"
-                    />
-                  </el-select>
-                  <el-input v-else v-model="row[field.name]" size="small" />
-                </template>
-              </el-table-column>
-              <el-table-column label="操作" width="80" fixed="right">
-                <template #default="{ $index }">
-                  <el-button size="small" text type="danger" @click="removeMockRecord($index)">
-                    <Icon icon="ep:delete" />
-                  </el-button>
-                </template>
-              </el-table-column>
-            </el-table>
-          </div>
-
-          <div v-if="mockDataErrors.length > 0" class="data-validation-errors">
-            <el-alert
-              title="数据验证错误"
-              type="error"
-              :description="`发现 ${mockDataErrors.length} 个数据错误`"
-              show-icon
-              :closable="false"
-            />
-            <ul class="error-list">
-              <li v-for="error in mockDataErrors" :key="error.id" class="error-item">
-                第{{ error.row + 1 }}行 {{ error.field }}：{{ error.message }}
-              </li>
-            </ul>
-          </div>
+                    <el-table-column type="index" label="#" width="50" />
+                    <el-table-column
+                      v-for="field in getCurrentTableFields(table.value)"
+                      :key="field.name"
+                      :prop="field.name"
+                      :label="field.label"
+                      :width="field.width"
+                      show-overflow-tooltip
+                    >
+                      <template #default="{ row }">
+                        <el-input
+                          v-if="field.type === 'string'"
+                          v-model="row[field.name]"
+                          size="small"
+                        />
+                        <el-input-number
+                          v-else-if="field.type === 'number'"
+                          v-model="row[field.name]"
+                          size="small"
+                          controls-position="right"
+                        />
+                        <el-date-picker
+                          v-else-if="field.type === 'date'"
+                          v-model="row[field.name]"
+                          type="date"
+                          size="small"
+                          format="YYYY-MM-DD"
+                          value-format="YYYY-MM-DD"
+                        />
+                        <el-select
+                          v-else-if="field.type === 'select'"
+                          v-model="row[field.name]"
+                          size="small"
+                        >
+                          <el-option
+                            v-for="option in field.options"
+                            :key="option.value"
+                            :label="option.label"
+                            :value="option.value"
+                          />
+                        </el-select>
+                        <el-input v-else v-model="row[field.name]" size="small" />
+                      </template>
+                    </el-table-column>
+                    <el-table-column label="操作" width="80" fixed="right">
+                      <template #default="{ $index }">
+                        <el-button 
+                          size="small" 
+                          text 
+                          type="danger" 
+                          @click="removeMockRecord(table.value, $index)"
+                        >
+                          <Icon icon="ep:delete" />
+                        </el-button>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                </div>
+              </div>
+            </el-tab-pane>
+          </el-tabs>
         </div>
 
-        <!-- 样本数据预览 -->
-        <div v-else-if="testConfig.testMode === 'sample'" class="sample-data-preview">
-          <el-alert
-            title="样本数据预览"
-            type="info"
-            description="将从指定数据源随机抽取样本数据进行测试"
-            show-icon
-            :closable="false"
-            class="mb-16px"
-          />
-          <div class="sample-info">
-            <el-descriptions :column="2" border>
-              <el-descriptions-item label="数据源表">{{
-                testConfig.tableName
-              }}</el-descriptions-item>
-              <el-descriptions-item label="样本大小"
-                >{{ testConfig.sampleSize }} 条</el-descriptions-item
-              >
-              <el-descriptions-item label="抽样方式">随机抽样</el-descriptions-item>
-              <el-descriptions-item label="数据时间">最近30天</el-descriptions-item>
-            </el-descriptions>
-          </div>
-        </div>
-
-        <!-- 真实数据配置 -->
-        <div v-else-if="testConfig.testMode === 'real'" class="real-data-config">
-          <el-alert
-            title="真实数据测试"
-            type="warning"
-            description="将使用真实的生产数据进行测试，请谨慎操作"
-            show-icon
-            :closable="false"
-            class="mb-16px"
-          />
-          <el-form :model="realDataConfig" label-width="100px">
-            <el-row :gutter="20">
-              <el-col :span="12">
-                <el-form-item label="机构筛选">
-                  <el-select
-                    v-model="realDataConfig.organizationIds"
-                    multiple
-                    placeholder="选择测试机构"
-                  >
-                    <el-option
-                      v-for="org in availableOrganizations"
-                      :key="org.id"
-                      :label="org.name"
-                      :value="org.id"
-                    />
-                  </el-select>
-                </el-form-item>
-              </el-col>
-              <el-col :span="12">
-                <el-form-item label="时间范围">
-                  <el-date-picker
-                    v-model="realDataConfig.dateRange"
-                    type="daterange"
-                    range-separator="至"
-                    start-placeholder="开始日期"
-                    end-placeholder="结束日期"
-                    format="YYYY-MM-DD"
-                    value-format="YYYY-MM-DD"
-                  />
-                </el-form-item>
-              </el-col>
-            </el-row>
-          </el-form>
+        <!-- 没有适用表时的提示 -->
+        <div v-else class="no-tables-hint">
+          <el-empty description="没有找到适用表，请先配置规则的适用表信息" />
         </div>
       </div>
 
@@ -437,22 +359,20 @@
     <!-- 错误详情对话框 -->
     <ErrorDetailDialog v-model="showErrorDetail" :error-info="selectedError" />
 
-    <!-- 数据导入对话框 -->
-    <DataImportDialog v-model="showDataImport" @confirm="handleDataImported" />
   </el-dialog>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { testRuleExpression, getFieldsByTable } from '@/api/drug/qc/rule/builder'
+import { testRuleExpression, getFieldsByTable, generateMockTestData } from '@/api/drug/qc/rule/builder'
 import ErrorDetailDialog from './ErrorDetailDialog.vue'
-import DataImportDialog from './DataImportDialog.vue'
 
 interface Props {
   modelValue: boolean
   ruleForm: any
   conditionGroups: any[]
+  tableMapping?: Record<string, { label: string; value: string }>
 }
 
 interface Emits {
@@ -474,35 +394,27 @@ const testFormRef = ref()
 
 // 测试配置
 const testConfig = reactive({
-  testMode: 'mock',
-  tableName: '',
-  sampleSize: 100,
-  timeout: 60,
-  mockData: []
+  hospitalCount: 1,
+  sampleSize: 10,
+  timeout: 60
 })
 
-// 真实数据配置
-const realDataConfig = reactive({
-  organizationIds: [],
-  dateRange: []
-})
+// 多表数据管理
+const tableDataMap = ref({}) // 存储所有表的数据：{ [tableName]: { mockData: [], fields: [] } }
+const currentTableName = ref('') // 当前选中的表名
 
 // 测试规则
 const testRules = {
-  testMode: [{ required: true, message: '请选择测试模式', trigger: 'change' }],
-  tableName: [{ required: true, message: '请选择数据源表', trigger: 'change' }],
-  sampleSize: [{ required: true, message: '请输入样本大小', trigger: 'blur' }]
+  hospitalCount: [{ required: true, message: '请输入机构数量', trigger: 'blur' }],
+  sampleSize: [{ required: true, message: '请输入每机构样本数', trigger: 'blur' }]
 }
 
 // 数据状态
 const generatingMockData = ref(false)
-const mockDataFields = ref([])
-const mockDataErrors = ref([])
 const testExecuting = ref(false)
 const testResult = ref(null)
 const selectedError = ref(null)
 const showErrorDetail = ref(false)
-const showDataImport = ref(false)
 
 // 测试进度
 const testProgress = reactive({
@@ -516,58 +428,159 @@ const testProgress = reactive({
   remaining: 0
 })
 
-// 可用的表选项
-const availableTables = ref([
-  { label: '药品目录表 (drug_list)', value: 'drug_list' },
-  { label: '药品入库表 (drug_inbound)', value: 'drug_inbound' },
-  { label: '药品出库表 (drug_outbound)', value: 'drug_outbound' },
-  { label: '药品使用表 (drug_usage)', value: 'drug_usage' },
-  { label: '机构信息表 (hospital_info)', value: 'hospital_info' }
-])
+// 适用的表选项（从规则中获取）
+const applicableTables = computed(() => {
+  // 从规则的检测到的表中获取适用表
+  if (!props.ruleForm) return []
+  
+  // 优先使用传入的表映射，否则使用默认映射
+  const tableMapping = props.tableMapping || {
+    'drug_list': { label: '药品目录表 (drug_list)', value: 'drug_list' },
+    'drug_inbound': { label: '药品入库表 (drug_inbound)', value: 'drug_inbound' },
+    'drug_outbound': { label: '药品出库表 (drug_outbound)', value: 'drug_outbound' },
+    'drug_usage': { label: '药品使用表 (drug_usage)', value: 'drug_usage' },
+    'hospital_info': { label: '机构信息表 (hospital_info)', value: 'hospital_info' },
+    'CATALOG_DEFAULT': { label: '药品目录表 (CATALOG_DEFAULT)', value: 'CATALOG_DEFAULT' },
+    'INBOUND': { label: '药品入库表 (INBOUND)', value: 'INBOUND' },
+    'OUTBOUND': { label: '药品出库表 (OUTBOUND)', value: 'OUTBOUND' },
+    'USAGE': { label: '药品使用表 (USAGE)', value: 'USAGE' },
+    'HOSPITAL_INFO': { label: '机构信息表 (HOSPITAL_INFO)', value: 'HOSPITAL_INFO' }
+  }
+  
+  // 如果有明确的适用表字段
+  if (props.ruleForm.applicableTable) {
+    const table = tableMapping[props.ruleForm.applicableTable]
+    return table ? [table] : [{ 
+      label: `${props.ruleForm.applicableTable} (${props.ruleForm.applicableTable})`, 
+      value: props.ruleForm.applicableTable 
+    }]
+  }
+  
+  // 如果有 tableType 字段
+  if (props.ruleForm.tableType) {
+    const tables = props.ruleForm.tableType.split(',').map(tableName => {
+      const cleanTableName = tableName.trim()
+      const table = tableMapping[cleanTableName]
+      return table ? table : { 
+        label: `${cleanTableName} (${cleanTableName})`, 
+        value: cleanTableName 
+      }
+    }).filter(Boolean)
+    return tables
+  }
+  
+  // 从条件组中检测使用的表
+  if (props.conditionGroups && props.conditionGroups.length > 0) {
+    const detectedTables = new Set()
+    
+    // 递归检测组件中的表
+    const detectTablesInComponents = (components) => {
+      if (!components || !Array.isArray(components)) return
+      
+      components.forEach(component => {
+        if (component.type === 'field' && component.value && component.value.includes('.')) {
+          const [tableName] = component.value.split('.')
+          if (tableName) detectedTables.add(tableName)
+        } else if (component.type === 'table' && component.value) {
+          detectedTables.add(component.value)
+        }
+        
+        // 检查函数参数中的嵌套表达式
+        if (component.type === 'function' && component.parameters) {
+          component.parameters.forEach(param => {
+            if (param.components) {
+              detectTablesInComponents(param.components)
+            }
+          })
+        }
+      })
+    }
+    
+    props.conditionGroups.forEach(group => {
+      if (group.expressionComponents) {
+        detectTablesInComponents(group.expressionComponents)
+      }
+    })
+    
+    const tables = Array.from(detectedTables).map(tableName => {
+      const table = tableMapping[tableName]
+      return table ? table : { 
+        label: `${tableName} (${tableName})`, 
+        value: tableName 
+      }
+    })
+    
+    return tables
+  }
+  
+  return []
+})
 
-// 可用的机构选项
-const availableOrganizations = ref([
-  { id: 1, name: '北京协和医院' },
-  { id: 2, name: '上海华山医院' },
-  { id: 3, name: '广州中山医院' }
-])
+// 监听规则变化，设置默认表名
+watch(
+  () => props.ruleForm,
+  (ruleForm) => {
+    if (ruleForm && applicableTables.value.length > 0) {
+      // 设置第一个适用表作为默认值
+      currentTableName.value = applicableTables.value[0].value
+      
+      // 初始化所有表的数据结构
+      applicableTables.value.forEach(table => {
+        if (!tableDataMap.value[table.value]) {
+          tableDataMap.value[table.value] = {
+            mockData: [],
+            fields: []
+          }
+        }
+      })
+    }
+  },
+  { immediate: true }
+)
+
+// 获取当前表的模拟数据
+const getCurrentTableMockData = (tableName) => {
+  return tableDataMap.value[tableName]?.mockData || []
+}
+
+// 获取当前表的字段定义
+const getCurrentTableFields = (tableName) => {
+  return tableDataMap.value[tableName]?.fields || []
+}
 
 // 计算属性
 const canExecuteTest = computed(() => {
-  if (!testConfig.tableName) return false
-
-  if (testConfig.testMode === 'mock') {
-    return testConfig.mockData.length > 0 && mockDataErrors.value.length === 0
-  }
-
-  return true
+  if (!currentTableName.value) return false
+  
+  // 检查当前表是否有数据
+  const currentTableData = tableDataMap.value[currentTableName.value]
+  return currentTableData && currentTableData.mockData.length > 0
 })
 
-// 监听测试模式变化
-const handleTestModeChange = (mode: string) => {
-  if (mode === 'mock') {
-    initializeMockData()
-  }
-}
+// 监听表名变化 - 不再需要，因为使用了Tab切换
+// watch(
+//   () => testConfig.tableName,
+//   async (tableName) => {
+//     if (tableName) {
+//       await loadTableFields(tableName)
+//       initializeMockData()
+//     }
+//   }
+// )
 
-// 监听表名变化
-watch(
-  () => testConfig.tableName,
-  async (tableName) => {
-    if (tableName && testConfig.testMode === 'mock') {
-      await loadTableFields(tableName)
-      initializeMockData()
-    }
-  }
-)
-
-// 加载表字段
+// 加载表字段 - 现在通过后端API获取
 const loadTableFields = async (tableName: string) => {
+  // 这个方法现在主要用于本地字段定义的回退
   try {
-    // 根据表名获取字段定义（这里简化处理）
     const fieldDefinitions = getFieldDefinitions(tableName)
-    mockDataFields.value = fieldDefinitions
+    if (fieldDefinitions.length > 0) {
+      if (!tableDataMap.value[tableName]) {
+        tableDataMap.value[tableName] = { mockData: [], fields: [] }
+      }
+      tableDataMap.value[tableName].fields = fieldDefinitions
+    }
   } catch (error) {
+    console.error('加载表字段失败:', error)
     ElMessage.error('加载表字段失败')
   }
 }
@@ -575,7 +588,7 @@ const loadTableFields = async (tableName: string) => {
 // 获取字段定义（示例数据）
 const getFieldDefinitions = (tableName: string) => {
   const definitions: Record<string, any[]> = {
-    drug_list: [
+    CATALOG_DEFAULT: [
       { name: 'ypid', label: '药品本位码', type: 'string', width: 120 },
       { name: 'drug_name', label: '药品名称', type: 'string', width: 150 },
       { name: 'manufacturer', label: '生产企业', type: 'string', width: 150 },
@@ -593,48 +606,131 @@ const getFieldDefinitions = (tableName: string) => {
       },
       { name: 'conversion_factor', label: '转换系数', type: 'number', width: 100 }
     ],
-    drug_inbound: [
+    INBOUND_DEFAULT: [
       { name: 'ypid', label: '药品本位码', type: 'string', width: 120 },
       { name: 'batch_no', label: '批号', type: 'string', width: 120 },
       { name: 'quantity', label: '数量', type: 'number', width: 100 },
       { name: 'amount', label: '金额', type: 'number', width: 100 },
       { name: 'inbound_date', label: '入库日期', type: 'date', width: 120 }
+    ],
+    OUTBOUND_DEFAULT: [
+      { name: 'ypid', label: '药品本位码', type: 'string', width: 120 },
+      { name: 'batch_no', label: '批号', type: 'string', width: 120 },
+      { name: 'quantity', label: '数量', type: 'number', width: 100 },
+      { name: 'amount', label: '金额', type: 'number', width: 100 },
+      { name: 'outbound_date', label: '出库日期', type: 'date', width: 120 }
+    ],
+    USAGE_DEFAULT: [
+      { name: 'ypid', label: '药品本位码', type: 'string', width: 120 },
+      { name: 'patient_id', label: '患者ID', type: 'string', width: 100 },
+      { name: 'dosage', label: '用量', type: 'number', width: 80 },
+      { name: 'usage_date', label: '使用日期', type: 'date', width: 120 }
+    ],
+    HOSPITAL_DEFAULT: [
+      { name: 'hospital_code', label: '机构代码', type: 'string', width: 120 },
+      { name: 'hospital_name', label: '机构名称', type: 'string', width: 200 },
+      { name: 'hospital_level', label: '机构级别', type: 'string', width: 100 }
     ]
   }
 
   return definitions[tableName] || []
 }
 
-// 初始化模拟数据
-const initializeMockData = () => {
-  if (mockDataFields.value.length === 0) return
-
-  testConfig.mockData = []
-  addMockRecord()
-}
+// 初始化模拟数据 - 现在不需要自动初始化
+// const initializeMockData = () => {
+//   if (!currentTableName.value) return
+//   
+//   const currentFields = tableDataMap.value[currentTableName.value]?.fields || []
+//   if (currentFields.length === 0) return
+//
+//   if (!tableDataMap.value[currentTableName.value]) {
+//     tableDataMap.value[currentTableName.value] = { mockData: [], fields: [] }
+//   }
+//   tableDataMap.value[currentTableName.value].mockData = []
+//   addMockRecord()
+// }
 
 // 生成模拟数据
 const generateMockData = async () => {
   try {
     generatingMockData.value = true
 
-    const mockData = []
-    for (let i = 0; i < Math.min(testConfig.sampleSize, 50); i++) {
-      const record: any = {}
-
-      mockDataFields.value.forEach((field) => {
-        record[field.name] = generateMockValue(field)
-      })
-
-      mockData.push(record)
+    // 获取所有适用表名
+    const applicableTableNames = applicableTables.value.map(table => table.value)
+    
+    if (applicableTableNames.length === 0) {
+      ElMessage.warning('没有找到适用表')
+      return
     }
 
-    testConfig.mockData = mockData
-    validateAllMockData()
+    // 调用后端API生成所有表的模拟数据
+    const data = await generateMockTestData({
+      applicableTables: applicableTableNames,
+      sampleSize: Math.min(testConfig.sampleSize, 200),
+      hospitalCount: Math.min(testConfig.hospitalCount, 10)
+    })
+    // 更新所有表的字段定义和模拟数据
+    if (data && data.tableDataMap) {
+      Object.keys(data.tableDataMap).forEach(tableName => {
+        const tableData = data.tableDataMap[tableName]
+        
+        // 初始化表数据结构
+        if (!tableDataMap.value[tableName]) {
+          tableDataMap.value[tableName] = { mockData: [], fields: [] }
+        }
+        
+        // 更新字段定义
+        if (tableData.fieldDefinitions && Array.isArray(tableData.fieldDefinitions)) {
+          tableDataMap.value[tableName].fields = tableData.fieldDefinitions
+        }
+        
+        // 更新模拟数据
+        tableDataMap.value[tableName].mockData = tableData.mockData || []
+      })
+      
+      const totalRecords = Object.values(data.tableDataMap || {})
+        .reduce((sum, tableData) => sum + (tableData.mockData?.length || 0), 0)
 
-    ElMessage.success(`生成了 ${mockData.length} 条模拟数据`)
-  } catch (error) {
-    ElMessage.error('生成模拟数据失败')
+      ElMessage.success(`生成了 ${applicableTableNames.length} 个表共 ${totalRecords} 条模拟数据`)
+    } else {
+      ElMessage.error('后端返回数据格式错误')
+    }
+  } catch (error: any) {
+    console.error('生成模拟数据失败:', error)
+    ElMessage.error('生成模拟数据失败: ' + (error.message || '未知错误'))
+    
+    // 如果后端接口失败，回退到本地生成逻辑
+    try {
+      const applicableTableNames = applicableTables.value.map(table => table.value)
+      
+      applicableTableNames.forEach(tableName => {
+        const fieldDefinitions = getFieldDefinitions(tableName)
+        
+        if (!tableDataMap.value[tableName]) {
+          tableDataMap.value[tableName] = { mockData: [], fields: [] }
+        }
+        
+        tableDataMap.value[tableName].fields = fieldDefinitions
+        
+        const mockData = []
+        const recordsPerHospital = Math.min(testConfig.sampleSize, 200)
+        for (let h = 0; h < Math.min(testConfig.hospitalCount, 10); h++) {
+          for (let i = 0; i < recordsPerHospital; i++) {
+            const record: any = {}
+            fieldDefinitions.forEach((field) => {
+              record[field.name] = generateMockValue(field)
+            })
+            mockData.push(record)
+          }
+        }
+        
+        tableDataMap.value[tableName].mockData = mockData
+      })
+
+      ElMessage.warning(`后端生成失败，已使用本地生成数据`)
+    } catch (fallbackError) {
+      ElMessage.error('模拟数据生成完全失败')
+    }
   } finally {
     generatingMockData.value = false
   }
@@ -670,71 +766,26 @@ const generateMockValue = (field: any) => {
 
 // 添加模拟记录
 const addMockRecord = () => {
+  if (!currentTableName.value) return
+  
+  const fields = tableDataMap.value[currentTableName.value]?.fields || []
   const record: any = {}
-  mockDataFields.value.forEach((field) => {
+  fields.forEach((field) => {
     record[field.name] = ''
   })
-  testConfig.mockData.push(record)
+  
+  if (!tableDataMap.value[currentTableName.value]) {
+    tableDataMap.value[currentTableName.value] = { mockData: [], fields: [] }
+  }
+  
+  tableDataMap.value[currentTableName.value].mockData.push(record)
 }
 
 // 删除模拟记录
-const removeMockRecord = (index: number) => {
-  testConfig.mockData.splice(index, 1)
-  validateAllMockData()
-}
-
-// 验证模拟数据
-const validateMockData = (rowIndex: number, fieldName: string) => {
-  // 移除该字段的旧错误
-  mockDataErrors.value = mockDataErrors.value.filter(
-    (error) => !(error.row === rowIndex && error.field === fieldName)
-  )
-
-  const value = testConfig.mockData[rowIndex][fieldName]
-  const field = mockDataFields.value.find((f) => f.name === fieldName)
-
-  if (!field) return
-
-  // 基本验证逻辑
-  if (field.name === 'ypid' && value && !/^\d{12}$/.test(value)) {
-    mockDataErrors.value.push({
-      id: `${rowIndex}-${fieldName}`,
-      row: rowIndex,
-      field: fieldName,
-      message: 'YPID必须是12位数字'
-    })
+const removeMockRecord = (tableName: string, index: number) => {
+  if (tableDataMap.value[tableName]) {
+    tableDataMap.value[tableName].mockData.splice(index, 1)
   }
-
-  if (field.type === 'number' && value && isNaN(Number(value))) {
-    mockDataErrors.value.push({
-      id: `${rowIndex}-${fieldName}`,
-      row: rowIndex,
-      field: fieldName,
-      message: '必须是有效数字'
-    })
-  }
-}
-
-// 验证所有模拟数据
-const validateAllMockData = () => {
-  mockDataErrors.value = []
-  testConfig.mockData.forEach((record, rowIndex) => {
-    Object.keys(record).forEach((fieldName) => {
-      validateMockData(rowIndex, fieldName)
-    })
-  })
-}
-
-// 导入测试数据
-const importTestData = () => {
-  showDataImport.value = true
-}
-
-// 处理数据导入
-const handleDataImported = (data: any[]) => {
-  testConfig.mockData = data
-  validateAllMockData()
-  ElMessage.success(`导入了 ${data.length} 条测试数据`)
 }
 
 // 执行测试
@@ -743,6 +794,17 @@ const executeTest = async () => {
     // 表单验证
     const valid = await testFormRef.value.validate()
     if (!valid) return
+
+    if (!currentTableName.value) {
+      ElMessage.error('请先选择要测试的表')
+      return
+    }
+
+    const currentTableData = tableDataMap.value[currentTableName.value]
+    if (!currentTableData || currentTableData.mockData.length === 0) {
+      ElMessage.error('当前表没有测试数据，请先生成模拟数据')
+      return
+    }
 
     testExecuting.value = true
     testResult.value = null
@@ -761,11 +823,12 @@ const executeTest = async () => {
 
     // 构建测试请求
     const testRequest = {
+      ruleId: props.ruleForm.id || 0,
       testData: {
-        tableName: testConfig.tableName,
+        tableName: currentTableName.value,
         sampleSize: testConfig.sampleSize,
-        mockData: testConfig.testMode === 'mock' ? testConfig.mockData : undefined,
-        realDataConfig: testConfig.testMode === 'real' ? realDataConfig : undefined
+        timeout: testConfig.timeout,
+        mockData: currentTableData.mockData
       }
     }
 
@@ -790,7 +853,7 @@ const executeTest = async () => {
     }, 200)
 
     // 执行测试
-    const { data } = await testRuleExpression(props.ruleForm.id || 0, testRequest)
+    const data = await testRuleExpression(testRequest)
 
     clearInterval(progressTimer)
 
@@ -990,9 +1053,35 @@ const handleApplyTest = () => {
       color: #909399;
       font-size: 14px;
     }
+
+    .form-tip {
+      font-size: 12px;
+      color: #909399;
+      margin-top: 4px;
+      line-height: 1.4;
+    }
   }
 
   .mock-data-editor {
+    .table-tabs {
+      margin-bottom: 20px;
+      
+      .el-tabs--border-card {
+        border: 1px solid #e4e7ed;
+        border-radius: 8px;
+      }
+      
+      .el-tab-pane {
+        padding: 16px 0;
+      }
+    }
+    
+    .no-tables-hint {
+      text-align: center;
+      padding: 40px 0;
+      color: #909399;
+    }
+
     .data-table-container {
       margin-bottom: 16px;
     }
@@ -1005,26 +1094,8 @@ const handleApplyTest = () => {
         width: 100%;
       }
     }
-
-    .data-validation-errors {
-      .error-list {
-        margin: 12px 0 0 0;
-        padding-left: 20px;
-
-        .error-item {
-          color: #f56c6c;
-          margin: 4px 0;
-        }
-      }
-    }
   }
 
-  .sample-data-preview,
-  .real-data-config {
-    .sample-info {
-      margin-top: 16px;
-    }
-  }
 
   .test-execution-section {
     .execution-controls {
