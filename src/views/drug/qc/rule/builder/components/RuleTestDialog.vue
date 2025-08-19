@@ -550,11 +550,11 @@ const getCurrentTableFields = (tableName) => {
 
 // 计算属性
 const canExecuteTest = computed(() => {
-  if (!currentTableName.value) return false
-  
-  // 检查当前表是否有数据
-  const currentTableData = tableDataMap.value[currentTableName.value]
-  return currentTableData && currentTableData.mockData.length > 0
+  // 检查是否有任何表包含数据
+  return applicableTables.value.some(table => {
+    const tableData = tableDataMap.value[table.value]
+    return tableData && tableData.mockData.length > 0
+  })
 })
 
 // 监听表名变化 - 不再需要，因为使用了Tab切换
@@ -795,14 +795,14 @@ const executeTest = async () => {
     const valid = await testFormRef.value.validate()
     if (!valid) return
 
-    if (!currentTableName.value) {
-      ElMessage.error('请先选择要测试的表')
-      return
-    }
-
-    const currentTableData = tableDataMap.value[currentTableName.value]
-    if (!currentTableData || currentTableData.mockData.length === 0) {
-      ElMessage.error('当前表没有测试数据，请先生成模拟数据')
+    // 验证是否有适用表数据
+    const hasData = applicableTables.value.some(table => {
+      const tableData = tableDataMap.value[table.value]
+      return tableData && tableData.mockData.length > 0
+    })
+    
+    if (!hasData) {
+      ElMessage.error('没有测试数据，请先生成模拟数据')
       return
     }
 
@@ -821,14 +821,29 @@ const executeTest = async () => {
 
     const startTime = Date.now()
 
-    // 构建测试请求
+    // 构建所有适用表的测试数据
+    const allTableMockData = {}
+    let totalSampleSize = 0
+    
+    applicableTables.value.forEach(table => {
+      const tableData = tableDataMap.value[table.value]
+      if (tableData && tableData.mockData.length > 0) {
+        allTableMockData[table.value] = tableData.mockData
+        totalSampleSize += tableData.mockData.length
+      }
+    })
+
+    // 构建测试请求 - 传递所有适用表的数据
     const testRequest = {
       ruleId: props.ruleForm.id || 0,
       testData: {
-        tableName: currentTableName.value,
-        sampleSize: testConfig.sampleSize,
+        // 改为传递所有表的数据，而不是单一表
+        allTableData: allTableMockData,
+        sampleSize: totalSampleSize,
         timeout: testConfig.timeout,
-        mockData: currentTableData.mockData
+        // 保持向后兼容，如果后端还需要单表数据
+        tableName: currentTableName.value,
+        mockData: getCurrentTableMockData(currentTableName.value)
       }
     }
 

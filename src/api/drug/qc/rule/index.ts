@@ -33,6 +33,7 @@ export interface ConditionGroupVO {
   executeAction: string // 执行动作
   errorMessageTemplate: string // 错误信息模板
   description: string // 说明
+  tableType?: number | string | number[] // 适用表类型，支持多种格式
   isActive: number // 是否启用
   createTime: Date // 创建时间
 }
@@ -80,6 +81,7 @@ export interface QcConditionGroupVO {
   priority: number // 优先级
   executeAction: string // 执行动作
   errorMessageTemplate: string // 错误信息模板
+  tableType?: number | string | number[] // 适用表类型，支持多种格式
   isActive: number // 是否启用
 }
 

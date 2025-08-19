@@ -703,6 +703,26 @@
                   />
                 </el-form-item>
 
+                <el-form-item label="适用表">
+                  <el-select
+                    v-model="activeGroup.tableType"
+                    clearable
+                    collapse-tags
+                    collapse-tags-tooltip
+                    multiple
+                    placeholder="根据表达式自动识别"
+                    disabled
+                  >
+                    <el-option
+                      v-for="table in getDetectedTablesForGroup(activeGroup)"
+                      :key="table.value"
+                      :label="table.label"
+                      :value="table.value"
+                    />
+                  </el-select>
+                  <div class="form-tip">适用表将根据条件组表达式中使用的表自动推导</div>
+                </el-form-item>
+
                 <el-form-item label="执行动作">
                   <el-select v-model="activeGroup.executeAction" placeholder="请选择">
                     <el-option label="记录错误，统一返回" value="RECORD_ERROR" />
@@ -2251,6 +2271,7 @@ const loadRuleData = async (ruleId) => {
       console.log('开始处理条件组数据:', data.conditionGroups)
       conditionGroups.value = data.conditionGroups.map((group) => ({
         ...group,
+        tableType: group.tableType ? (typeof group.tableType === 'string' ? group.tableType.split(',').filter(Boolean) : group.tableType) : [], // 解析自动检测的适用表字段
         expressionComponents: parseExpressionJson(group.expressionJson) || []
       }))
       activeGroupIndex.value = 0
@@ -2279,6 +2300,7 @@ const addConditionGroup = () => {
     executeAction: 'RECORD_ERROR',
     errorMessageTemplate: '',
     description: '',
+    tableType: [], // 自动检测的适用表字段，初始为空数组
     expressionComponents: [],
     compilationResult: null
   }
@@ -2316,6 +2338,7 @@ const duplicateGroup = (index) => {
     id: Date.now(),
     groupName: `${originalGroup.groupName} (副本)`,
     priority: originalGroup.priority + 1, // 优先级略高一些
+    tableType: originalGroup.tableType ? [...originalGroup.tableType] : [], // 复制自动检测的适用表字段
     expressionComponents: JSON.parse(JSON.stringify(originalGroup.expressionComponents || []))
   }
 
@@ -2623,6 +2646,12 @@ const handleDrop = (event, groupId) => {
     if (component && component.value) {
       group.expressionComponents.push(component)
       detectTablesAndFields() // 添加组件后检测表和字段
+      
+      // 单独更新条件组的适用表
+      nextTick(() => {
+        updateConditionGroupTableTypes()
+      })
+      
       console.log('成功添加组件:', component)
       ElMessage.success(`已添加${component.label || component.value}`)
     } else {
@@ -3379,6 +3408,11 @@ const removeComponent = (groupId, compIndex) => {
   if (group && group.expressionComponents) {
     group.expressionComponents.splice(compIndex, 1)
     detectTablesAndFields() // 删除组件后检测表和字段
+    
+    // 单独更新条件组的适用表
+    nextTick(() => {
+      updateConditionGroupTableTypes()
+    })
   }
 }
 
@@ -3798,6 +3832,7 @@ const handleSave = async () => {
       checkFields: ruleForm.checkFields, // 明确传递检查字段
       conditionGroups: conditionGroups.value.map((group) => ({
         ...group,
+        tableType: Array.isArray(group.tableType) ? group.tableType.join(',') : (group.tableType || ''), // 保存自动检测的适用表字段
         expressionJson: {
           type: 'expression',
           components: group.expressionComponents || []
@@ -4059,6 +4094,68 @@ const detectTablesAndFields = () => {
   ruleForm.checkFields = Array.from(fields)
 
   console.log('=== 检测结束 ===')
+}
+
+// 更新条件组的适用表（独立函数，避免递归）
+const updateConditionGroupTableTypes = () => {
+  conditionGroups.value.forEach((group) => {
+    const groupTables = getDetectedTablesForGroup(group)
+    const newTableTypes = groupTables.map(table => table.value)
+    
+    // 只有当检测到的表类型与当前不同时才更新
+    if (JSON.stringify(newTableTypes) !== JSON.stringify(group.tableType)) {
+      group.tableType = newTableTypes
+    }
+  })
+}
+
+// 获取条件组检测到的表
+const getDetectedTablesForGroup = (group) => {
+  if (!group || !group.expressionComponents || !group.expressionComponents.length) {
+    return []
+  }
+
+  const tables = new Set<string>()
+
+  // 递归检测单个条件组中的表
+  const detectInGroupComponent = (component) => {
+    if (!component) return
+
+    if (component.type === 'field' && component.value) {
+      // 解析字段格式: 表名.字段名
+      const [tableName] = component.value.split('.')
+      if (tableName) {
+        tables.add(tableName)
+      }
+    } else if (component.type === 'table' && component.value) {
+      tables.add(component.value)
+    }
+
+    // 检查函数参数中的嵌套表达式
+    if (component.type === 'function' && component.parameters) {
+      component.parameters.forEach((param) => {
+        if (param.components && Array.isArray(param.components)) {
+          param.components.forEach((subComp) => {
+            detectInGroupComponent(subComp)
+          })
+        }
+      })
+    }
+  }
+
+  // 遍历条件组的表达式组件
+  group.expressionComponents.forEach((component) => {
+    detectInGroupComponent(component)
+  })
+
+  // 转换为选项格式
+  return Array.from(tables).map((table) => {
+    const tableInfo = getTableInfo(table)
+    return {
+      value: table,
+      label: tableInfo ? `${tableInfo.chineseName}(${table})` : table
+    }
+  })
 }
 
 // 获取表映射供对话框使用

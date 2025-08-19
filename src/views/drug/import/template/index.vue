@@ -170,7 +170,7 @@
           width="180px"
         />
         <el-table-column label="创建人" align="center" prop="creator" />
-        <el-table-column label="操作" align="center" min-width="200px">
+        <el-table-column label="操作" align="center" min-width="160px">
           <template #default="{ row }">
             <el-button
               link
