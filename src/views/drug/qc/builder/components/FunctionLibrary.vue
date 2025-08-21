@@ -49,9 +49,9 @@
           clearable
           class="!w-120px"
         >
-          <el-option label="基础" :value="1" />
-          <el-option label="高级" :value="2" />
-          <el-option label="专家" :value="3" />
+          <el-option label="记录维度" value="RECORD_LEVEL" />
+          <el-option label="聚合维度" value="AGGREGATE_LEVEL" />
+          <el-option label="混合维度" value="MIXED_LEVEL" />
         </el-select>
       </el-form-item>
       <el-form-item label="是否系统函数" prop="isSystem">
@@ -269,23 +269,23 @@ const getImplementationTypeColor = (type: number) => {
 }
 
 // 获取级别名称
-const getLevelName = (level: number) => {
-  const levelMap: Record<number, string> = {
-    1: '基础',
-    2: '高级',
-    3: '专家'
+const getLevelName = (level: string) => {
+  const levelMap: Record<string, string> = {
+    'RECORD_LEVEL': '记录维度',
+    'AGGREGATE_LEVEL': '聚合维度',
+    'MIXED_LEVEL': '混合维度'
   }
   return levelMap[level] || '未知'
 }
 
 // 获取级别颜色
-const getLevelColor = (level: number) => {
-  const colorMap: Record<number, string> = {
-    1: 'success',
-    2: 'warning',
-    3: 'danger'
+const getLevelColor = (level: string) => {
+  const colorMap: Record<string, string> = {
+    'RECORD_LEVEL': 'primary',
+    'AGGREGATE_LEVEL': 'warning',
+    'MIXED_LEVEL': 'danger'
   }
-  return colorMap[level] || ''
+  return colorMap[level] || 'info'
 }
 
 /** 查询列表 */

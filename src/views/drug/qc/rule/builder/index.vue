@@ -705,7 +705,7 @@
 
                 <el-form-item label="适用表">
                   <el-select
-                    v-model="activeGroup.tableType"
+                    v-model="activeGroupTableTypes"
                     clearable
                     collapse-tags
                     collapse-tags-tooltip
@@ -714,7 +714,7 @@
                     disabled
                   >
                     <el-option
-                      v-for="table in getDetectedTablesForGroup(activeGroup)"
+                      v-for="table in activeGroupDetectedTables"
                       :key="table.value"
                       :label="table.label"
                       :value="table.value"
@@ -1956,6 +1956,27 @@ const activeGroup = computed(() => {
     : null
 })
 
+// 获取当前活跃条件组的实时检测表
+const activeGroupDetectedTables = computed(() => {
+  if (!activeGroup.value) return []
+  return getDetectedTablesForGroup(activeGroup.value)
+})
+
+// 获取当前活跃条件组的实时表类型值
+const activeGroupTableTypes = computed({
+  get() {
+    if (!activeGroup.value) return []
+    // 实时从检测结果获取表类型
+    const detectedTables = getDetectedTablesForGroup(activeGroup.value)
+    return detectedTables.map(table => table.value)
+  },
+  set(newValue) {
+    if (activeGroup.value) {
+      activeGroup.value.tableType = newValue
+    }
+  }
+})
+
 const hasExpression = computed(() => {
   return conditionGroups.value.some(
     (group) => group.expressionComponents && group.expressionComponents.length > 0
@@ -2734,12 +2755,12 @@ const getComponentDisplayText = (component) => {
 }
 
 const getFunctionLevelType = (level) => {
-  const types = { 1: 'info', 2: 'warning', 3: 'danger' }
+  const types = { 'RECORD_LEVEL': 'info', 'AGGREGATE_LEVEL': 'warning', 'MIXED_LEVEL': 'danger' }
   return types[level] || 'info'
 }
 
 const getFunctionLevelText = (level) => {
-  const texts = { 1: '基础', 2: '高级', 3: '专家' }
+  const texts = { 'RECORD_LEVEL': '记录维度', 'AGGREGATE_LEVEL': '聚合维度', 'MIXED_LEVEL': '混合维度' }
   return texts[level] || ''
 }
 
@@ -4117,36 +4138,68 @@ const getDetectedTablesForGroup = (group) => {
 
   const tables = new Set<string>()
 
-  // 递归检测单个条件组中的表
-  const detectInGroupComponent = (component) => {
-    if (!component) return
+  // 递归检测单个条件组中的表（与detectTablesAndFields保持一致的逻辑）
+  const detectInGroupComponent = (component, depth = 0, path = '') => {
+    if (!component || depth > 2) return // 限制嵌套深度为2层
+
+    const currentPath = path ? `${path} -> ${component.type}` : component.type
 
     if (component.type === 'field' && component.value) {
       // 解析字段格式: 表名.字段名
       const [tableName] = component.value.split('.')
       if (tableName) {
         tables.add(tableName)
+        console.log(`[${currentPath}] 检测到字段表: ${tableName}`)
       }
     } else if (component.type === 'table' && component.value) {
       tables.add(component.value)
+      console.log(`[${currentPath}] 检测到表: ${component.value}`)
     }
 
     // 检查函数参数中的嵌套表达式
     if (component.type === 'function' && component.parameters) {
-      component.parameters.forEach((param) => {
+      console.log(`[${currentPath}] 检测函数参数, 参数数量: ${component.parameters.length}`)
+
+      component.parameters.forEach((param, paramIndex) => {
+        const paramPath = `${currentPath}.param[${paramIndex}]`
+
+        // 检查参数的components（表达式类型参数）
         if (param.components && Array.isArray(param.components)) {
-          param.components.forEach((subComp) => {
-            detectInGroupComponent(subComp)
+          console.log(`[${paramPath}] 检测参数组件, 组件数量: ${param.components.length}`)
+          param.components.forEach((subComp, subIndex) => {
+            const subPath = `${paramPath}.comp[${subIndex}]`
+            detectInGroupComponent(subComp, depth + 1, subPath)
           })
+        }
+
+        // 检查参数本身如果也是表达式
+        if (param.type === 'expression' && param.value) {
+          console.log(`[${paramPath}] 检测表达式参数: ${param.value}`)
+          // 如果参数值包含表.字段格式，也需要解析
+          const fieldMatches = param.value.match(/([A-Z_]+)\\.([a-z_]+)/g)
+          if (fieldMatches) {
+            fieldMatches.forEach((match) => {
+              const [tableName] = match.split('.')
+              if (tableName) {
+                tables.add(tableName)
+                console.log(`[${paramPath}] 从表达式中解析到表: ${tableName}`)
+              }
+            })
+          }
         }
       })
     }
   }
 
+  console.log(`=== 开始检测条件组表: ${group.groupName || '无名'} ===`)
+
   // 遍历条件组的表达式组件
-  group.expressionComponents.forEach((component) => {
-    detectInGroupComponent(component)
+  group.expressionComponents.forEach((component, compIndex) => {
+    const path = `group.comp[${compIndex}]`
+    detectInGroupComponent(component, 0, path)
   })
+
+  console.log(`条件组检测完成，表: [${Array.from(tables).join(', ')}]`)
 
   // 转换为选项格式
   return Array.from(tables).map((table) => {

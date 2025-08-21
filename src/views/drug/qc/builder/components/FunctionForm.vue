@@ -52,9 +52,9 @@
                   placeholder="请选择函数级别"
                   class="w-full"
                 >
-                  <el-option label="基础" :value="1" />
-                  <el-option label="高级" :value="2" />
-                  <el-option label="专家" :value="3" />
+                  <el-option label="记录维度" value="RECORD_LEVEL" />
+                  <el-option label="聚合维度" value="AGGREGATE_LEVEL" />
+                  <el-option label="混合维度" value="MIXED_LEVEL" />
                 </el-select>
               </el-form-item>
             </el-col>
@@ -300,7 +300,7 @@ const formData = ref({
   implementationClass: undefined,
   sqlTemplate: undefined,
   usageExample: undefined,
-  functionLevel: 1,
+  functionLevel: 'RECORD_LEVEL',
   isSystem: 0,
   isActive: 1,
   sortOrder: 0
@@ -505,7 +505,7 @@ const resetForm = () => {
     implementationClass: undefined,
     sqlTemplate: undefined,
     usageExample: undefined,
-    functionLevel: 1,
+    functionLevel: 'RECORD_LEVEL',
     isSystem: 0,
     isActive: 1,
     sortOrder: 0

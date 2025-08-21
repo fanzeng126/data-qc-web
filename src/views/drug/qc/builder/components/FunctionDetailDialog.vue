@@ -236,23 +236,23 @@ const getImplementationTypeColor = (type: number) => {
 }
 
 // 获取级别名称
-const getLevelName = (level: number) => {
-  const levelMap: Record<number, string> = {
-    1: '基础',
-    2: '高级',
-    3: '专家'
+const getLevelName = (level: string) => {
+  const levelMap: Record<string, string> = {
+    'RECORD_LEVEL': '记录维度',
+    'AGGREGATE_LEVEL': '聚合维度',
+    'MIXED_LEVEL': '混合维度'
   }
   return levelMap[level] || '未知'
 }
 
 // 获取级别颜色
-const getLevelColor = (level: number) => {
-  const colorMap: Record<number, string> = {
-    1: 'success',
-    2: 'warning',
-    3: 'danger'
+const getLevelColor = (level: string) => {
+  const colorMap: Record<string, string> = {
+    'RECORD_LEVEL': 'primary',
+    'AGGREGATE_LEVEL': 'warning',
+    'MIXED_LEVEL': 'danger'
   }
-  return colorMap[level] || ''
+  return colorMap[level] || 'info'
 }
 
 // 获取参数类型名称
