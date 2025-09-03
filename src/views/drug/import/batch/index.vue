@@ -45,8 +45,9 @@
               <el-form-item label="数据来源" prop="dataSource">
                 <el-select
                   v-model="uploadForm.dataSource"
-                  placeholder="请选择数据来源"
+                  placeholder="请选择数据来源（可选）"
                   style="width: 100%"
+                  clearable
                 >
                   <el-option
                     v-for="dict in getDictOptions(DICT_TYPE.DRUG_DATA_SOURCE)"
@@ -56,6 +57,25 @@
                   />
                 </el-select>
               </el-form-item>
+            </el-col>
+          </el-row>
+
+          <el-row :gutter="24">
+            <el-col :span="12">
+              <el-form-item label="执行模式" prop="executeMode">
+                <el-select
+                  v-model="uploadForm.executeMode"
+                  placeholder="请选择执行模式"
+                  style="width: 100%"
+                >
+                  <el-option label="仅前置质控" value="1" />
+                  <el-option label="仅后置质控" value="2" />
+                  <el-option label="全部执行" value="3" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <!-- 预留空间 -->
             </el-col>
           </el-row>
 
@@ -123,7 +143,7 @@
 
                 <div class="file-list-container">
                   <div class="file-grid">
-                    <div v-for="(table, key) in tableDefinitions" :key="key" class="file-card">
+                    <div v-for="(table, key) in tableDefinitions" :key="key" class="file-card" @click="previewTemplate(table.id)">
                       <div class="file-card-header">
                         <el-icon class="file-card-icon" :style="{ color: table.color }">
                           <Files />
@@ -136,8 +156,9 @@
                         <div class="file-card-stats">
                           <span class="field-count">{{ table.fieldCount }} 个字段</span>
                           <span class="required-fields"
-                            >{{ table.requiredFields?.length || 0 }} 个必填</span
+                            >{{ table.requiredFieldsCount || 0 }} 个必填</span
                           >
+                          <span class="download-count">{{ table.downloadCount || 0 }} 次下载</span>
                         </div>
                       </div>
                     </div>
@@ -148,13 +169,13 @@
                   <div class="download-info">
                     <el-icon class="download-icon"><Download /></el-icon>
                     <div class="download-text">
-                      <h4>获取标准模板</h4>
+                      <h4>获取标准模板压缩包</h4>
                       <p>下载包含所有必要文件和示例数据的标准模板</p>
                     </div>
                   </div>
                   <el-button type="primary" @click="downloadTemplate" class="download-btn">
                     <el-icon><Download /></el-icon>
-                    下载标准模板
+                    下载标准模板压缩包
                   </el-button>
                 </div>
 
@@ -209,13 +230,6 @@
                     <h4>解压文件清单</h4>
                     <el-table :data="validationResult.extractedFiles" border stripe>
                       <el-table-column prop="fileName" label="文件名" width="200" />
-                      <el-table-column prop="tableType" label="数据类型" width="150">
-                        <template #default="{ row }">
-                          <el-tag :color="tableDefinitions[row.tableType]?.color">
-                            {{ tableDefinitions[row.tableType]?.name }}
-                          </el-tag>
-                        </template>
-                      </el-table-column>
                       <el-table-column prop="rowCount" label="数据行数" width="100" align="center">
                         <template #default="{ row }">
                           <span>{{ row.rowCount.toLocaleString() }}</span>
@@ -273,7 +287,10 @@
           <el-descriptions title="任务信息确认" :column="2" border>
             <el-descriptions-item label="任务名称">{{ uploadForm.taskName }}</el-descriptions-item>
             <el-descriptions-item label="数据来源">{{
-              getDataSourceText(uploadForm.dataSource)
+              uploadForm.dataSource ? getDataSourceText(uploadForm.dataSource) : '未选择'
+            }}</el-descriptions-item>
+            <el-descriptions-item label="执行模式">{{
+              getExecuteModeText(uploadForm.executeMode)
             }}</el-descriptions-item>
             <el-descriptions-item label="文件名称">{{
               uploadForm.file?.name
@@ -294,18 +311,18 @@
               <el-collapse-item
                 v-for="(fileInfo, index) in validationResult?.extractedFiles"
                 :key="index"
-                :name="fileInfo.tableType"
+                :name="fileInfo.fileName"
               >
                 <template #title>
                   <div class="collapse-title">
-                    <el-tag :color="tableDefinitions[fileInfo.tableType]?.color" class="table-tag">
-                      {{ tableDefinitions[fileInfo.tableType]?.name }}
+                    <el-tag class="table-tag">
+                      {{ fileInfo.fileName }}
                     </el-tag>
                     <span class="table-stats">
                       {{ fileInfo.rowCount.toLocaleString() }} 条数据 ·
                       {{
                         fileInfo.actualFields?.length ||
-                        tableDefinitions[fileInfo.tableType]?.fieldCount
+                        tableDefinitions[fileInfo.fileName]?.fieldCount
                       }}
                       个字段
                     </span>
@@ -365,7 +382,7 @@
 
                   <!-- 数据预览 -->
                   <div class="data-preview" style="margin-top: 20px">
-                    <h4>数据预览 (前{{ Math.min(fileInfo.previewData?.length || 0) }}行)</h4>
+                    <h4>数据预览 ({{ Math.min(fileInfo.previewData?.length || 0) }}行)</h4>
                     <el-table
                       v-if="fileInfo.previewData?.length > 0"
                       :data="fileInfo.previewData"
@@ -482,11 +499,14 @@
         开始导入
       </el-button>
     </div>
+    
+    <!-- 模板预览弹窗 -->
+    <TemplatePreviewDialog ref="templatePreviewRef" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
 import {
@@ -502,9 +522,11 @@ import {
 } from '@element-plus/icons-vue'
 import type { FormInstance, FormRules, UploadFile } from 'element-plus'
 import { DrugBatchImportApi } from '@/api/drug/task'
+import { ImportTemplateApi } from '@/api/drug/task/template'
 
 // 导入优化后的PageHeader组件
 import PageHeader from '@/components/PageHeader/index.vue'
+import TemplatePreviewDialog from '@/views/drug/import/template/components/TemplatePreviewDialog.vue'
 import { getDictLabel, DICT_TYPE, getDictOptions } from '@/utils/dict'
 /** 组件名称定义 */
 defineOptions({ name: 'DrugBatchImportPage' })
@@ -512,106 +534,8 @@ defineOptions({ name: 'DrugBatchImportPage' })
 const router = useRouter()
 
 // ========================= 表定义数据 =========================
-const tableDefinitions = {
-  HOSPITAL_INFO: {
-    name: '公立医疗机构基本情况',
-    fileName: '机构基本情况.xlsx',
-    description: '医疗机构的基础信息数据',
-    requiredFields: [
-      '数据上报日期',
-      '省级行政区划代码',
-      '组织机构代码',
-      '医疗机构代码',
-      '组织机构名称',
-      '年度药品总收入（元）',
-      '实有床位数'
-    ],
-    fieldCount: 7,
-    color: '#1890ff'
-  },
-  DRUG_CATALOG: {
-    name: '公立医疗机构药品目录',
-    fileName: '药品目录.xlsx',
-    description: '医疗机构使用的药品目录清单',
-    requiredFields: [
-      '数据上报日期',
-      '省级行政区划代码',
-      '组织机构代码',
-      '医疗机构代码',
-      '国家药品编码（YPID）',
-      '院内药品唯一码',
-      '通用名',
-      '产品名称',
-      '批准文号',
-      '生产企业',
-      '制剂单位',
-      '最小销售包装单位',
-      '转换系数'
-    ],
-    optionalFields: ['商品名', '商品名（英文）', '剂型名称', '制剂规格', '是否基本药物'],
-    fieldCount: 18,
-    color: '#52c41a'
-  },
-  DRUG_INBOUND: {
-    name: '公立医疗机构药品入库情况',
-    fileName: '药品入库.xlsx',
-    description: '药品采购入库的详细记录',
-    requiredFields: [
-      '数据上报日期',
-      '省级行政区划代码',
-      '组织机构代码',
-      '医疗机构代码',
-      '国家药品编码（YPID）',
-      '院内药品唯一码',
-      '产品名称',
-      '入库总金额（元）',
-      '入库数量（最小销售包装单位）',
-      '入库数量（最小制剂单位）'
-    ],
-    optionalFields: ['省级药品集中采购平台药品编码'],
-    fieldCount: 11,
-    color: '#fa8c16'
-  },
-  DRUG_OUTBOUND: {
-    name: '公立医疗机构药品出库情况',
-    fileName: '药品出库.xlsx',
-    description: '药品发放出库的详细记录',
-    requiredFields: [
-      '数据上报日期',
-      '省级行政区划代码',
-      '组织机构代码',
-      '医疗机构代码',
-      '国家药品编码（YPID）',
-      '院内药品唯一码',
-      '产品名称',
-      '出库数量（最小销售包装单位）',
-      '出库数量（最小制剂单位）'
-    ],
-    optionalFields: ['省级药品集中采购平台药品编码'],
-    fieldCount: 10,
-    color: '#eb2f96'
-  },
-  DRUG_USAGE: {
-    name: '公立医疗机构药品使用情况',
-    fileName: '药品使用.xlsx',
-    description: '药品临床使用和销售统计',
-    requiredFields: [
-      '数据上报日期',
-      '省级行政区划代码',
-      '组织机构代码',
-      '医疗机构代码',
-      '国家药品编码（YPID）',
-      '院内药品唯一码',
-      '产品名称',
-      '销售总金额（元）',
-      '销售数量（最小销售包装单位）',
-      '销售数量（最小制剂单位）'
-    ],
-    optionalFields: ['省级药品集中采购平台药品编码'],
-    fieldCount: 11,
-    color: '#722ed1'
-  }
-}
+const tableDefinitions = ref<any>({})
+const loadingTemplates = ref(false)
 
 // ========================= 响应式数据 =========================
 const currentStep = ref(0)
@@ -620,12 +544,14 @@ const importing = ref(false)
 
 const uploadFormRef = ref<FormInstance>()
 const uploadRef = ref()
+const templatePreviewRef = ref()
 
 /** 上传表单数据 */
 const uploadForm = reactive({
   taskName: '',
   description: '',
   dataSource: '',
+  executeMode: '3', // 默认全部执行
   file: null as File | null
 })
 
@@ -635,17 +561,22 @@ const uploadRules: FormRules = {
     { required: true, message: '请输入任务名称', trigger: 'blur' },
     { min: 2, max: 100, message: '任务名称长度在 2 到 100 个字符', trigger: 'blur' }
   ],
-  dataSource: [{ required: true, message: '请选择数据来源', trigger: 'change' }]
+  executeMode: [{ required: true, message: '请选择执行模式', trigger: 'change' }]
 }
 
 /** 文件验证结果 */
 const validationResult = ref<any>(null)
 
+// ========================= 生命周期 =========================
+onMounted(() => {
+  loadTemplateDefinitions()
+})
+
 // ========================= 计算属性 =========================
 const canNextStep = computed(() => {
   switch (currentStep.value) {
     case 0:
-      return uploadForm.taskName && uploadForm.dataSource && uploadForm.file
+      return uploadForm.taskName && uploadForm.executeMode && uploadForm.file
     case 1:
       return validationResult.value?.valid
     default:
@@ -654,6 +585,87 @@ const canNextStep = computed(() => {
 })
 
 // ========================= 方法 =========================
+
+/** 加载模板定义数据 */
+const loadTemplateDefinitions = async () => {
+  try {
+    loadingTemplates.value = true
+    
+    // 获取TABLE_TYPE=1（前置质控）的模板列表
+    const templates = await ImportTemplateApi.getImportTemplateListByTableType(1)
+    
+    // 为每个模板获取字段统计信息
+    const templatePromises = templates.map(async (template: any) => {
+      try {
+        // 获取模板字段信息来统计必填字段数量
+        const fields = await import('@/api/drug/task/template').then(m => 
+          m.TemplateFieldApi.getTemplateFieldListByTemplateId(template.id)
+        )
+        
+        const requiredFields = fields.filter((field: any) => field.isRequired)
+        
+        return {
+          id: template.id,
+          name: template.templateName,
+          fileName: template.templateName + '_导入模板.xlsx',
+          description: template.titleText || '数据导入模板',
+          fieldCount: template.fieldCount || fields.length,
+          downloadCount: template.downloadCount || 0,
+          requiredFieldsCount: requiredFields.length,
+          requiredFields: requiredFields.map((field: any) => field.fieldName)
+        }
+      } catch (error) {
+        console.warn(`获取模板 ${template.id} 字段信息失败:`, error)
+        return {
+          id: template.id,
+          name: template.templateName,
+          fileName: template.templateCode + '.xlsx', 
+          description: template.titleText || '数据导入模板',
+          fieldCount: template.fieldCount || 0,
+          downloadCount: template.downloadCount || 0,
+          requiredFieldsCount: 0,
+          requiredFields: []
+        }
+      }
+    })
+    
+    const templateData = await Promise.all(templatePromises)
+    
+    // 转换为原有的数据结构格式，使用模板ID作为key
+    const definitions: any = {}
+    templateData.forEach(template => {
+      definitions[template.id] = template
+    })
+    
+    tableDefinitions.value = definitions
+    
+  } catch (error) {
+    console.error('加载模板定义失败:', error)
+    ElMessage.error('加载模板信息失败，将使用默认配置')
+    
+    // 失败时使用默认配置
+    tableDefinitions.value = {
+      default: {
+        id: 'default',
+        name: '默认模板',
+        fileName: '数据导入模板.xlsx',
+        description: '默认数据导入模板',
+        fieldCount: 10,
+        downloadCount: 0,
+        requiredFieldsCount: 5,
+        requiredFields: ['必填字段1', '必填字段2', '必填字段3', '必填字段4', '必填字段5']
+      }
+    }
+  } finally {
+    loadingTemplates.value = false
+  }
+}
+
+
+/** 预览模板 */
+const previewTemplate = (templateId: number) => {
+  templatePreviewRef.value?.open(templateId)
+}
 
 /** 处理文件改变 */
 const handleFileChange = (uploadFile: UploadFile) => {
@@ -754,7 +766,8 @@ const startImport = async () => {
     const result = await DrugBatchImportApi.createImportTask(uploadForm.file, {
       taskName: uploadForm.taskName,
       description: uploadForm.description || undefined,
-      dataSource: uploadForm.dataSource
+      dataSource: uploadForm.dataSource || undefined,
+      executeMode: uploadForm.executeMode
     })
 
     ElNotification({
@@ -807,6 +820,16 @@ const handleBack = () => {
 /** 获取数据来源文本 */
 const getDataSourceText = (value: string) => {
   return getDictLabel(DICT_TYPE.DRUG_DATA_SOURCE, value)
+}
+
+/** 获取执行模式文本 */
+const getExecuteModeText = (value: string) => {
+  const modes: Record<string, string> = {
+    '1': '仅前置质控',
+    '2': '仅后置质控', 
+    '3': '全部执行'
+  }
+  return modes[value] || '未知模式'
 }
 
 /** 格式化文件大小 */
@@ -1068,10 +1091,13 @@ const getDataQualityText = (quality: string): string => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .field-count,
-.required-fields {
+.required-fields,
+.download-count {
   font-size: 11px;
   color: #666;
   background: #f5f7fa;
@@ -1082,6 +1108,11 @@ const getDataQualityText = (quality: string): string => {
 .required-fields {
   background: #fef0f0;
   color: #f56c6c;
+}
+
+.download-count {
+  background: #e6f7ff;
+  color: #1890ff;
 }
 
 .template-download-section {

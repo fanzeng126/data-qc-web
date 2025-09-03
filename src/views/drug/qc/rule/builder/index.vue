@@ -533,10 +533,21 @@
                               >
                                 <template #reference>
                                   <span class="param-value expression">{{
-                                    param.displayValue || param.value
+                                    param.expressionComponents &&
+                                    param.expressionComponents.length > 0
+                                      ? generateParameterExpressionText(param.expressionComponents)
+                                      : param.displayValue || param.value || '表达式'
                                   }}</span>
                                 </template>
-                                <div>表达式: {{ param.value }}</div>
+                                <div
+                                  >表达式:
+                                  {{
+                                    param.expressionComponents &&
+                                    param.expressionComponents.length > 0
+                                      ? generateParameterExpressionText(param.expressionComponents)
+                                      : param.value || '空表达式'
+                                  }}</div
+                                >
                               </el-popover>
                               <span v-else class="param-value" :class="param.type">
                                 {{ param.displayValue || param.value }}
@@ -658,7 +669,7 @@
                       <span>表达式预览：</span>
                       <el-button size="small" text @click="compileExpression(group)">
                         <Icon icon="ep:cpu" class="mr-5px" />
-                        编译检查
+                        编译SQL
                       </el-button>
                     </div>
                     <div class="preview-content">
@@ -674,6 +685,30 @@
                         show-icon
                         :closable="false"
                       />
+                      <!-- 如果编译成功，显示SQL表达式 -->
+                      <div
+                        v-if="
+                          group.compilationResult.isValid && group.compilationResult.sqlExpression
+                        "
+                        class="sql-expression"
+                      >
+                        <div class="sql-header">
+                          <span>生成的SQL表达式：</span>
+                          <el-button
+                            size="small"
+                            text
+                            type="primary"
+                            @click="copySqlToClipboard(group.compilationResult.sqlExpression)"
+                            class="copy-sql-btn"
+                            title="复制SQL表达式"
+                          >
+                            <Icon icon="ep:copy-document" />
+                          </el-button>
+                        </div>
+                        <div class="sql-content">
+                          <pre>{{ group.compilationResult.sqlExpression }}</pre>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -752,37 +787,160 @@
                         <div class="variable-header">
                           <strong>可用变量（点击插入）：</strong>
                           <el-tag size="small" type="info"
-                            >{{ getAvailableVariables(activeGroup).length }} 个</el-tag
-                          >
+                            >{{ getAvailableVariables(activeGroup).length }} 个
+                          </el-tag>
                         </div>
                         <div class="variable-list">
-                          <div
-                            v-for="variable in getAvailableVariables(activeGroup)"
-                            :key="variable.name"
-                            class="variable-item"
-                          >
-                            <div class="variable-main">
-                              <a
-                                href="#"
-                                class="variable-link"
-                                :class="`variable-${variable.type}`"
-                                @click.prevent="insertVariable(variable.name)"
-                                @mouseenter="$event.target.style.textDecoration = 'underline'"
-                                @mouseleave="$event.target.style.textDecoration = 'none'"
-                              >
-                                {{ variable.name }}
-                              </a>
-                              <span class="variable-desc">{{ variable.description }}</span>
+                          <!-- 维度变量 -->
+                          <div v-if="getDimensionVariables().length > 0" class="variable-category">
+                            <div class="category-header dimension-category">
+                              <Icon icon="ep:location" class="category-icon" />
+                              <span class="category-title">维度变量</span>
+                              <span class="category-badge">{{
+                                getDimensionVariables().length
+                              }}</span>
                             </div>
-                            <div v-if="variable.example" class="variable-example">
-                              {{ variable.example }}
+                            <div
+                              v-for="variable in getDimensionVariables()"
+                              :key="variable.name"
+                              class="variable-item"
+                            >
+                              <div class="variable-main">
+                                <a
+                                  href="#"
+                                  class="variable-name"
+                                  :class="`variable-${variable.type}`"
+                                  @click.prevent="insertVariable(variable.name)"
+                                >
+                                  {{ variable.name }}
+                                </a>
+                                <span class="colon">:</span>
+                                <a
+                                  href="#"
+                                  class="variable-desc clickable"
+                                  @click.prevent="insertVariable(variable.name)"
+                                >
+                                  {{ variable.description }}
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+
+                          <!-- 表变量 -->
+                          <div
+                            v-if="getTableVariables(activeGroup).length > 0"
+                            class="variable-category"
+                          >
+                            <div class="category-header table-category">
+                              <Icon icon="ep:grid" class="category-icon" />
+                              <span class="category-title">表</span>
+                              <span class="category-badge">{{
+                                getTableVariables(activeGroup).length
+                              }}</span>
+                            </div>
+                            <div
+                              v-for="variable in getTableVariables(activeGroup)"
+                              :key="variable.name"
+                              class="variable-item table-item"
+                            >
+                              <div class="variable-main">
+                                <a
+                                  href="#"
+                                  class="variable-desc clickable table-desc"
+                                  @click.prevent="insertVariable(variable.name)"
+                                >
+                                  {{ variable.description }}
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+
+                          <!-- 字段变量按表分类 -->
+                          <div v-if="getGroupedFieldVariables(activeGroup).length > 0">
+                            <div
+                              v-for="tableGroup in getGroupedFieldVariables(activeGroup)"
+                              :key="tableGroup.tableName"
+                              class="variable-category"
+                            >
+                              <div class="category-header field-category">
+                                <Icon icon="ep:grid" class="category-icon" />
+                                <span class="category-title">{{
+                                  tableGroup.tableDisplayName
+                                }}</span>
+                                <span class="category-badge">{{ tableGroup.fields.length }}</span>
+                              </div>
+                              <div
+                                v-for="field in tableGroup.fields"
+                                :key="field.name"
+                                class="variable-item"
+                              >
+                                <div class="variable-main">
+                                  <a
+                                    href="#"
+                                    class="variable-name"
+                                    :class="`variable-${field.type}`"
+                                    @click.prevent="insertVariable(field.name)"
+                                  >
+                                    {{ field.displayName }}
+                                  </a>
+                                  <span class="colon">:</span>
+                                  <a
+                                    href="#"
+                                    class="variable-desc clickable"
+                                    @click.prevent="insertVariable(field.name)"
+                                  >
+                                    {{ field.fieldDescription }}
+                                  </a>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <!-- 函数变量按函数分类 -->
+                          <div v-if="getGroupedFunctionVariables(activeGroup).length > 0">
+                            <div
+                              v-for="funcGroup in getGroupedFunctionVariables(activeGroup)"
+                              :key="funcGroup.functionName"
+                              class="variable-category"
+                            >
+                              <div class="category-header function-category">
+                                <Icon icon="ep:cpu" class="category-icon" />
+                                <span class="category-title">{{
+                                  funcGroup.functionDisplayName
+                                }}</span>
+                                <span class="category-badge">{{ funcGroup.returns.length }}</span>
+                              </div>
+                              <div
+                                v-for="returnVar in funcGroup.returns"
+                                :key="returnVar.name"
+                                class="variable-item"
+                              >
+                                <div class="variable-main">
+                                  <a
+                                    href="#"
+                                    class="variable-name"
+                                    :class="`variable-${returnVar.type}`"
+                                    @click.prevent="insertVariable(returnVar.name)"
+                                  >
+                                    {{ returnVar.displayName }}
+                                  </a>
+                                  <span class="colon">:</span>
+                                  <a
+                                    href="#"
+                                    class="variable-desc clickable"
+                                    @click.prevent="insertVariable(returnVar.name)"
+                                  >
+                                    {{ returnVar.returnDescription }}
+                                  </a>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
                         <div class="variable-footer">
                           <el-text size="small" type="info"
-                            >提示：根据当前条件组表达式自动识别</el-text
-                          >
+                            >提示：根据当前条件组表达式和检查维度自动识别
+                          </el-text>
                         </div>
                       </div>
                     </el-popover>
@@ -812,7 +970,7 @@
       <el-drawer
         v-model="showCombinedDrawer"
         title="函数配置"
-        size="88%"
+        size="75%"
         :z-index="105"
         direction="rtl"
         :destroy-on-close="true"
@@ -826,7 +984,7 @@
               <span>工具栏</span>
             </div>
             <div class="tools-content">
-              <el-tabs v-model="activeTab" class="tools-tabs">
+              <el-tabs v-model="combinedActiveTab" class="combined-tools-tabs">
                 <!-- 数据源面板 -->
                 <el-tab-pane name="datasource">
                   <template #label>
@@ -901,105 +1059,6 @@
                   </div>
                 </el-tab-pane>
 
-                <!-- 函数库面板 -->
-                <el-tab-pane name="functions">
-                  <template #label>
-                    <div class="tab-label">
-                      <Icon icon="ep:cpu" />
-                      <span>函数库</span>
-                    </div>
-                  </template>
-                  <div class="tool-panel">
-                    <div class="panel-body">
-                      <div class="search-row">
-                        <el-input
-                          v-model="functionFilter"
-                          placeholder="搜索函数"
-                          clearable
-                          size="small"
-                          class="search-input"
-                        >
-                          <template #prefix>
-                            <Icon icon="ep:search" />
-                          </template>
-                        </el-input>
-                        <el-button size="small" text @click="refreshFunctions" class="refresh-btn">
-                          <Icon icon="ep:refresh" />
-                        </el-button>
-                      </div>
-
-                      <div class="function-container">
-                        <el-collapse v-model="activeFunctionCategories" accordion>
-                          <el-collapse-item
-                            v-for="category in filteredFunctionCategories"
-                            :key="category.name"
-                            :title="category.name"
-                            :name="category.name"
-                          >
-                            <div class="function-list">
-                              <div
-                                v-for="func in category.functions"
-                                :key="func.id"
-                                class="function-item"
-                                draggable="true"
-                                @dragstart="handleFunctionDragStart($event, func)"
-                                @click="handleFunctionClick(func)"
-                              >
-                                <div class="function-header">
-                                  <span class="function-name">{{ func.functionName }}</span>
-                                  <div class="function-actions">
-                                    <el-tag
-                                      size="small"
-                                      :type="getFunctionLevelType(func.functionLevel)"
-                                    >
-                                      {{ getFunctionLevelText(func.functionLevel) }}
-                                    </el-tag>
-                                  </div>
-                                </div>
-                                <div class="function-desc">{{ func.chineseName }}</div>
-                                <div
-                                  class="function-params"
-                                  v-if="getFunctionParams(func).length > 0"
-                                >
-                                  <div class="param-label">入参：</div>
-                                  <div class="param-list">
-                                    <span
-                                      v-for="(param, index) in getFunctionParams(func)"
-                                      :key="index"
-                                      class="param-item"
-                                    >
-                                      {{ param.name }}
-                                      <span class="param-type">({{ param.type }})</span>
-                                      <span v-if="param.required" class="param-required">*</span>
-                                    </span>
-                                  </div>
-                                </div>
-                                <div
-                                  class="function-returns"
-                                  v-if="getFunctionReturns(func).length > 0"
-                                >
-                                  <div class="return-label">返回：</div>
-                                  <div class="return-list">
-                                    <span
-                                      v-for="(returnItem, index) in getFunctionReturns(func)"
-                                      :key="index"
-                                      class="return-item"
-                                    >
-                                      {{ returnItem.name }}
-                                      <span class="return-type">({{ returnItem.type }})</span>
-                                    </span>
-                                  </div>
-                                </div>
-                                <div class="function-usage">{{ func.usageExample }}</div>
-                              </div>
-                            </div>
-                          </el-collapse-item>
-                        </el-collapse>
-                      </div>
-                    </div>
-                  </div>
-                </el-tab-pane>
-
                 <!-- 操作符面板 -->
                 <el-tab-pane name="operators">
                   <template #label>
@@ -1069,10 +1128,6 @@
               <div class="parameters-section">
                 <div class="section-header">
                   <h5>参数配置</h5>
-                  <el-button size="small" type="primary" @click="addFunctionParameter">
-                    <Icon icon="ep:plus" />
-                    添加参数
-                  </el-button>
                 </div>
 
                 <div
@@ -1081,33 +1136,143 @@
                   class="parameter-item"
                 >
                   <div class="param-header">
-                    <span class="param-index">参数 {{ paramEditIndex + 1 }}</span>
-                    <el-button
-                      size="small"
-                      text
-                      type="danger"
-                      @click="removeFunctionParameter(paramEditIndex)"
-                    >
-                      <Icon icon="ep:delete" />
-                    </el-button>
+                    <span class="param-index">{{
+                      `参数${paramEditIndex + 1}：${param.name}(${param.description})` ||
+                      `参数 ${paramEditIndex + 1}`
+                    }}</span>
                   </div>
 
                   <el-form-item label="参数类型">
-                    <el-select v-model="param.type" @change="onParameterTypeChange(param)">
-                      <el-option label="表达式" value="expression" />
+                    <el-select v-model="param.type" @change="onParameterTypeChange(param)" disabled>
+                      <el-option label="表" value="table" />
+                      <el-option label="字段" value="field" />
+                      <el-option label="字段数组" value="field[]" />
+                      <el-option label="字符串" value="string" />
                       <el-option label="数值" value="number" />
-                      <el-option label="文本" value="text" />
-                      <el-option label="布尔值" value="boolean" />
+                      <el-option label="表达式" value="expression" />
                     </el-select>
                   </el-form-item>
-
+                  <!--函数入参参数值-->
                   <el-form-item label="参数值">
+                    <!-- 表选择拖拽区域 -->
+                    <div v-if="param.type === 'table'" class="single-param-drop-area">
+                      <div
+                        class="drop-zone"
+                        @drop="handleSingleParamDrop($event, param, 'table')"
+                        @dragover="handleSingleParamDragOver"
+                        @dragleave="handleSingleParamDragLeave"
+                      >
+                        <div v-if="!param.selectedTable" class="drop-placeholder">
+                          <Icon icon="ep:grid" />
+                          <span>拖拽表到此处</span>
+                        </div>
+                        <div v-else class="selected-item">
+                          <div class="item-tag">
+                            <Icon icon="ep:grid" class="item-icon" />
+                            <span class="item-name">{{
+                              param.selectedTable.label || param.selectedTable.value
+                            }}</span>
+                            <el-button
+                              size="small"
+                              text
+                              type="danger"
+                              @click="clearSingleParam(param)"
+                              class="remove-btn"
+                            >
+                              <Icon icon="ep:close" />
+                            </el-button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- 字段选择拖拽区域 -->
+                    <div v-else-if="param.type === 'field'" class="single-param-drop-area">
+                      <div
+                        class="drop-zone"
+                        @drop="handleSingleParamDrop($event, param, 'field')"
+                        @dragover="handleSingleParamDragOver"
+                        @dragleave="handleSingleParamDragLeave"
+                      >
+                        <div v-if="!param.selectedField" class="drop-placeholder">
+                          <Icon icon="ep:key" />
+                          <span>拖拽字段到此处</span>
+                        </div>
+                        <div v-else class="selected-item">
+                          <div class="item-tag">
+                            <Icon icon="ep:key" class="item-icon" />
+                            <span class="item-name">{{
+                              param.selectedField.label || param.selectedField.value
+                            }}</span>
+                            <el-button
+                              size="small"
+                              text
+                              type="danger"
+                              @click="clearSingleParam(param)"
+                              class="remove-btn"
+                            >
+                              <Icon icon="ep:close" />
+                            </el-button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- 字段数组拖拽选择 -->
+                    <div
+                      v-else-if="param.type === 'field[]'"
+                      class="field-array-drop-area full-width"
+                    >
+                      <div
+                        class="drop-zone"
+                        @drop="handleFieldArrayDrop($event, param)"
+                        @dragover="handleFieldArrayDragOver"
+                        @dragleave="handleFieldArrayDragLeave"
+                      >
+                        <div
+                          v-if="!param.selectedFields || param.selectedFields.length === 0"
+                          class="drop-placeholder"
+                        >
+                          <Icon icon="ep:mouse" />
+                          <span>拖拽字段到此处（支持多选）</span>
+                        </div>
+                        <div v-else class="selected-fields">
+                          <div
+                            v-for="(field, fieldIndex) in param.selectedFields"
+                            :key="fieldIndex"
+                            class="field-tag"
+                          >
+                            <Icon icon="ep:coin" class="field-icon" />
+                            <span class="field-name">{{ field.label || field.fieldName }}</span>
+                            <el-button
+                              size="small"
+                              text
+                              type="danger"
+                              @click="removeFieldFromArray(param, fieldIndex)"
+                              class="remove-btn"
+                            >
+                              <Icon icon="ep:close" />
+                            </el-button>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="field-count-info">
+                        已选择 {{ param.selectedFields?.length || 0 }} 个字段
+                        <span v-if="param.minItems" class="min-items-hint">
+                          (至少需要 {{ param.minItems }} 个)
+                        </span>
+                      </div>
+                    </div>
+
+                    <!-- 字符串输入 -->
                     <el-input
-                      v-if="param.type === 'text'"
+                      v-else-if="param.type === 'string'"
                       v-model="param.value"
-                      placeholder="输入文本值"
+                      placeholder="输入字符串值"
                       @input="updateParameterDisplay(param)"
                     />
+
+                    <!-- 数值输入 -->
                     <el-input-number
                       v-else-if="param.type === 'number'"
                       v-model="param.value"
@@ -1118,249 +1283,242 @@
                       :controls="true"
                       @change="updateParameterDisplay(param)"
                     />
-                    <el-select
-                      v-else-if="param.type === 'boolean'"
-                      v-model="param.value"
-                      @change="updateParameterDisplay(param)"
-                    >
-                      <el-option label="true" :value="true" />
-                      <el-option label="false" :value="false" />
-                    </el-select>
-                    <!-- 表达式类型支持拖拽构建 -->
-                    <div
-                      v-else
-                      class="expression-drop-area parameter-canvas"
-                      @drop="handleParameterDrop($event, param)"
-                      @dragover="handleParameterDragOver"
-                      @dragleave="handleParameterDragLeave"
-                    >
-                      <div
-                        v-if="!param.components || param.components.length === 0"
-                        class="drop-placeholder"
-                      >
-                        <Icon icon="ep:mouse" />
-                        <span>拖拽字段、函数或操作符到此处构建表达式</span>
-                        <el-dropdown
-                          trigger="click"
-                          @command="(cmd) => addParameterElement(param, cmd)"
-                          class="param-add-menu"
-                        >
-                          <el-button type="primary" size="small" circle>
-                            <Icon icon="ep:plus" />
+
+                    <!-- 表达式编辑 -->
+                    <div v-else-if="param.type === 'expression'" class="expression-param-editor">
+                      <div class="expression-canvas-area">
+                        <div class="expression-header">
+                          <span class="expression-label">表达式配置</span>
+                          <el-button
+                            size="small"
+                            text
+                            type="danger"
+                            @click="clearParameterExpression(param)"
+                            :disabled="!param.expressionComponents?.length"
+                            class="clear-btn"
+                          >
+                            <Icon icon="ep:delete" />
+                            清空
                           </el-button>
-                          <template #dropdown>
-                            <el-dropdown-menu>
-                              <el-dropdown-item command="number">添加数值</el-dropdown-item>
-                              <el-dropdown-item command="text">添加文本</el-dropdown-item>
-                              <el-dropdown-item command="boolean">添加布尔值</el-dropdown-item>
-                            </el-dropdown-menu>
-                          </template>
-                        </el-dropdown>
-                      </div>
-                      <div v-else class="expression-content">
-                        <div class="expression-components">
-                          <div
-                            v-for="(component, compIndex) in param.components"
-                            :key="`param-${param.id}-${compIndex}`"
-                            class="expression-component"
-                            :class="component.type"
-                          >
-                            <div class="component-content">
-                              <Icon :icon="getComponentIcon(component)" class="component-icon" />
-
-                              <div v-if="component.type === 'function'" class="function-display">
-                                <span class="function-name">{{ component.value }}</span>
-                                <span class="function-params-display">(</span>
-                                <span
-                                  v-for="(subParam, subParamIndex) in component.parameters || []"
-                                  :key="subParamIndex"
-                                  class="function-param-display"
-                                >
-                                  <span v-if="subParamIndex > 0">, </span>
-                                  <el-popover
-                                    placement="top"
-                                    :width="200"
-                                    trigger="hover"
-                                    v-if="subParam.type === 'expression'"
-                                  >
-                                    <template #reference>
-                                      <span class="param-value expression">{{
-                                        subParam.displayValue || subParam.value
-                                      }}</span>
-                                    </template>
-                                    <div>表达式: {{ subParam.value }}</div>
-                                  </el-popover>
-                                  <span v-else class="param-value" :class="subParam.type">
-                                    {{ subParam.displayValue || subParam.value }}
-                                  </span>
-                                </span>
-                                <span class="function-params-display">)</span>
-                              </div>
-
-                              <div v-else class="literal-display">
-                                <el-input-number
-                                  v-if="component.type === 'literal' && isNumberLiteral(component)"
-                                  v-model="component.numericValue"
-                                  size="small"
-                                  style="width: 120px"
-                                  :precision="2"
-                                  :step="1"
-                                  :controls="true"
-                                  @change="updateLiteralValue(component, $event)"
-                                  @click.stop
-                                />
-                                <el-input
-                                  v-else-if="
-                                    component.type === 'literal' && isTextLiteral(component)
-                                  "
-                                  v-model="component.textValue"
-                                  size="small"
-                                  style="width: 120px"
-                                  placeholder="输入文本"
-                                  @input="updateLiteralValue(component, $event)"
-                                  @click.stop
-                                />
-                                <el-select
-                                  v-else-if="
-                                    component.type === 'literal' && isBooleanLiteral(component)
-                                  "
-                                  v-model="component.booleanValue"
-                                  size="small"
-                                  style="width: 100px"
-                                  @change="updateLiteralValue(component, $event)"
-                                  @click.stop
-                                >
-                                  <el-option label="true" :value="true" />
-                                  <el-option label="false" :value="false" />
-                                </el-select>
-                                <span v-else class="component-label">{{
-                                  getComponentDisplayText(component)
-                                }}</span>
-                              </div>
-
-                              <div
-                                v-if="
-                                  (component.value === '≈' || component.value === '≉') &&
-                                  component.showTolerance
-                                "
-                                class="tolerance-config"
-                              >
-                                <el-input
-                                  v-model="component.tolerance"
-                                  placeholder="±0.1"
-                                  size="small"
-                                  style="width: 80px; margin-left: 8px"
-                                  @click.stop
-                                />
-                              </div>
-                            </div>
-
-                            <div class="component-actions">
-                              <el-button
-                                v-if="component.type === 'function'"
-                                size="small"
-                                text
-                                type="primary"
-                                @click.stop="editParameterComponent(param, compIndex)"
-                              >
-                                <Icon icon="ep:edit" />
-                              </el-button>
-                              <el-button
-                                v-else-if="component.value === '≈' || component.value === '≉'"
-                                size="small"
-                                text
-                                type="primary"
-                                @click.stop="editParameterComponent(param, compIndex)"
-                              >
-                                <Icon icon="ep:edit" />
-                              </el-button>
-                              <el-button
-                                size="small"
-                                text
-                                type="danger"
-                                @click.stop="removeParameterComponent(param, compIndex)"
-                              >
-                                <Icon icon="ep:close" />
-                              </el-button>
-                            </div>
-                          </div>
-
-                          <el-dropdown
-                            trigger="click"
-                            @command="(cmd) => addParameterElement(param, cmd)"
-                            class="expression-add-menu"
-                          >
-                            <el-button size="small" text circle>
-                              <Icon icon="ep:plus" />
-                            </el-button>
-                            <template #dropdown>
-                              <el-dropdown-menu>
-                                <el-dropdown-item command="number">添加数值</el-dropdown-item>
-                                <el-dropdown-item command="text">添加文本</el-dropdown-item>
-                                <el-dropdown-item command="boolean">添加布尔值</el-dropdown-item>
-                              </el-dropdown-menu>
-                            </template>
-                          </el-dropdown>
                         </div>
-
-                        <!-- 表达式预览 -->
                         <div
-                          v-if="param.components && param.components.length > 0"
-                          class="expression-preview"
+                          class="expression-canvas"
+                          @drop="handleParameterExpressionDrop($event, param)"
+                          @dragover="handleParameterExpressionDragOver"
+                          @dragleave="handleParameterExpressionDragLeave"
                         >
-                          <div class="preview-header">
-                            <span>表达式预览：</span>
-                            <el-button size="small" text @click="compileParameterExpression(param)">
-                              <Icon icon="ep:cpu" class="mr-5px" />
-                              编译检查
-                            </el-button>
+                          <div
+                            v-if="
+                              !param.expressionComponents || param.expressionComponents.length === 0
+                            "
+                            class="empty-canvas"
+                          >
+                            <Icon icon="ep:mouse" class="empty-icon" />
+                            <p>拖拽字段、函数或操作符到此处开始构建表达式</p>
+
+                            <el-dropdown
+                              trigger="click"
+                              @command="(cmd) => addParameterExpressionElement(param, cmd)"
+                              class="canvas-add-menu"
+                            >
+                              <el-button type="primary" size="small" circle>
+                                <Icon icon="ep:plus" />
+                              </el-button>
+                              <template #dropdown>
+                                <el-dropdown-menu>
+                                  <el-dropdown-item command="number">添加数值</el-dropdown-item>
+                                  <el-dropdown-item command="text">添加文本</el-dropdown-item>
+                                  <el-dropdown-item command="boolean">添加布尔值</el-dropdown-item>
+                                </el-dropdown-menu>
+                              </template>
+                            </el-dropdown>
                           </div>
-                          <div class="preview-content">
-                            <code>{{ generateParameterExpressionText(param.components) }}</code>
-                          </div>
-                          <div v-if="param.compilationResult" class="compilation-result">
-                            <el-alert
-                              :type="param.compilationResult.isValid ? 'success' : 'error'"
-                              :title="
-                                param.compilationResult.isValid
-                                  ? '表达式语法正确'
-                                  : '表达式语法错误'
-                              "
-                              :description="param.compilationResult.message"
-                              show-icon
-                              :closable="false"
-                              size="small"
-                            />
+
+                          <!-- 表达式组件显示 -->
+                          <div v-else class="expression-components">
+                            <div
+                              v-for="(component, compIndex) in param.expressionComponents"
+                              :key="`${param.id}-${compIndex}`"
+                              class="expression-component"
+                              :class="component.type"
+                            >
+                              <div class="component-content">
+                                <Icon :icon="getComponentIcon(component)" class="component-icon" />
+
+                                <div v-if="component.type === 'function'" class="function-display">
+                                  <span class="function-name">{{ component.value }}</span>
+                                  <span class="function-params-display">(</span>
+                                  <span
+                                    v-for="(param, paramIndex) in component.parameters || []"
+                                    :key="paramIndex"
+                                    class="function-param-display"
+                                  >
+                                    <span v-if="paramIndex > 0">, </span>
+                                    <el-popover
+                                      placement="top"
+                                      :width="200"
+                                      trigger="hover"
+                                      v-if="param.type === 'expression'"
+                                    >
+                                      <template #reference>
+                                        <span class="param-value expression">{{
+                                          param.expressionComponents &&
+                                          param.expressionComponents.length > 0
+                                            ? generateParameterExpressionText(
+                                                param.expressionComponents
+                                              )
+                                            : param.displayValue || param.value || '表达式'
+                                        }}</span>
+                                      </template>
+                                      <div
+                                        >表达式:
+                                        {{
+                                          param.expressionComponents &&
+                                          param.expressionComponents.length > 0
+                                            ? generateParameterExpressionText(
+                                                param.expressionComponents
+                                              )
+                                            : param.value || '空表达式'
+                                        }}</div
+                                      >
+                                    </el-popover>
+                                    <span v-else class="param-value" :class="param.type">
+                                      {{ param.displayValue || param.value }}
+                                    </span>
+                                  </span>
+                                  <span class="function-params-display">)</span>
+                                </div>
+
+                                <div v-else class="literal-display">
+                                  <el-input-number
+                                    v-if="
+                                      component.type === 'literal' && isNumberLiteral(component)
+                                    "
+                                    v-model="component.numericValue"
+                                    size="small"
+                                    :precision="2"
+                                    :step="1"
+                                    :controls="true"
+                                    @change="updateLiteralValue(component, $event)"
+                                    @click.stop
+                                  />
+                                  <el-input
+                                    v-else-if="
+                                      component.type === 'literal' && isTextLiteral(component)
+                                    "
+                                    v-model="component.textValue"
+                                    size="small"
+                                    placeholder="输入文本"
+                                    @input="updateLiteralValue(component, $event)"
+                                    @click.stop
+                                  />
+                                  <el-select
+                                    v-else-if="
+                                      component.type === 'literal' && isBooleanLiteral(component)
+                                    "
+                                    v-model="component.booleanValue"
+                                    size="small"
+                                    @change="updateLiteralValue(component, $event)"
+                                    @click.stop
+                                  >
+                                    <el-option label="true" :value="true" />
+                                    <el-option label="false" :value="false" />
+                                  </el-select>
+                                  <span v-else class="component-label">{{
+                                    getComponentDisplayText(component)
+                                  }}</span>
+                                </div>
+
+                                <div
+                                  v-if="
+                                    (component.value === '≈' || component.value === '≉') &&
+                                    component.showTolerance
+                                  "
+                                  class="tolerance-config"
+                                >
+                                  <el-input
+                                    v-model="component.tolerance"
+                                    placeholder="±0.1"
+                                    size="small"
+                                    style="width: 80px; margin-left: 8px"
+                                    @click.stop
+                                  />
+                                </div>
+                              </div>
+
+                              <div class="component-actions">
+                                <el-button
+                                  v-if="component.type === 'function'"
+                                  size="small"
+                                  text
+                                  type="primary"
+                                  @click.stop="editParameterComponent(param, compIndex)"
+                                >
+                                  <Icon icon="ep:edit" />
+                                </el-button>
+                                <el-button
+                                  v-else-if="component.value === '≈' || component.value === '≉'"
+                                  size="small"
+                                  text
+                                  type="primary"
+                                  @click.stop="editParameterComponent(param, compIndex)"
+                                >
+                                  <Icon icon="ep:edit" />
+                                </el-button>
+                                <el-button
+                                  size="small"
+                                  text
+                                  type="danger"
+                                  @click.stop="removeParameterExpressionComponent(param, compIndex)"
+                                >
+                                  <Icon icon="ep:close" />
+                                </el-button>
+                              </div>
+                            </div>
+
+                            <el-dropdown
+                              trigger="click"
+                              @command="(cmd) => addParameterExpressionElement(param, cmd)"
+                              class="expression-add-menu"
+                            >
+                              <el-button size="small" text circle>
+                                <Icon icon="ep:plus" />
+                              </el-button>
+                              <template #dropdown>
+                                <el-dropdown-menu>
+                                  <el-dropdown-item command="number">添加数值</el-dropdown-item>
+                                  <el-dropdown-item command="text">添加文本</el-dropdown-item>
+                                  <el-dropdown-item command="boolean">添加布尔值</el-dropdown-item>
+                                </el-dropdown-menu>
+                              </template>
+                            </el-dropdown>
                           </div>
                         </div>
+                      </div>
 
-                        <el-button
-                          size="small"
-                          text
-                          type="danger"
-                          class="clear-expression"
-                          @click="clearParameter(param)"
-                        >
-                          <Icon icon="ep:close" />
-                        </el-button>
+                      <!-- 表达式预览 -->
+                      <div
+                        v-if="param.expressionComponents && param.expressionComponents.length"
+                        class="expression-preview"
+                      >
+                        <div class="preview-header">
+                          <span>表达式预览：</span>
+                        </div>
+                        <div class="preview-content2">
+                          <code>{{
+                            generateParameterExpressionText(param.expressionComponents)
+                          }}</code>
+                        </div>
                       </div>
                     </div>
+
+                    <!-- 默认显示 -->
+                    <el-input v-else v-model="param.value" placeholder="参数值" disabled />
                   </el-form-item>
                 </div>
 
                 <div v-if="!currentEditFunction.component?.parameters?.length" class="empty-params">
-                  <p>暂无参数，点击上方"添加参数"按钮添加</p>
-                </div>
-
-                <!-- 参数列表底部添加参数按钮 -->
-                <div
-                  v-if="currentEditFunction.component?.parameters?.length"
-                  class="add-param-bottom"
-                >
-                  <el-button size="small" type="primary" @click="addFunctionParameter" plain>
-                    <Icon icon="ep:plus" />
-                    添加参数
-                  </el-button>
+                  <p>该函数无需参数</p>
                 </div>
               </div>
 
@@ -1369,10 +1527,10 @@
               <!-- 返回值选择区域 -->
               <div
                 class="returns-section"
-                v-if="currentEditFunction.component?.returnOptions?.length > 1"
+                v-if="currentEditFunction.component?.returnOptions?.length > 0"
               >
                 <h5>选择返回值 <span class="required-mark">*</span></h5>
-                <p class="return-hint">此函数有多个返回值，请选择一个作为表达式结果</p>
+                <p class="return-hint">请选择函数的返回值作为表达式结果</p>
                 <el-radio-group
                   v-model="currentEditFunction.component.selectedReturn"
                   :class="{ 'required-field': !currentEditFunction.component.selectedReturn }"
@@ -1382,7 +1540,7 @@
                     :key="radioIndex"
                     :value="returnItem.name"
                   >
-                    {{ returnItem.name }} ({{ returnItem.type }})
+                    {{ returnItem.name }} ({{ getReturnTypeDisplayName(returnItem.type) }})
                     <span v-if="returnItem.description" class="return-desc"
                       >- {{ returnItem.description }}</span
                     >
@@ -1571,10 +1729,6 @@
                 <div class="parameters-section">
                   <div class="section-header">
                     <h5>参数配置</h5>
-                    <el-button size="small" type="primary" @click="addFunctionParameter">
-                      <Icon icon="ep:plus" />
-                      添加参数
-                    </el-button>
                   </div>
 
                   <div
@@ -1585,32 +1739,131 @@
                   >
                     <div class="param-header">
                       <span class="param-index">参数 {{ paramEditIndex + 1 }}</span>
-                      <el-button
-                        size="small"
-                        text
-                        type="danger"
-                        @click="removeFunctionParameter(paramEditIndex)"
-                      >
-                        <Icon icon="ep:delete" />
-                      </el-button>
                     </div>
 
                     <el-form-item label="参数类型">
-                      <el-select v-model="param.type" @change="onParameterTypeChange(param)">
-                        <el-option label="表达式" value="expression" />
+                      <el-select
+                        v-model="param.type"
+                        @change="onParameterTypeChange(param)"
+                        disabled
+                      >
+                        <el-option label="表" value="table" />
+                        <el-option label="字段" value="field" />
+                        <el-option label="字段数组" value="field[]" />
+                        <el-option label="字符串" value="string" />
                         <el-option label="数值" value="number" />
-                        <el-option label="文本" value="text" />
-                        <el-option label="布尔值" value="boolean" />
+                        <el-option label="表达式" value="expression" />
                       </el-select>
                     </el-form-item>
 
                     <el-form-item label="参数值">
+                      <!-- 表选择 -->
+                      <div
+                        v-if="param.type === 'table'"
+                        class="param-drop-wrapper"
+                        @drop="handleSingleParamDrop($event, param, 'table')"
+                        @dragover="handleSingleParamDragOver"
+                        @dragleave="handleSingleParamDragLeave"
+                      >
+                        <el-select
+                          v-model="param.selectedTable"
+                          placeholder="请选择表或拖拽到此处"
+                          clearable
+                          filterable
+                          value-key="value"
+                          @change="updateParameterDisplay(param)"
+                          style="width: 100%"
+                        >
+                          <el-option
+                            v-for="table in availableTableOptions"
+                            :key="table.value"
+                            :label="table.label"
+                            :value="table"
+                          />
+                        </el-select>
+                      </div>
+
+                      <!-- 字段选择 -->
+                      <div
+                        v-else-if="param.type === 'field'"
+                        class="param-drop-wrapper"
+                        @drop="handleSingleParamDrop($event, param, 'field')"
+                        @dragover="handleSingleParamDragOver"
+                        @dragleave="handleSingleParamDragLeave"
+                      >
+                        <el-select
+                          v-model="param.selectedField"
+                          placeholder="请选择字段或拖拽到此处"
+                          clearable
+                          filterable
+                          value-key="value"
+                          @change="updateParameterDisplay(param)"
+                          style="width: 100%"
+                        >
+                          <el-option
+                            v-for="field in availableFieldOptions"
+                            :key="field.value"
+                            :label="field.label"
+                            :value="field"
+                          />
+                        </el-select>
+                      </div>
+
+                      <!-- 字段数组拖拽选择 -->
+                      <div
+                        v-else-if="param.type === 'field[]'"
+                        class="field-array-drop-area full-width"
+                      >
+                        <div
+                          class="drop-zone"
+                          @drop="handleFieldArrayDrop($event, param)"
+                          @dragover="handleFieldArrayDragOver"
+                          @dragleave="handleFieldArrayDragLeave"
+                        >
+                          <div
+                            v-if="!param.selectedFields || param.selectedFields.length === 0"
+                            class="drop-placeholder"
+                          >
+                            <Icon icon="ep:mouse" />
+                            <span>拖拽字段到此处（支持多选）</span>
+                          </div>
+                          <div v-else class="selected-fields">
+                            <div
+                              v-for="(field, fieldIndex) in param.selectedFields"
+                              :key="fieldIndex"
+                              class="field-tag"
+                            >
+                              <Icon icon="ep:coin" class="field-icon" />
+                              <span class="field-name">{{ field.label || field.fieldName }}</span>
+                              <el-button
+                                size="small"
+                                text
+                                type="danger"
+                                @click="removeFieldFromArray(param, fieldIndex)"
+                                class="remove-btn"
+                              >
+                                <Icon icon="ep:close" />
+                              </el-button>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="field-count-info">
+                          已选择 {{ param.selectedFields?.length || 0 }} 个字段
+                          <span v-if="param.minItems" class="min-items-hint">
+                            (至少需要 {{ param.minItems }} 个)
+                          </span>
+                        </div>
+                      </div>
+
+                      <!-- 字符串输入 -->
                       <el-input
-                        v-if="param.type === 'text'"
+                        v-else-if="param.type === 'string'"
                         v-model="param.value"
-                        placeholder="输入文本值"
+                        placeholder="输入字符串值"
                         @input="updateParameterDisplay(param)"
                       />
+
+                      <!-- 数值输入 -->
                       <el-input-number
                         v-else-if="param.type === 'number'"
                         v-model="param.value"
@@ -1621,135 +1874,84 @@
                         :controls="true"
                         @change="updateParameterDisplay(param)"
                       />
-                      <el-select
-                        v-else-if="param.type === 'boolean'"
-                        v-model="param.value"
-                        @change="updateParameterDisplay(param)"
-                      >
-                        <el-option label="true" :value="true" />
-                        <el-option label="false" :value="false" />
-                      </el-select>
-                      <!-- 嵌套抽屉中的表达式类型支持拖拽构建 -->
-                      <div
-                        v-else
-                        class="nested-expression-drop-area parameter-canvas"
-                        @drop="handleNestedParameterDrop($event, param)"
-                        @dragover="handleParameterDragOver"
-                        @dragleave="handleParameterDragLeave"
-                      >
-                        <div
-                          v-if="!param.components || param.components.length === 0"
-                          class="drop-placeholder"
-                        >
-                          <Icon icon="ep:mouse" />
-                          <span>拖拽字段、函数或操作符到此处构建表达式</span>
-                          <el-dropdown
-                            trigger="click"
-                            @command="(cmd) => addParameterElement(param, cmd)"
-                            class="param-add-menu"
-                          >
-                            <el-button type="primary" size="small" circle>
-                              <Icon icon="ep:plus" />
-                            </el-button>
-                            <template #dropdown>
-                              <el-dropdown-menu>
-                                <el-dropdown-item command="number">添加数值</el-dropdown-item>
-                                <el-dropdown-item command="text">添加文本</el-dropdown-item>
-                                <el-dropdown-item command="boolean">添加布尔值</el-dropdown-item>
-                              </el-dropdown-menu>
-                            </template>
-                          </el-dropdown>
-                        </div>
-                        <div v-else class="nested-expression-content">
-                          <div class="expression-components">
-                            <div
-                              v-for="(component, compIndex) in param.components"
-                              :key="`nested-param-${param.id}-${compIndex}`"
-                              class="expression-component"
-                              :class="component.type"
-                            >
-                              <div class="component-content">
-                                <Icon :icon="getComponentIcon(component)" class="component-icon" />
-                                <span class="component-label">{{
-                                  getComponentDisplayText(component)
-                                }}</span>
-                              </div>
-                              <div class="component-actions">
-                                <el-button
-                                  size="small"
-                                  text
-                                  type="danger"
-                                  @click.stop="removeParameterComponent(param, compIndex)"
-                                >
-                                  <Icon icon="ep:close" />
-                                </el-button>
-                              </div>
-                            </div>
 
-                            <el-dropdown
-                              trigger="click"
-                              @command="(cmd) => addParameterElement(param, cmd)"
-                              class="expression-add-menu"
-                            >
-                              <el-button size="small" text circle>
-                                <Icon icon="ep:plus" />
-                              </el-button>
-                              <template #dropdown>
-                                <el-dropdown-menu>
-                                  <el-dropdown-item command="number">添加数值</el-dropdown-item>
-                                  <el-dropdown-item command="text">添加文本</el-dropdown-item>
-                                  <el-dropdown-item command="boolean">添加布尔值</el-dropdown-item>
-                                </el-dropdown-menu>
-                              </template>
-                            </el-dropdown>
-                          </div>
-
-                          <!-- 表达式预览 -->
+                      <!-- 表达式编辑 -->
+                      <div v-else-if="param.type === 'expression'" class="expression-param-editor">
+                        <div class="expression-canvas-area">
                           <div
-                            v-if="param.components && param.components.length > 0"
-                            class="expression-preview"
+                            class="expression-canvas"
+                            @drop="handleNestedExpressionDrop($event, param)"
+                            @dragover="handleNestedExpressionDragOver"
+                            @dragleave="handleNestedExpressionDragLeave"
                           >
-                            <div class="preview-header">
-                              <span>表达式预览：</span>
-                              <el-button
-                                size="small"
-                                text
-                                @click="compileParameterExpression(param)"
+                            <div
+                              v-if="
+                                !param.expressionComponents ||
+                                param.expressionComponents.length === 0
+                              "
+                              class="empty-canvas-hint"
+                            >
+                              <Icon icon="ep:cpu" class="empty-icon" />
+                              <p>拖拽字段、操作符到此处构建表达式</p>
+                              <div class="canvas-tips">
+                                <span>提示：从左侧工具栏拖拽元素到此区域</span>
+                              </div>
+                            </div>
+                            <div v-else class="expression-components">
+                              <div
+                                v-for="(component, componentIndex) in param.expressionComponents"
+                                :key="`${component.id}-${componentIndex}`"
+                                class="expression-component-item"
                               >
-                                <Icon icon="ep:cpu" class="mr-5px" />
-                                编译检查
-                              </el-button>
-                            </div>
-                            <div class="preview-content">
-                              <code>{{ generateParameterExpressionText(param.components) }}</code>
-                            </div>
-                            <div v-if="param.compilationResult" class="compilation-result">
-                              <el-alert
-                                :type="param.compilationResult.isValid ? 'success' : 'error'"
-                                :title="
-                                  param.compilationResult.isValid
-                                    ? '表达式语法正确'
-                                    : '表达式语法错误'
-                                "
-                                :description="param.compilationResult.message"
-                                show-icon
-                                :closable="false"
-                                size="small"
-                              />
+                                <ExpressionComponent
+                                  :component="component"
+                                  :index="componentIndex"
+                                  @update="
+                                    (newComponent) =>
+                                      updateExpressionComponent(param, componentIndex, newComponent)
+                                  "
+                                  @remove="removeExpressionComponent(param, componentIndex)"
+                                  @insert="
+                                    (newComponent) =>
+                                      insertExpressionComponent(
+                                        param,
+                                        componentIndex + 1,
+                                        newComponent
+                                      )
+                                  "
+                                />
+                              </div>
                             </div>
                           </div>
-
+                        </div>
+                        <div class="expression-actions">
                           <el-button
                             size="small"
-                            text
-                            type="danger"
-                            class="clear-expression"
-                            @click="clearParameter(param)"
+                            @click="clearParameterExpression(param)"
+                            :disabled="!param.expressionComponents?.length"
                           >
-                            <Icon icon="ep:close" />
+                            <Icon icon="ep:delete" />
+                            清空
+                          </el-button>
+                          <el-button
+                            size="small"
+                            type="primary"
+                            @click="validateParameterExpression(param)"
+                            :disabled="!param.expressionComponents?.length"
+                          >
+                            <Icon icon="ep:select" />
+                            验证
                           </el-button>
                         </div>
                       </div>
+
+                      <!-- 默认只读显示 -->
+                      <el-input
+                        v-else
+                        :value="param.displayValue || param.value"
+                        placeholder="参数值"
+                        disabled
+                      />
                     </el-form-item>
                   </div>
 
@@ -1757,18 +1959,7 @@
                     v-if="!nestedEditFunction.component?.parameters?.length"
                     class="empty-params"
                   >
-                    <p>暂无参数，点击上方"添加参数"按钮添加</p>
-                  </div>
-
-                  <!-- 嵌套抽屉参数列表底部添加参数按钮 -->
-                  <div
-                    v-if="nestedEditFunction.component?.parameters?.length"
-                    class="add-param-bottom"
-                  >
-                    <el-button size="small" type="primary" @click="addFunctionParameter" plain>
-                      <Icon icon="ep:plus" />
-                      添加参数
-                    </el-button>
+                    <p>该函数无需参数</p>
                   </div>
                 </div>
 
@@ -1777,10 +1968,10 @@
                 <!-- 返回值选择区域 -->
                 <div
                   class="returns-section"
-                  v-if="nestedEditFunction.component?.returnOptions?.length > 1"
+                  v-if="nestedEditFunction.component?.returnOptions?.length > 0"
                 >
                   <h5>选择返回值 <span class="required-mark">*</span></h5>
-                  <p class="return-hint">此函数有多个返回值，请选择一个作为表达式结果</p>
+                  <p class="return-hint">请选择函数的返回值作为表达式结果</p>
                   <el-radio-group
                     v-model="nestedEditFunction.component.selectedReturn"
                     :class="{ 'required-field': !nestedEditFunction.component.selectedReturn }"
@@ -1790,7 +1981,7 @@
                       :key="radioIndex"
                       :value="returnItem.name"
                     >
-                      {{ returnItem.name }} ({{ returnItem.type }})
+                      {{ returnItem.name }} ({{ getReturnTypeDisplayName(returnItem.type) }})
                       <span v-if="returnItem.description" class="return-desc"
                         >- {{ returnItem.description }}</span
                       >
@@ -1857,7 +2048,12 @@ import {
   getMaxRuleInfo
 } from '@/api/drug/qc/rule/builder'
 
-import { QcFunctionConfigApi, QcOperatorConfigApi, QcExpressionApi, QcBuilderTableMetadataApi } from '@/api/drug/qc/builder'
+import {
+  QcFunctionConfigApi,
+  QcOperatorConfigApi,
+  QcExpressionApi,
+  QcBuilderTableMetadataApi
+} from '@/api/drug/qc/builder'
 import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
 
 // 路由和基础状态
@@ -1968,7 +2164,7 @@ const activeGroupTableTypes = computed({
     if (!activeGroup.value) return []
     // 实时从检测结果获取表类型
     const detectedTables = getDetectedTablesForGroup(activeGroup.value)
-    return detectedTables.map(table => table.value)
+    return detectedTables.map((table) => table.value)
   },
   set(newValue) {
     if (activeGroup.value) {
@@ -2019,6 +2215,9 @@ const showNestedDrawer = ref(false)
 const nestedEditFunction = ref(null)
 const nestedActiveTab = ref('datasource')
 
+// 合并抽屉工具栏状态
+const combinedActiveTab = ref('datasource')
+
 // 全局拖拽状态管理
 const globalDragData = ref(null)
 const isDragging = ref(false)
@@ -2029,7 +2228,12 @@ const draggedGroupIndex = ref(-1)
 // 初始化
 onMounted(async () => {
   try {
-    await Promise.all([loadDataSource(), loadFunctions(), loadOperators(), loadTableAndFieldMetadata()])
+    await Promise.all([
+      loadDataSource(),
+      loadFunctions(),
+      loadOperators(),
+      loadTableAndFieldMetadata()
+    ])
 
     if (isEdit.value) {
       await loadRuleData(route.params.id)
@@ -2070,7 +2274,7 @@ const loadDataSource = async () => {
     const { treeData: response } = await getDataSourceCategories()
     const treeData = processTreeData(response || [])
     dataSourceTreeData.value = treeData
-    
+
     // 提取表和字段选项
     extractTableAndFieldOptions(treeData)
   } catch (error) {
@@ -2114,15 +2318,15 @@ const processTreeData = (treeData, parentTableName = null) => {
 const extractTableAndFieldOptions = (treeData) => {
   const tables = new Set()
   const fields = new Set()
-  
+
   const traverseTree = (nodes, currentCategoryCode = null) => {
-    nodes.forEach(node => {
+    nodes.forEach((node) => {
       // 更新当前分类代码
       const nodeCategory = node.categoryCode || currentCategoryCode
-      
+
       // 排除标准库分类
       const isStandardLibrary = nodeCategory === 'STANDARD_TABLES'
-      
+
       if (!isStandardLibrary) {
         if (node.type === 'table' && node.tableName) {
           tables.add(node.tableName)
@@ -2131,17 +2335,17 @@ const extractTableAndFieldOptions = (treeData) => {
           fields.add(fieldKey)
         }
       }
-      
+
       if (node.children && node.children.length > 0) {
         traverseTree(node.children, nodeCategory)
       }
     })
   }
-  
+
   traverseTree(treeData)
-  
+
   // 更新可用选项
-  availableTableOptions.value = Array.from(tables).map(tableName => {
+  availableTableOptions.value = Array.from(tables).map((tableName) => {
     const tableInfo = getTableInfo(tableName)
     return {
       value: tableName,
@@ -2149,14 +2353,14 @@ const extractTableAndFieldOptions = (treeData) => {
     }
   })
 
-  availableFieldOptions.value = Array.from(fields).map(fieldKey => {
+  availableFieldOptions.value = Array.from(fields).map((fieldKey) => {
     const fieldInfo = getFieldInfo(fieldKey)
     return {
       value: fieldKey,
       label: fieldInfo ? `${fieldInfo.chineseName}(${fieldKey})` : fieldKey
     }
   })
-  
+
   console.log('提取到的表选项:', availableTableOptions.value)
   console.log('提取到的字段选项:', availableFieldOptions.value)
 }
@@ -2246,7 +2450,7 @@ const loadTableAndFieldMetadata = async () => {
       })
     }
     tableMetadataMap.value = tableMapping
-    
+
     // 2. 加载字段元数据
     const fieldMapping: Record<string, string> = {}
     // 为每个表加载字段信息
@@ -2266,7 +2470,7 @@ const loadTableAndFieldMetadata = async () => {
       }
     }
     fieldMetadataMap.value = fieldMapping
-    
+
     console.log('表元数据映射:', tableMapping)
     console.log('字段元数据映射:', fieldMapping)
   } catch (error) {
@@ -2292,7 +2496,11 @@ const loadRuleData = async (ruleId) => {
       console.log('开始处理条件组数据:', data.conditionGroups)
       conditionGroups.value = data.conditionGroups.map((group) => ({
         ...group,
-        tableType: group.tableType ? (typeof group.tableType === 'string' ? group.tableType.split(',').filter(Boolean) : group.tableType) : [], // 解析自动检测的适用表字段
+        tableType: group.tableType
+          ? typeof group.tableType === 'string'
+            ? group.tableType.split(',').filter(Boolean)
+            : group.tableType
+          : [], // 解析自动检测的适用表字段
         expressionComponents: parseExpressionJson(group.expressionJson) || []
       }))
       activeGroupIndex.value = 0
@@ -2640,7 +2848,7 @@ const handleDrop = (event, groupId) => {
           type: 'function',
           value: dragData.data.functionName || '',
           label: dragData.data.chineseName || dragData.data.displayName || '',
-          parameters: [],
+          parameters: generateParametersFromConfig(dragData.data), // 自动生成参数
           config: dragData.data,
           returnOptions: functionReturnOptions,
           selectedReturn:
@@ -2667,12 +2875,12 @@ const handleDrop = (event, groupId) => {
     if (component && component.value) {
       group.expressionComponents.push(component)
       detectTablesAndFields() // 添加组件后检测表和字段
-      
+
       // 单独更新条件组的适用表
       nextTick(() => {
         updateConditionGroupTableTypes()
       })
-      
+
       console.log('成功添加组件:', component)
       ElMessage.success(`已添加${component.label || component.value}`)
     } else {
@@ -2694,6 +2902,171 @@ const handleDragOver = (event) => {
 const handleDragLeave = (event) => {
   if (!event.currentTarget.contains(event.relatedTarget)) {
     event.currentTarget.classList.remove('drag-over')
+  }
+}
+
+// 字段数组拖拽处理
+const handleFieldArrayDrop = (event, param) => {
+  event.preventDefault()
+  event.currentTarget.classList.remove('drag-over')
+
+  try {
+    const dragDataString = event.dataTransfer.getData('application/json')
+    if (!dragDataString || dragDataString.trim() === '') {
+      console.warn('拖拽数据为空')
+      return
+    }
+
+    const dragData = JSON.parse(dragDataString)
+
+    // 只处理字段拖拽
+    if (dragData.type === 'datasource' && dragData.nodeType === 'field') {
+      if (!param.selectedFields) {
+        param.selectedFields = []
+      }
+
+      // 检查是否已存在该字段（避免重复）
+      const fieldKey = `${dragData.data.tableName || 'CATALOG_DEFAULT'}.${dragData.data.fieldName}`
+      const exists = param.selectedFields.some(
+        (field) =>
+          field.fieldKey === fieldKey ||
+          (field.fieldName === dragData.data.fieldName &&
+            field.tableName === dragData.data.tableName)
+      )
+
+      if (exists) {
+        ElMessage.warning('该字段已存在，不能重复添加')
+        return
+      }
+
+      // 添加字段到数组
+      const field = {
+        fieldKey: fieldKey,
+        fieldName: dragData.data.fieldName,
+        tableName: dragData.data.tableName || 'CATALOG_DEFAULT',
+        label:
+          dragData.data.label ||
+          `${dragData.data.tableName || 'CATALOG_DEFAULT'}.${dragData.data.fieldName}`,
+        dataType: dragData.data.dataType || dragData.data.fieldType || '',
+        value: fieldKey
+      }
+
+      param.selectedFields.push(field)
+      updateParameterDisplay(param)
+
+      ElMessage.success('字段添加成功')
+    } else {
+      ElMessage.warning('只支持拖拽字段类型')
+    }
+  } catch (error) {
+    console.error('字段数组拖拽失败:', error)
+    ElMessage.error('拖拽失败：数据解析错误')
+  }
+}
+
+const handleFieldArrayDragOver = (event) => {
+  event.preventDefault()
+  event.dataTransfer.dropEffect = 'copy'
+  event.currentTarget.classList.add('drag-over')
+}
+
+const handleFieldArrayDragLeave = (event) => {
+  if (!event.currentTarget.contains(event.relatedTarget)) {
+    event.currentTarget.classList.remove('drag-over')
+  }
+}
+
+// 单个参数拖拽处理方法
+const handleSingleParamDrop = (event, param, paramType) => {
+  event.preventDefault()
+  event.currentTarget.classList.remove('drag-over')
+
+  try {
+    const dragDataString = event.dataTransfer.getData('application/json')
+    if (!dragDataString || dragDataString.trim() === '') {
+      console.warn('拖拽数据为空')
+      return
+    }
+
+    const dragData = JSON.parse(dragDataString)
+
+    // 只处理数据源拖拽
+    if (dragData.type === 'datasource') {
+      if (paramType === 'table' && dragData.nodeType === 'table') {
+        // 处理表拖拽 - 直接使用拖拽数据创建表选项，不限制标准库表
+        const tableValue = dragData.data.tableName || dragData.data.value
+        const tableOption = {
+          value: tableValue,
+          label: dragData.data.label || tableValue,
+          type: 'table'
+        }
+        param.selectedTable = tableOption
+        param.value = tableValue
+        updateParameterDisplay(param)
+        ElMessage.success(`已选择表: ${tableOption.label}`)
+      } else if (paramType === 'field' && dragData.nodeType === 'field') {
+        // 处理字段拖拽 - 直接使用拖拽数据创建字段选项，不限制标准库字段
+        let tableName = dragData.data.tableName
+        if (!tableName && dragData.data.fieldName) {
+          if (dragData.data.fieldName.includes('.')) {
+            const parts = dragData.data.fieldName.split('.')
+            tableName = parts[0]
+          } else {
+            tableName = 'CATALOG_DEFAULT'
+          }
+        }
+
+        const fieldKey = `${tableName}.${dragData.data.fieldName}`
+        const fieldOption = {
+          value: fieldKey,
+          label: dragData.data.label || fieldKey,
+          type: 'field'
+        }
+        param.selectedField = fieldOption
+        param.value = fieldKey
+        updateParameterDisplay(param)
+        ElMessage.success(`已选择字段: ${fieldOption.label}`)
+      } else {
+        ElMessage.warning(`请拖拽正确的${paramType === 'table' ? '表' : '字段'}类型`)
+      }
+    }
+  } catch (error) {
+    console.error('单个参数拖拽失败:', error)
+    ElMessage.error('拖拽失败：数据解析错误')
+  }
+}
+
+const handleSingleParamDragOver = (event) => {
+  event.preventDefault()
+  event.dataTransfer.dropEffect = 'copy'
+  event.currentTarget.classList.add('drag-over')
+}
+
+const handleSingleParamDragLeave = (event) => {
+  if (!event.currentTarget.contains(event.relatedTarget)) {
+    event.currentTarget.classList.remove('drag-over')
+  }
+}
+
+// 清除单个参数的选中值
+const clearSingleParam = (param) => {
+  if (param.type === 'table') {
+    param.selectedTable = null
+    param.value = ''
+    param.displayValue = '选择表'
+  } else if (param.type === 'field') {
+    param.selectedField = null
+    param.value = ''
+    param.displayValue = '选择字段'
+  }
+  updateParameterDisplay(param)
+}
+
+// 从字段数组中移除字段
+const removeFieldFromArray = (param, fieldIndex) => {
+  if (param.selectedFields && fieldIndex >= 0 && fieldIndex < param.selectedFields.length) {
+    param.selectedFields.splice(fieldIndex, 1)
+    updateParameterDisplay(param)
   }
 }
 
@@ -2755,12 +3128,16 @@ const getComponentDisplayText = (component) => {
 }
 
 const getFunctionLevelType = (level) => {
-  const types = { 'RECORD_LEVEL': 'info', 'AGGREGATE_LEVEL': 'warning', 'MIXED_LEVEL': 'danger' }
+  const types = { RECORD_LEVEL: 'info', AGGREGATE_LEVEL: 'warning', MIXED_LEVEL: 'danger' }
   return types[level] || 'info'
 }
 
 const getFunctionLevelText = (level) => {
-  const texts = { 'RECORD_LEVEL': '记录维度', 'AGGREGATE_LEVEL': '聚合维度', 'MIXED_LEVEL': '混合维度' }
+  const texts = {
+    RECORD_LEVEL: '记录维度',
+    AGGREGATE_LEVEL: '聚合维度',
+    MIXED_LEVEL: '混合维度'
+  }
   return texts[level] || ''
 }
 
@@ -2786,6 +3163,18 @@ const getActionText = (action) => {
   return texts[action] || action
 }
 
+const getReturnTypeDisplayName = (type) => {
+  const typeNames = {
+    STRING: '字符串',
+    NUMBER: '数值',
+    BOOLEAN: '布尔值',
+    DATE: '日期',
+    ARRAY: '数组',
+    OBJECT: '对象'
+  }
+  return typeNames[type] || type
+}
+
 const getCategoryName = (category) => {
   const names = {
     STATISTICS: '统计函数',
@@ -2800,7 +3189,8 @@ const getCategoryName = (category) => {
     PATTERN: '模式匹配',
     ARITHMETIC: '算术操作符',
     RANGE: '范围操作符',
-    APPROXIMATION: '近似比较'
+    APPROXIMATION: '近似比较',
+    CUSTOM: '自定义函数'
   }
   return names[category] || category
 }
@@ -2821,15 +3211,15 @@ const filterDataSourceNode = (value, data) => {
 const handleFunctionClick = (func) => {
   console.log('函数点击:', func)
 
-  // 如果函数有多个返回值选项，需要通过抽屉配置
+  // 如果函数有返回值选项，需要通过抽屉配置
   const returnOptions = getFunctionReturns(func)
-  if (returnOptions.length > 1) {
+  if (returnOptions.length > 0) {
     // 创建临时函数组件用于配置
     const tempComponent = {
       type: 'function',
       value: func.functionName || '',
       label: func.chineseName || func.displayName || '',
-      parameters: [],
+      parameters: generateParametersFromConfig(func), // 自动生成参数
       config: func,
       returnOptions: returnOptions,
       selectedReturn: returnOptions[0].name // 默认选择第一项
@@ -2951,30 +3341,44 @@ const createParameterByType = (type) => {
   }
 
   switch (type) {
-    case 'expression':
+    case 'table':
       return {
         ...baseParam,
         value: '',
-        displayValue: '表达式',
-        canDrag: true
+        displayValue: '表',
+        selectedTable: null
+      }
+    case 'field':
+      return {
+        ...baseParam,
+        value: '',
+        displayValue: '字段',
+        selectedField: null
+      }
+    case 'field[]':
+      return {
+        ...baseParam,
+        value: [],
+        displayValue: '字段组',
+        selectedFields: []
+      }
+    case 'string':
+      return {
+        ...baseParam,
+        value: '',
+        displayValue: '字符串'
       }
     case 'number':
       return {
         ...baseParam,
         value: 0,
-        displayValue: '0'
+        displayValue: '数值'
       }
-    case 'text':
+    case 'expression':
       return {
         ...baseParam,
         value: '',
-        displayValue: '文本'
-      }
-    case 'boolean':
-      return {
-        ...baseParam,
-        value: true,
-        displayValue: 'true'
+        displayValue: '表达式'
       }
     default:
       return baseParam
@@ -3003,7 +3407,7 @@ const createElementByType = (type) => {
         type: 'literal',
         subType: 'text',
         value: '""',
-        label: '文本',
+        label: '字符串',
         textValue: ''
       }
     case 'boolean':
@@ -3023,12 +3427,85 @@ const createElementByType = (type) => {
 // 获取参数类型名称
 const getParameterTypeName = (type) => {
   const names = {
-    expression: '表达式',
+    table: '表',
+    field: '字段',
+    'field[]': '字段数组',
+    string: '字符串',
     number: '数值',
-    text: '文本',
-    boolean: '布尔值'
+    expression: '表达式'
   }
   return names[type] || type
+}
+
+// 根据函数配置自动生成参数
+const generateParametersFromConfig = (functionConfig) => {
+  const parameters = []
+
+  try {
+    const paramConfig =
+      typeof functionConfig.parameterConfig === 'string'
+        ? JSON.parse(functionConfig.parameterConfig)
+        : functionConfig.parameterConfig
+
+    if (paramConfig && paramConfig.parameters && Array.isArray(paramConfig.parameters)) {
+      paramConfig.parameters.forEach((paramDef, index) => {
+        const param = {
+          id: Date.now() + Math.random() + index,
+          name: paramDef.name,
+          type: paramDef.type,
+          required: paramDef.required || false,
+          description: paramDef.description || '',
+          displayValue: getDefaultDisplayValue(paramDef.type),
+          value: getDefaultValue(paramDef.type)
+        }
+
+        // 处理特殊类型
+        switch (paramDef.type) {
+          case 'table':
+            param.selectedTable = null
+            break
+          case 'field':
+            param.selectedField = null
+            break
+          case 'field[]':
+            param.selectedFields = []
+            param.minItems = paramDef.min_items || 1
+            break
+        }
+
+        parameters.push(param)
+      })
+    }
+  } catch (error) {
+    console.error('解析函数参数配置失败:', error)
+  }
+
+  return parameters
+}
+
+// 获取默认显示值
+const getDefaultDisplayValue = (type) => {
+  const defaults = {
+    table: '表',
+    field: '字段',
+    'field[]': '字段组',
+    string: '字符串',
+    number: '0',
+    expression: '表达式'
+  }
+  return defaults[type] || ''
+}
+
+// 获取默认值
+const getDefaultValue = (type) => {
+  const defaults = {
+    table: '',
+    field: '',
+    'field[]': [],
+    string: '',
+    number: 0
+  }
+  return defaults[type] || ''
 }
 
 // 合并抽屉相关方法
@@ -3048,74 +3525,89 @@ const closeNestedDrawer = () => {
 }
 
 const addFunctionParameter = () => {
-  const editContext = nestedEditFunction.value || currentEditFunction.value
-  if (!editContext?.component) return
-
-  if (!editContext.component.parameters) {
-    editContext.component.parameters = []
-  }
-
-  const newParam = createParameterByType('expression')
-  editContext.component.parameters.push(newParam)
+  // 参数由函数配置自动生成，不支持手动添加
+  ElMessage.warning('函数参数已根据配置自动生成，无需手动添加')
 }
 
 const removeFunctionParameter = (paramIndex) => {
-  const editContext = nestedEditFunction.value || currentEditFunction.value
-  if (!editContext?.component?.parameters) return
-  editContext.component.parameters.splice(paramIndex, 1)
+  // 参数由函数配置自动生成，不支持手动删除
+  ElMessage.warning('函数参数由配置自动生成，不可删除')
 }
 
 const onParameterTypeChange = (param) => {
   switch (param.type) {
-    case 'expression':
+    case 'table':
       param.value = ''
-      param.displayValue = '表达式'
+      param.displayValue = '选择表'
+      param.selectedTable = null
+      break
+    case 'field':
+      param.value = ''
+      param.displayValue = '选择字段'
+      param.selectedField = null
+      break
+    case 'field[]':
+      param.value = []
+      param.displayValue = '选择字段'
+      param.selectedFields = []
+      break
+    case 'string':
+      param.value = ''
+      param.displayValue = '字符串'
       break
     case 'number':
       param.value = 0
       param.displayValue = '0'
       break
-    case 'text':
+    case 'expression':
       param.value = ''
-      param.displayValue = '文本'
-      break
-    case 'boolean':
-      param.value = true
-      param.displayValue = 'true'
+      param.displayValue = '表达式'
       break
   }
 }
 
 const updateParameterDisplay = (param) => {
   switch (param.type) {
-    case 'text':
-      param.displayValue = param.value || '文本'
+    case 'table':
+      param.displayValue = param.selectedTable ? param.selectedTable.value : '选择表'
+      param.value = param.selectedTable ? param.selectedTable.value : ''
+      break
+    case 'field':
+      param.displayValue = param.selectedField ? param.selectedField.value : '选择字段'
+      param.value = param.selectedField ? param.selectedField.value : ''
+      break
+    case 'field[]':
+      if (param.selectedFields && param.selectedFields.length > 0) {
+        // 显示具体的字段值，而不是"已选择N个字段"
+        param.displayValue = param.selectedFields.map((f) => f.value).join(', ')
+        param.value = param.selectedFields.map((f) => f.value)
+      } else {
+        param.displayValue = '选择字段'
+        param.value = []
+      }
+      break
+    case 'string':
+      param.displayValue = param.value || '字符串'
       break
     case 'number':
       param.displayValue = String(param.value)
       break
-    case 'boolean':
-      param.displayValue = String(param.value)
-      break
-    case 'expression':
-      if (param.components && param.components.length > 0) {
-        param.value = generateParameterExpressionText(param.components)
-        param.displayValue = param.value || '表达式'
-      } else {
-        param.displayValue = param.value || '表达式'
-      }
-      break
     default:
       param.displayValue = String(param.value || '')
   }
+
+  // 在参数更新后触发表和字段检测
+  nextTick(() => {
+    detectTablesAndFields()
+  })
 }
 
 const saveFunctionEdit = () => {
   if (!currentEditFunction.value) return
 
-  // 检查是否有多个返回值选项且未选择任何一项
+  // 检查是否有返回值选项且未选择任何一项
   if (
-    currentEditFunction.value.component.returnOptions?.length > 1 &&
+    currentEditFunction.value.component.returnOptions?.length > 0 &&
     !currentEditFunction.value.component.selectedReturn
   ) {
     ElMessage.error('请选择一个返回值选项')
@@ -3130,7 +3622,7 @@ const saveFunctionEdit = () => {
 
   // 确保有返回值选项时至少选择了一项
   if (
-    currentEditFunction.value.component.returnOptions?.length > 1 &&
+    currentEditFunction.value.component.returnOptions?.length > 0 &&
     !currentEditFunction.value.component.selectedReturn
   ) {
     currentEditFunction.value.component.selectedReturn =
@@ -3138,6 +3630,10 @@ const saveFunctionEdit = () => {
   }
 
   detectTablesAndFields() // 保存函数编辑后检测表和字段(包括嵌套)
+
+  // 同步函数参数选择的表和字段到适用表和检查字段
+  syncFunctionParametersToFormData()
+
   ElMessage.success('函数配置已保存')
   closeCombinedDrawer()
 }
@@ -3145,9 +3641,9 @@ const saveFunctionEdit = () => {
 const saveNestedFunctionEdit = () => {
   if (!nestedEditFunction.value) return
 
-  // 检查是否有多个返回值选项且未选择任何一项
+  // 检查是否有返回值选项且未选择任何一项
   if (
-    nestedEditFunction.value.component.returnOptions?.length > 1 &&
+    nestedEditFunction.value.component.returnOptions?.length > 0 &&
     !nestedEditFunction.value.component.selectedReturn
   ) {
     ElMessage.error('请选择一个返回值选项')
@@ -3162,7 +3658,7 @@ const saveNestedFunctionEdit = () => {
 
   // 确保有返回值选项时至少选择了一项
   if (
-    nestedEditFunction.value.component.returnOptions?.length > 1 &&
+    nestedEditFunction.value.component.returnOptions?.length > 0 &&
     !nestedEditFunction.value.component.selectedReturn
   ) {
     nestedEditFunction.value.component.selectedReturn =
@@ -3175,8 +3671,77 @@ const saveNestedFunctionEdit = () => {
   }
 
   detectTablesAndFields() // 保存嵌套函数编辑后检测表和字段
+
+  // 同步函数参数选择的表和字段到适用表和检查字段
+  syncFunctionParametersToFormData()
+
   ElMessage.success('函数配置已保存')
   closeNestedDrawer()
+}
+
+// 同步函数参数选择的表和字段到适用表和检查字段
+const syncFunctionParametersToFormData = () => {
+  const additionalTables = new Set<string>()
+  const additionalFields = new Set<string>()
+
+  // 检查主抽屉中的函数参数
+  if (currentEditFunction.value?.component?.parameters) {
+    extractTablesAndFieldsFromParameters(
+      currentEditFunction.value.component.parameters,
+      additionalTables,
+      additionalFields
+    )
+  }
+
+  // 检查嵌套抽屉中的函数参数
+  if (nestedEditFunction.value?.component?.parameters) {
+    extractTablesAndFieldsFromParameters(
+      nestedEditFunction.value.component.parameters,
+      additionalTables,
+      additionalFields
+    )
+  }
+
+  // 同步到表单数据
+  if (additionalTables.size > 0) {
+    const existingTables = new Set(selectedTableTypes.value)
+    additionalTables.forEach((table) => existingTables.add(table))
+    selectedTableTypes.value = Array.from(existingTables)
+  }
+
+  if (additionalFields.size > 0) {
+    const existingFields = new Set(ruleForm.checkFields)
+    additionalFields.forEach((field) => existingFields.add(field))
+    ruleForm.checkFields = Array.from(existingFields)
+  }
+}
+
+// 从函数参数中提取表和字段
+const extractTablesAndFieldsFromParameters = (
+  parameters: any[],
+  tables: Set<string>,
+  fields: Set<string>
+) => {
+  parameters.forEach((param) => {
+    if (param.type === 'table' && param.selectedTable?.value) {
+      tables.add(param.selectedTable.value)
+    } else if (param.type === 'field' && param.selectedField?.value) {
+      const fieldValue = param.selectedField.value
+      if (fieldValue.includes('.')) {
+        const [tableName] = fieldValue.split('.')
+        tables.add(tableName)
+        fields.add(fieldValue)
+      }
+    } else if (param.type === 'field[]' && param.selectedFields?.length > 0) {
+      param.selectedFields.forEach((field) => {
+        if (field.value?.includes('.')) {
+          const [tableName] = field.value.split('.')
+          tables.add(tableName)
+          fields.add(field.value)
+        }
+      })
+    }
+  })
 }
 
 // 参数拖拽相关方法
@@ -3242,7 +3807,7 @@ const handleParameterDrop = (event, param) => {
           type: 'function',
           value: dragData.data.functionName || '',
           label: dragData.data.chineseName || dragData.data.displayName || '',
-          parameters: [],
+          parameters: generateParametersFromConfig(dragData.data), // 自动生成参数
           config: dragData.data,
           returnOptions: paramFunctionReturnOptions,
           selectedReturn:
@@ -3302,7 +3867,118 @@ const clearParameter = (param) => {
   param.components = []
   param.compilationResult = null
 }
+// 处理参数表达式的拖拽放置
+const handleParameterExpressionDrop = (event, param) => {
+  event.preventDefault()
+  event.currentTarget.classList.remove('drag-over')
 
+  try {
+    const dragDataString = event.dataTransfer.getData('application/json')
+
+    if (!dragDataString || dragDataString.trim() === '') {
+      console.warn('拖拽数据为空')
+      return
+    }
+
+    const dragData = JSON.parse(dragDataString)
+
+    if (!param.expressionComponents) {
+      param.expressionComponents = []
+    }
+
+    let component = null
+
+    switch (dragData.type) {
+      case 'datasource':
+        if (dragData.nodeType === 'field') {
+          let tableName = dragData.data.tableName
+          if (!tableName && dragData.data.fieldName) {
+            if (dragData.data.fieldName.includes('.')) {
+              const parts = dragData.data.fieldName.split('.')
+              tableName = parts[0]
+            } else {
+              tableName = 'CATALOG_DEFAULT'
+            }
+          }
+
+          const fieldKey = `${tableName}.${dragData.data.fieldName}`
+
+          component = {
+            type: 'field',
+            value: fieldKey,
+            label: dragData.data.label || fieldKey,
+            dataType: dragData.data.dataType || dragData.data.fieldType || '',
+            tableName: tableName,
+            fieldName: dragData.data.fieldName
+          }
+        } else if (dragData.nodeType === 'table') {
+          component = {
+            type: 'table',
+            value: dragData.data.tableName || '',
+            label: dragData.data.label || '',
+            tableName: dragData.data.tableName
+          }
+        }
+        break
+
+      case 'function':
+        const functionReturnOptions = getFunctionReturns(dragData.data)
+        component = {
+          type: 'function',
+          value: dragData.data.functionName || '',
+          label: dragData.data.chineseName || dragData.data.displayName || '',
+          parameters: generateParametersFromConfig(dragData.data),
+          config: dragData.data,
+          returnOptions: functionReturnOptions,
+          selectedReturn:
+            functionReturnOptions.length > 0 ? functionReturnOptions[0].name : 'result'
+        }
+        break
+
+      case 'operator':
+        component = {
+          type: 'operator',
+          value: dragData.data.operatorSymbol || '',
+          label: dragData.data.chineseName || dragData.data.displayName || '',
+          config: dragData.data,
+          showTolerance: dragData.data.supportsTolerance || false,
+          tolerance: dragData.data.supportsTolerance ? '±0.1' : undefined
+        }
+        break
+
+      default:
+        console.warn('未知的拖拽类型:', dragData.type)
+        return
+    }
+
+    if (component && component.value) {
+      param.expressionComponents.push(component)
+      updateParameterDisplay(param)
+      detectTablesAndFields()
+
+      console.log('成功添加组件到参数表达式:', component)
+      ElMessage.success(`已添加${component.label || component.value}`)
+    } else {
+      console.warn('创建组件失败，数据不完整:', dragData)
+      ElMessage.warning('拖拽失败：数据不完整')
+    }
+  } catch (error) {
+    console.error('拖拽数据解析失败:', error)
+    ElMessage.error('拖拽失败：数据解析错误')
+  }
+}
+
+const handleParameterExpressionDragOver = (event) => {
+  event.preventDefault()
+  event.dataTransfer.dropEffect = 'copy'
+  event.currentTarget.classList.add('drag-over')
+}
+
+const handleParameterExpressionDragLeave = (event) => {
+  if (!event.currentTarget.contains(event.relatedTarget)) {
+    event.currentTarget.classList.remove('drag-over')
+  }
+}
 // 解析嵌套表达式以便可视化显示
 const parseNestedExpression = (expression) => {
   if (!expression) return []
@@ -3395,7 +4071,7 @@ const isNumberLiteral = (component) => {
 }
 
 const isTextLiteral = (component) => {
-  return component.subType === 'text' || component.label === '文本'
+  return component.subType === 'text' || component.label === '字符串'
 }
 
 const isBooleanLiteral = (component) => {
@@ -3416,7 +4092,7 @@ const updateLiteralValue = (component, value) => {
   } else if (component.subType === 'text') {
     component.textValue = value
     component.value = `"${value}"`
-    component.label = value || '文本'
+    component.label = value || '字符串'
   } else if (component.subType === 'boolean') {
     component.booleanValue = value
     component.value = String(value)
@@ -3429,7 +4105,7 @@ const removeComponent = (groupId, compIndex) => {
   if (group && group.expressionComponents) {
     group.expressionComponents.splice(compIndex, 1)
     detectTablesAndFields() // 删除组件后检测表和字段
-    
+
     // 单独更新条件组的适用表
     nextTick(() => {
       updateConditionGroupTableTypes()
@@ -3446,6 +4122,14 @@ const generateExpressionText = (components) => {
         const params = comp.parameters
           ? comp.parameters
               .map((p) => {
+                // 如果参数有表达式组件，递归生成表达式文本
+                if (
+                  p.type === 'expression' &&
+                  p.expressionComponents &&
+                  p.expressionComponents.length > 0
+                ) {
+                  return generateExpressionText(p.expressionComponents)
+                }
                 return p.displayValue || p.value || p.type
               })
               .join(', ')
@@ -3479,7 +4163,7 @@ const compileExpression = async (group) => {
 
     const data = await QcExpressionApi.compileRuleExpression({
       expressionJson,
-      tableName: 'temp_table'
+      checkDimension: ruleForm.checkDimension // 传递规则的检查维度
     })
 
     group.compilationResult = {
@@ -3488,7 +4172,8 @@ const compileExpression = async (group) => {
         ? '表达式语法正确'
         : data.errors && data.errors.length > 0
           ? data.errors.map((err) => err.errorDescription).join('; ')
-          : '编译失败'
+          : '编译失败',
+      sqlExpression: data.sqlExpression // 保存SQL表达式
     }
   } catch (error) {
     group.compilationResult = {
@@ -3612,6 +4297,31 @@ const analyzeComponentRecursively = (
     // 递归分析函数参数
     if (component.parameters) {
       component.parameters.forEach((param: any) => {
+        // 检查参数选择的表和字段
+        if (param.type === 'table' && param.selectedTable?.value) {
+          tablesUsed.add(param.selectedTable.value)
+        } else if (param.type === 'field' && param.selectedField?.value) {
+          const fieldValue = param.selectedField.value
+          if (fieldValue.includes('.')) {
+            const [tableName, fieldName] = fieldValue.split('.')
+            if (tableName && fieldName) {
+              tablesUsed.add(tableName)
+              fieldsUsed.add(fieldValue)
+            }
+          }
+        } else if (param.type === 'field[]' && param.selectedFields?.length > 0) {
+          param.selectedFields.forEach((field: any) => {
+            if (field.value?.includes('.')) {
+              const [tableName, fieldName] = field.value.split('.')
+              if (tableName && fieldName) {
+                tablesUsed.add(tableName)
+                fieldsUsed.add(field.value)
+              }
+            }
+          })
+        }
+
+        // 检查参数的嵌套组件
         if (param.components) {
           param.components.forEach((subComp: any) => {
             analyzeComponentRecursively(
@@ -3688,63 +4398,198 @@ const getAvailableVariables = (group: any) => {
     )
   })
 
-  // 函数返回值变量 - 根据函数的实际返回值配置生成
+  // 1. 维度变量 - 根据检查维度动态生成
+  const dimensionVariables = getDimensionVariables()
+  variables.push(...dimensionVariables)
+
+  // 2. 表级别变量
+  tablesUsed.forEach((tableName: string) => {
+    const tableInfo = getTableInfo(tableName)
+    variables.push({
+      name: `\${${tableName}}`,
+      type: 'table',
+      description: tableInfo ? `${tableInfo.chineseName}` : tableName,
+      example: `${tableName}`
+    })
+  })
+
+  // 3. 字段级别变量
+  fieldsUsed.forEach((fieldPath: string) => {
+    const [tableName, fieldName] = fieldPath.split('.')
+    const fieldInfo = getFieldInfo(fieldPath)
+    const tableInfo = getTableInfo(tableName)
+
+    let description = fieldPath
+    if (fieldInfo && tableInfo) {
+      description = `${tableInfo.chineseName}.${fieldInfo.chineseName}`
+    } else if (fieldInfo) {
+      description = fieldInfo.chineseName
+    } else if (tableInfo) {
+      description = `${tableInfo.chineseName}.${fieldName}`
+    }
+
+    variables.push({
+      name: `\${${tableName}.${fieldName}}`,
+      type: 'field',
+      description: description,
+      example: `${fieldPath}`
+    })
+  })
+
+  // 4. 函数返回值变量
   functionsUsed.forEach((funcName: string) => {
     const functionConfig = functionsWithConfig.get(funcName)
     if (functionConfig) {
-      // 获取函数的所有返回值选项
       const returnOptions = getFunctionReturns(functionConfig)
 
       if (returnOptions.length > 0) {
-        // 为每个返回值创建变量
         returnOptions.forEach((returnOption: any) => {
           variables.push({
             name: `\${${funcName}.${returnOption.name}}`,
             type: 'function',
-            description: `${getFunctionDisplayName(funcName)}的${returnOption.name}${returnOption.description ? `(${returnOption.description})` : ''}`,
-            example: `${getFunctionExample(funcName)} - ${returnOption.name}返回值`
+            description:
+              returnOption.description ||
+              `${getFunctionDisplayName(funcName)}.${returnOption.name}`,
+            example: `${returnOption.name}`
           })
         })
       } else {
-        // 如果没有特定的返回值配置，使用默认的result
         variables.push({
           name: `\${${funcName}.result}`,
           type: 'function',
-          description: `${getFunctionDisplayName(funcName)}结果`,
-          example: getFunctionExample(funcName)
+          description: `${getFunctionDisplayName(funcName)}.result`,
+          example: 'result'
         })
       }
     } else {
-      // 如果没有配置信息，使用默认的result
       variables.push({
         name: `\${${funcName}.result}`,
         type: 'function',
-        description: `${getFunctionDisplayName(funcName)}结果`,
-        example: getFunctionExample(funcName)
+        description: `${getFunctionDisplayName(funcName)}.result`,
+        example: 'result'
       })
     }
   })
 
-  // 表级别变量
-  tablesUsed.forEach((tableName: string) => {
-    variables.push({
-      name: `\${${tableName}}`,
-      type: 'table',
-      description: `${getTableDisplayName(tableName)}表`,
-      example: `示例：CATALOG_DEFAULT`
-    })
+  return variables
+}
+
+// 获取表变量
+const getTableVariables = (group: any) => {
+  return getAvailableVariables(group).filter((v) => v.type === 'table')
+}
+
+// 获取字段变量
+const getFieldVariables = (group: any) => {
+  return getAvailableVariables(group).filter((v) => v.type === 'field')
+}
+
+// 获取函数返回值变量
+const getFunctionVariables = (group: any) => {
+  return getAvailableVariables(group).filter((v) => v.type === 'function')
+}
+
+// 获取按表分组的字段变量
+const getGroupedFieldVariables = (group: any) => {
+  const fieldVariables = getFieldVariables(group)
+  const tableGroups = new Map<string, any>()
+
+  fieldVariables.forEach((field: any) => {
+    // 从变量名解析表名和字段名：${CATALOG_DEFAULT.upload_date}
+    const nameMatch = field.name.match(/\$\{([^.]+)\.([^}]+)\}/)
+    if (nameMatch) {
+      const tableName = nameMatch[1]
+      const fieldName = nameMatch[2]
+
+      if (!tableGroups.has(tableName)) {
+        const tableInfo = getTableInfo(tableName)
+        tableGroups.set(tableName, {
+          tableName,
+          tableDisplayName: tableInfo ? tableInfo.chineseName : tableName,
+          fields: []
+        })
+      }
+
+      const tableGroup = tableGroups.get(tableName)
+      tableGroup.fields.push({
+        name: field.name,
+        type: field.type,
+        displayName: `\${${fieldName}}`, // 只显示字段名，不包含表名
+        fieldDescription: field.description.includes('.')
+          ? field.description.split('.')[1]
+          : field.description
+      })
+    }
   })
 
-  // 字段级别变量
-  fieldsUsed.forEach((fieldPath: string) => {
-    const [tableName, fieldName] = fieldPath.split('.')
-    variables.push({
-      name: `\${${tableName}.${fieldName}}`,
-      type: 'field',
-      description: `${getTableDisplayName(tableName)}.${getFieldDisplayName(fieldName)}`,
-      example: `示例：${tableName}.${fieldName}`
-    })
+  return Array.from(tableGroups.values())
+}
+
+// 获取按函数分组的返回值变量
+const getGroupedFunctionVariables = (group: any) => {
+  const functionVariables = getFunctionVariables(group)
+  const functionGroups = new Map<string, any>()
+
+  functionVariables.forEach((funcVar: any) => {
+    // 从变量名解析函数名：${COUNT_BY_KEYS.record_count}
+    const nameMatch = funcVar.name.match(/\$\{([^.]+)\.([^}]+)\}/)
+    if (nameMatch) {
+      const functionName = nameMatch[1]
+      const returnName = nameMatch[2]
+
+      if (!functionGroups.has(functionName)) {
+        functionGroups.set(functionName, {
+          functionName,
+          functionDisplayName: getFunctionDisplayName(functionName),
+          returns: []
+        })
+      }
+
+      const functionGroup = functionGroups.get(functionName)
+      functionGroup.returns.push({
+        name: funcVar.name,
+        type: funcVar.type,
+        displayName: `\${${returnName}}`,
+        returnDescription: funcVar.description.includes('.')
+          ? funcVar.description.split('.')[1]
+          : returnName
+      })
+    }
   })
+
+  return Array.from(functionGroups.values())
+}
+
+// 获取维度变量
+const getDimensionVariables = () => {
+  const variables = []
+
+  switch (ruleForm.checkDimension) {
+    case 'ORGANIZATION':
+      variables.push({
+        name: '\${organization_code}',
+        type: 'dimension',
+        description: '机构代码',
+        example: 'ORG001'
+      })
+      break
+    case 'PROVINCE':
+      variables.push({
+        name: '\${domain_code}',
+        type: 'dimension',
+        description: '省份代码',
+        example: 'DOM001'
+      })
+      break
+    case 'RECORD':
+      variables.push({
+        name: '\${ypid}',
+        type: 'dimension',
+        description: '药品编码',
+        example: 'YPID123'
+      })
+      break
+  }
 
   return variables
 }
@@ -3765,22 +4610,6 @@ const getFunctionDisplayName = (funcName: string) => {
   return functionNames[funcName] || funcName
 }
 
-// 获取函数示例
-const getFunctionExample = (funcName: string) => {
-  const examples: Record<string, string> = {
-    COUNT: '统计结果数量（如：125）',
-    SUM: '数值求和结果（如：1250.50）',
-    AVG: '平均值结果（如：85.3）',
-    MAX: '最大值结果（如：999）',
-    MIN: '最小值结果（如：1）',
-    CONCAT: '拼接后的字符串（如：2024-01-01_ORG001_DRUG123）',
-    HAS_NULL_FIELDS: '检查结果（如：true/false）',
-    IS_VALID_DATE: '验证结果（如：true/false）',
-    LENGTH: '字符串长度（如：12）'
-  }
-  return examples[funcName] || '函数执行结果'
-}
-
 // 获取表显示名称
 const getTableDisplayName = (tableName: string) => {
   const tableNames: Record<string, string> = {
@@ -3788,7 +4617,7 @@ const getTableDisplayName = (tableName: string) => {
     INBOUND: '药品入库',
     OUTBOUND: '药品出库',
     USAGE: '临床用药',
-    HOSPITAL_INFO: '医院信息'
+    HOSPITAL: '医院信息'
   }
   return tableNames[tableName] || tableName
 }
@@ -3832,7 +4661,11 @@ const insertVariable = (variableName: string) => {
       textarea.setSelectionRange(newPos, newPos)
     })
 
-    ElMessage.success(`已插入变量：${variableName}`)
+    // 从变量名中提取中文描述用于成功提示
+    const availableVars = getAvailableVariables(activeGroup.value)
+    const variable = availableVars.find((v) => v.name === variableName)
+    const displayName = variable ? variable.description : variableName
+    ElMessage.success(`已插入变量：${displayName}`)
   }
 }
 
@@ -3853,7 +4686,9 @@ const handleSave = async () => {
       checkFields: ruleForm.checkFields, // 明确传递检查字段
       conditionGroups: conditionGroups.value.map((group) => ({
         ...group,
-        tableType: Array.isArray(group.tableType) ? group.tableType.join(',') : (group.tableType || ''), // 保存自动检测的适用表字段
+        tableType: Array.isArray(group.tableType)
+          ? group.tableType.join(',')
+          : group.tableType || '', // 保存自动检测的适用表字段
         expressionJson: {
           type: 'expression',
           components: group.expressionComponents || []
@@ -3901,7 +4736,7 @@ const removeParameterComponent = (param, compIndex) => {
   }
 }
 
-const editParameterComponent = (param, compIndex) => {
+/*const editParameterComponent = (param, compIndex) => {
   if (!param.components || !param.components[compIndex]) return
 
   const component = param.components[compIndex]
@@ -3936,8 +4771,9 @@ const editParameterComponent = (param, compIndex) => {
       component.tolerance = '±0.1'
     }
   }
-}
+}*/
 
+/*
 const generateParameterExpressionText = (components) => {
   if (!components || !Array.isArray(components)) return ''
 
@@ -3970,6 +4806,7 @@ const generateParameterExpressionText = (components) => {
     })
     .join(' ')
 }
+*/
 
 const compileParameterExpression = async (param) => {
   try {
@@ -3978,9 +4815,13 @@ const compileParameterExpression = async (param) => {
       components: param.components || []
     }
 
+    // 参数表达式编译时，尝试从上下文获取表名，否则使用默认值
+    const tableName = 'temp_table' // 参数表达式通常不依赖具体表
+
     const data = await QcExpressionApi.compileRuleExpression({
       expressionJson,
-      tableName: 'temp_table'
+      tableName: tableName,
+      checkDimension: ruleForm.checkDimension // 传递规则的检查维度
     })
 
     param.compilationResult = {
@@ -3989,7 +4830,8 @@ const compileParameterExpression = async (param) => {
         ? '表达式语法正确'
         : data.errors && data.errors.length > 0
           ? data.errors.map((err) => err.errorDescription).join('; ')
-          : '编译失败'
+          : '编译失败',
+      sqlExpression: data.sqlExpression // 保存SQL表达式
     }
   } catch (error) {
     param.compilationResult = {
@@ -4053,6 +4895,33 @@ const detectTablesAndFields = () => {
           param.components.forEach((subComp, subIndex) => {
             const subPath = `${paramPath}.comp[${subIndex}]`
             detectInComponent(subComp, depth + 1, subPath)
+          })
+        }
+
+        // 检查参数选择的表和字段
+        if (param.type === 'table' && param.selectedTable?.value) {
+          tables.add(param.selectedTable.value)
+          console.log(`[${paramPath}] 检测到选择的表: ${param.selectedTable.value}`)
+        } else if (param.type === 'field' && param.selectedField?.value) {
+          const fieldValue = param.selectedField.value
+          if (fieldValue.includes('.')) {
+            const [tableName, fieldName] = fieldValue.split('.')
+            if (tableName && fieldName) {
+              tables.add(tableName)
+              fields.add(fieldValue)
+              console.log(`[${paramPath}] 检测到选择的字段: ${fieldValue}`)
+            }
+          }
+        } else if (param.type === 'field[]' && param.selectedFields?.length > 0) {
+          param.selectedFields.forEach((field, fieldIdx) => {
+            if (field.value?.includes('.')) {
+              const [tableName, fieldName] = field.value.split('.')
+              if (tableName && fieldName) {
+                tables.add(tableName)
+                fields.add(field.value)
+                console.log(`[${paramPath}] 检测到选择的字段数组[${fieldIdx}]: ${field.value}`)
+              }
+            }
           })
         }
 
@@ -4121,8 +4990,8 @@ const detectTablesAndFields = () => {
 const updateConditionGroupTableTypes = () => {
   conditionGroups.value.forEach((group) => {
     const groupTables = getDetectedTablesForGroup(group)
-    const newTableTypes = groupTables.map(table => table.value)
-    
+    const newTableTypes = groupTables.map((table) => table.value)
+
     // 只有当检测到的表类型与当前不同时才更新
     if (JSON.stringify(newTableTypes) !== JSON.stringify(group.tableType)) {
       group.tableType = newTableTypes
@@ -4172,6 +5041,31 @@ const getDetectedTablesForGroup = (group) => {
           })
         }
 
+        // 检查参数选择的表和字段
+        if (param.type === 'table' && param.selectedTable?.value) {
+          tables.add(param.selectedTable.value)
+          console.log(`[${paramPath}] 检测到选择的表: ${param.selectedTable.value}`)
+        } else if (param.type === 'field' && param.selectedField?.value) {
+          const fieldValue = param.selectedField.value
+          if (fieldValue.includes('.')) {
+            const [tableName] = fieldValue.split('.')
+            if (tableName) {
+              tables.add(tableName)
+              console.log(`[${paramPath}] 检测到选择的字段表: ${tableName}`)
+            }
+          }
+        } else if (param.type === 'field[]' && param.selectedFields?.length > 0) {
+          param.selectedFields.forEach((field, fieldIdx) => {
+            if (field.value?.includes('.')) {
+              const [tableName] = field.value.split('.')
+              if (tableName) {
+                tables.add(tableName)
+                console.log(`[${paramPath}] 检测到选择的字段数组表[${fieldIdx}]: ${tableName}`)
+              }
+            }
+          })
+        }
+
         // 检查参数本身如果也是表达式
         if (param.type === 'expression' && param.value) {
           console.log(`[${paramPath}] 检测表达式参数: ${param.value}`)
@@ -4214,15 +5108,15 @@ const getDetectedTablesForGroup = (group) => {
 // 获取表映射供对话框使用
 const getTableMappingForDialog = () => {
   const mapping = {}
-  
+
   // 将检测到的表转换为映射格式
-  detectedTables.value.forEach(table => {
+  detectedTables.value.forEach((table) => {
     mapping[table.value] = {
       label: table.label,
       value: table.value
     }
   })
-  
+
   return mapping
 }
 
@@ -4304,6 +5198,296 @@ watch(dataSourceFilter, (val) => {
     }
   })
 })
+
+// 复制SQL表达式到剪贴板
+const copySqlToClipboard = async (sqlExpression: string) => {
+  try {
+    await navigator.clipboard.writeText(sqlExpression)
+    ElMessage.success('SQL表达式已复制到剪贴板')
+  } catch (error) {
+    console.error('复制失败:', error)
+    // 降级方案：使用传统方法
+    const textArea = document.createElement('textarea')
+    textArea.value = sqlExpression
+    document.body.appendChild(textArea)
+    textArea.focus()
+    textArea.select()
+    try {
+      document.execCommand('copy')
+      ElMessage.success('SQL表达式已复制到剪贴板')
+    } catch (fallbackError) {
+      console.error('降级复制也失败:', fallbackError)
+      ElMessage.error('复制失败，请手动复制')
+    }
+    document.body.removeChild(textArea)
+  }
+}
+
+// 表达式参数处理方法
+const handleNestedExpressionDrop = (event, param) => {
+  event.preventDefault()
+  event.stopPropagation()
+
+  try {
+    const dragData = JSON.parse(event.dataTransfer.getData('text/plain'))
+
+    if (!param.expressionComponents) {
+      param.expressionComponents = []
+    }
+
+    let newComponent
+
+    if (dragData.type === 'field') {
+      newComponent = {
+        id: `field_${Date.now()}`,
+        type: 'field',
+        value: dragData.value,
+        label: dragData.label || dragData.value,
+        dataType: dragData.dataType
+      }
+    } else if (dragData.type === 'operator') {
+      newComponent = {
+        id: `operator_${Date.now()}`,
+        type: 'operator',
+        value: dragData.operatorSymbol,
+        label: dragData.chineseName || dragData.operatorSymbol
+      }
+    } else if (dragData.type === 'function') {
+      newComponent = {
+        id: `function_${Date.now()}`,
+        type: 'function',
+        value: dragData.functionName,
+        label: dragData.chineseName || dragData.functionName,
+        parameters: []
+      }
+    }
+
+    if (newComponent) {
+      param.expressionComponents.push(newComponent)
+      updateParameterDisplay(param)
+    }
+  } catch (error) {
+    console.error('处理表达式参数拖放失败:', error)
+  }
+}
+
+const handleNestedExpressionDragOver = (event) => {
+  event.preventDefault()
+  event.dataTransfer.dropEffect = 'copy'
+}
+
+const handleNestedExpressionDragLeave = (event) => {
+  event.preventDefault()
+}
+
+const updateExpressionComponent = (param, index, newComponent) => {
+  if (param.expressionComponents && index >= 0 && index < param.expressionComponents.length) {
+    param.expressionComponents[index] = newComponent
+    updateParameterDisplay(param)
+  }
+}
+
+const removeExpressionComponent = (param, index) => {
+  if (param.expressionComponents && index >= 0 && index < param.expressionComponents.length) {
+    param.expressionComponents.splice(index, 1)
+    updateParameterDisplay(param)
+  }
+}
+
+const insertExpressionComponent = (param, index, newComponent) => {
+  if (param.expressionComponents) {
+    param.expressionComponents.splice(index, 0, newComponent)
+    updateParameterDisplay(param)
+  }
+}
+
+const clearParameterExpression = (param) => {
+  if (param.expressionComponents) {
+    param.expressionComponents = []
+    updateParameterDisplay(param)
+    ElMessage.success('表达式已清空')
+  }
+}
+
+// 添加参数表达式元素
+const addParameterExpressionElement = (param, type) => {
+  if (!param.expressionComponents) {
+    param.expressionComponents = []
+  }
+
+  const element = createElementByType(type)
+  param.expressionComponents.push(element)
+  updateParameterDisplay(param)
+  ElMessage.success(`已添加${getParameterTypeName(type)}元素`)
+}
+
+// 编辑参数表达式组件
+const editParameterComponent = (param, compIndex) => {
+  if (!param.expressionComponents || !param.expressionComponents[compIndex]) return
+
+  const component = param.expressionComponents[compIndex]
+
+  if (component.type === 'function') {
+    // 设置嵌套抽屉默认激活tab为数据源
+    nestedActiveTab.value = 'datasource'
+
+    // 确保有返回值选项时默认选择第一项
+    if (
+      component.returnOptions &&
+      component.returnOptions.length > 0 &&
+      !component.selectedReturn
+    ) {
+      component.selectedReturn = component.returnOptions[0].name
+    }
+
+    // 为参数中的函数组件创建嵌套编辑上下文
+    nestedEditFunction.value = {
+      component: component,
+      isParameterContext: true,
+      parameterContext: param,
+      componentIndex: compIndex
+    }
+    showNestedDrawer.value = true
+    return
+  }
+
+  if (component.value === '≈' || component.value === '≉') {
+    component.showTolerance = !component.showTolerance
+    if (component.showTolerance && !component.tolerance) {
+      component.tolerance = '±0.1'
+    }
+  }
+}
+
+// 移除参数表达式组件
+const removeParameterExpressionComponent = (param, compIndex) => {
+  if (param.expressionComponents && param.expressionComponents.length > compIndex) {
+    param.expressionComponents.splice(compIndex, 1)
+    updateParameterDisplay(param)
+    detectTablesAndFields() // 删除组件后检测表和字段
+  }
+}
+
+// 生成参数表达式文本
+const generateParameterExpressionText = (components) => {
+  if (!components || !Array.isArray(components)) return ''
+
+  return components
+    .map((comp) => {
+      if (comp.type === 'function') {
+        const params = comp.parameters
+          ? comp.parameters
+              .map((p) => {
+                // 如果参数有表达式组件，递归生成表达式文本
+                if (
+                  p.type === 'expression' &&
+                  p.expressionComponents &&
+                  p.expressionComponents.length > 0
+                ) {
+                  return generateParameterExpressionText(p.expressionComponents)
+                }
+                return p.displayValue || p.value || p.type
+              })
+              .join(', ')
+          : ''
+
+        const returnSuffix =
+          comp.selectedReturn && comp.selectedReturn !== 'result'
+            ? `.${comp.selectedReturn}`
+            : '.result'
+
+        return `${comp.value}(${params})${returnSuffix}`
+      } else if (comp.type === 'operator' && comp.tolerance) {
+        return `${comp.value}(${comp.tolerance})`
+      } else if (comp.type === 'literal') {
+        return comp.value || comp.label || ''
+      } else if (comp.type === 'field') {
+        // 保持原有格式，直接返回 value 值
+        return comp.value || comp.label || ''
+      }
+      return comp.value || comp.label || ''
+    })
+    .join(' ')
+}
+
+const validateParameterExpression = (param) => {
+  if (!param.expressionComponents || param.expressionComponents.length === 0) {
+    ElMessage.warning('表达式为空')
+    return
+  }
+
+  // 简单的表达式验证
+  const hasFields = param.expressionComponents.some((comp) => comp.type === 'field')
+  const hasOperators = param.expressionComponents.some((comp) => comp.type === 'operator')
+
+  if (hasFields && hasOperators) {
+    ElMessage.success('表达式验证通过')
+  } else {
+    ElMessage.warning('表达式需要包含字段和操作符')
+  }
+}
+
+// 清空参数表达式
+/*const clearParameterExpression = (param) => {
+  param.expressionComponents = []
+}*/
+
+// 主抽屉表达式参数处理方法
+const handleExpressionDrop = (event, param) => {
+  event.preventDefault()
+  event.stopPropagation()
+
+  try {
+    const dragData = JSON.parse(event.dataTransfer.getData('text/plain'))
+
+    if (!param.expressionComponents) {
+      param.expressionComponents = []
+    }
+
+    let newComponent
+
+    if (dragData.type === 'field') {
+      newComponent = {
+        id: `field_${Date.now()}`,
+        type: 'field',
+        value: dragData.value,
+        label: dragData.label || dragData.value,
+        dataType: dragData.dataType
+      }
+    } else if (dragData.type === 'operator') {
+      newComponent = {
+        id: `operator_${Date.now()}`,
+        type: 'operator',
+        value: dragData.operatorSymbol,
+        label: dragData.chineseName || dragData.operatorSymbol
+      }
+    } else if (dragData.type === 'function') {
+      newComponent = {
+        id: `function_${Date.now()}`,
+        type: 'function',
+        value: dragData.functionName,
+        label: dragData.chineseName || dragData.functionName,
+        parameters: []
+      }
+    }
+
+    if (newComponent) {
+      param.expressionComponents.push(newComponent)
+      updateParameterDisplay(param)
+    }
+  } catch (error) {
+    console.error('处理主抽屉表达式参数拖放失败:', error)
+  }
+}
+
+const handleExpressionDragOver = (event) => {
+  event.preventDefault()
+  event.dataTransfer.dropEffect = 'copy'
+}
+
+const handleExpressionDragLeave = (event) => {
+  event.preventDefault()
+}
 
 // 监听条件组变化，实时检测表和字段
 watch(
@@ -4886,6 +6070,53 @@ watch(
 
           .compilation-result {
             margin-top: 12px;
+
+            .sql-expression {
+              margin-top: 12px;
+              padding: 12px;
+              background: #f5f7fa;
+              border: 1px solid #e4e7ed;
+              border-radius: 4px;
+
+              .sql-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                font-weight: 500;
+                color: #409eff;
+                margin-bottom: 8px;
+                font-size: 13px;
+
+                .copy-sql-btn {
+                  padding: 4px 8px;
+                  min-height: auto;
+                  font-size: 12px;
+                  border-radius: 4px;
+
+                  &:hover {
+                    background: rgba(64, 158, 255, 0.1);
+                  }
+
+                  .iconify {
+                    font-size: 14px;
+                  }
+                }
+              }
+
+              .sql-content {
+                background: #2d3748;
+                color: #e2e8f0;
+                padding: 12px;
+                border-radius: 4px;
+                font-family: 'Fira Code', Consolas, monospace;
+                font-size: 13px;
+                line-height: 1.5;
+                overflow-x: auto;
+                margin: 0;
+                white-space: pre-wrap;
+                word-break: break-all;
+              }
+            }
           }
         }
       }
@@ -5198,176 +6429,281 @@ watch(
   }
 }
 
-// 帮助样式
-.template-help {
-  .variable-help {
-    padding: 12px 0;
+// 变量帮助样式
+.variable-category {
+  margin-bottom: 16px;
 
-    .variable-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 12px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid #ebeef5;
+  .category-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    border-left: 3px solid #409eff;
+    position: relative;
 
-      strong {
-        color: #303133;
-        font-size: 14px;
+    &.dimension-category {
+      background: linear-gradient(135deg, #f9f0ff, #faf2ff);
+      border-left-color: #722ed1;
+
+      .category-icon {
+        color: #722ed1;
+      }
+
+      .category-title {
+        color: #722ed1;
+      }
+
+      .category-badge {
+        background: #722ed1;
+        color: white;
       }
     }
 
-    .variable-list {
-      max-height: 400px;
-      overflow-y: auto;
-      margin-bottom: 12px;
+    &.table-category {
+      background: linear-gradient(135deg, #f0f9ff, #f0f9ff);
+      border-left-color: #67c23a;
 
-      &::-webkit-scrollbar {
-        width: 6px;
+      .category-icon {
+        color: #67c23a;
       }
 
-      &::-webkit-scrollbar-track {
-        background: #f1f1f1;
-        border-radius: 3px;
+      .category-title {
+        color: #67c23a;
       }
 
-      &::-webkit-scrollbar-thumb {
-        background: #c1c1c1;
-        border-radius: 3px;
+      .category-badge {
+        background: #67c23a;
+        color: white;
+      }
+    }
+
+    &.field-category {
+      background: linear-gradient(135deg, #fdf6ec, #fef7ed);
+      border-left-color: #e6a23c;
+
+      .category-icon {
+        color: #e6a23c;
+      }
+
+      .category-title {
+        color: #e6a23c;
+      }
+
+      .category-badge {
+        background: #e6a23c;
+        color: white;
+      }
+    }
+
+    &.function-category {
+      background: linear-gradient(135deg, #ecf5ff, #ecf5ff);
+      border-left-color: #409eff;
+
+      .category-icon {
+        color: #409eff;
+      }
+
+      .category-title {
+        color: #409eff;
+      }
+
+      .category-badge {
+        background: #409eff;
+        color: white;
+      }
+    }
+
+    .category-icon {
+      font-size: 14px;
+      color: #409eff;
+    }
+
+    .category-title {
+      font-weight: 600;
+      color: #303133;
+      font-size: 13px;
+      flex: 1;
+    }
+
+    .category-badge {
+      background: #409eff;
+      color: white;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 10px;
+      min-width: 18px;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      box-shadow: 0 1px 3px rgba(64, 158, 255, 0.3);
+    }
+  }
+}
+
+.variable-item {
+  padding: 6px 12px;
+  margin: 2px 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #ffffff;
+
+  &:hover {
+    background: #f5f7fa;
+    border-color: #c6e2ff;
+    box-shadow: 0 2px 4px rgba(64, 158, 255, 0.12);
+    transform: translateY(-1px);
+  }
+
+  &.table-item {
+    .variable-main {
+      justify-content: center;
+    }
+  }
+
+  .variable-main {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    .variable-name {
+      font-family: 'Fira Code', Consolas, monospace;
+      font-size: 12px;
+      font-weight: 600;
+      text-decoration: none;
+      padding: 3px 6px;
+      border-radius: 3px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      display: inline-block;
+
+      &.variable-dimension {
+        color: #722ed1;
+        background: #f9f0ff;
+        border: 1px solid #d3adf7;
 
         &:hover {
-          background: #a8a8a8;
-        }
-      }
-
-      .variable-item {
-        padding: 8px 12px;
-        margin: 4px 0;
-        border: 1px solid #e4e7ed;
-        border-radius: 6px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        background: #ffffff;
-
-        &:hover {
-          background: #f5f7fa;
-          border-color: #409eff;
-          box-shadow: 0 2px 4px rgba(64, 158, 255, 0.12);
+          background: #722ed1;
+          color: white;
           transform: translateY(-1px);
         }
+      }
 
-        .variable-main {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          margin-bottom: 4px;
+      &.variable-function {
+        color: #409eff;
+        background: #ecf5ff;
+        border: 1px solid #d9ecff;
 
-          .variable-link {
-            font-family: 'Fira Code', Consolas, monospace;
-            font-size: 13px;
-            font-weight: 600;
-            text-decoration: none;
-            padding: 4px 8px;
-            border-radius: 4px;
-            transition: all 0.2s ease;
-            cursor: pointer;
-            display: inline-block;
-
-            &.variable-function {
-              color: #409eff;
-              background: #ecf5ff;
-              border: 1px solid #d9ecff;
-
-              &:hover {
-                background: #409eff;
-                color: white;
-                transform: translateY(-1px);
-              }
-            }
-
-            &.variable-table {
-              color: #67c23a;
-              background: #f0f9ff;
-              border: 1px solid #c2e7b0;
-
-              &:hover {
-                background: #67c23a;
-                color: white;
-                transform: translateY(-1px);
-              }
-            }
-
-            &.variable-field {
-              color: #e6a23c;
-              background: #fdf6ec;
-              border: 1px solid #f5dab1;
-
-              &:hover {
-                background: #e6a23c;
-                color: white;
-                transform: translateY(-1px);
-              }
-            }
-          }
-
-          .variable-desc {
-            color: #606266;
-            font-size: 13px;
-            flex: 1;
-          }
+        &:hover {
+          background: #409eff;
+          color: white;
+          transform: translateY(-1px);
         }
+      }
 
-        .variable-example {
-          font-size: 12px;
-          color: #909399;
-          font-style: italic;
-          margin-top: 4px;
-          padding-left: 4px;
-          border-left: 2px solid #e4e7ed;
+      &.variable-table {
+        color: #67c23a;
+        background: #f0f9ff;
+        border: 1px solid #c2e7b0;
 
-          &:hover {
-            border-left-color: #409eff;
-          }
+        &:hover {
+          background: #67c23a;
+          color: white;
+          transform: translateY(-1px);
+        }
+      }
+
+      &.variable-field {
+        color: #e6a23c;
+        background: #fdf6ec;
+        border: 1px solid #f5dab1;
+
+        &:hover {
+          background: #e6a23c;
+          color: white;
+          transform: translateY(-1px);
         }
       }
     }
 
-    .variable-footer {
-      text-align: center;
-      padding-top: 8px;
-      border-top: 1px solid #ebeef5;
+    .colon {
+      color: #909399;
+      font-weight: 600;
+      font-size: 14px;
+    }
 
-      .el-text {
-        font-size: 12px;
+    .variable-desc {
+      color: #606266;
+      font-size: 12px;
+      flex: 1;
+
+      &.clickable {
+        cursor: pointer;
+        transition: all 0.2s ease;
+
+        &:hover {
+          color: #409eff;
+          text-decoration: underline;
+        }
       }
-    }
 
-    // 兼容旧版本样式
-    ul {
-      margin: 8px 0;
-      padding-left: 20px;
-    }
-
-    li {
-      margin: 4px 0;
-      font-size: 13px;
-    }
-
-    code {
-      background: #f5f5f5;
-      padding: 2px 4px;
-      border-radius: 3px;
-      font-family: 'Fira Code', Consolas, monospace;
-    }
-
-    .literal-display {
-      display: flex;
-      align-items: center;
-
-      .component-label {
-        font-size: 13px;
+      &.table-desc {
         font-weight: 500;
+        color: #303133;
+        font-size: 13px;
+        text-align: center;
+
+        &:hover {
+          color: #67c23a;
+        }
       }
+    }
+  }
+}
+
+.variable-footer {
+  text-align: center;
+  padding-top: 8px;
+  border-top: 1px solid #ebeef5;
+
+  .el-text {
+    font-size: 12px;
+  }
+}
+
+// 兼容旧版本样式
+.template-help {
+  ul {
+    margin: 8px 0;
+    padding-left: 20px;
+  }
+
+  li {
+    margin: 4px 0;
+    font-size: 13px;
+  }
+
+  code {
+    background: #f5f5f5;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: 'Fira Code', Consolas, monospace;
+  }
+
+  .literal-display {
+    display: flex;
+    align-items: center;
+
+    .component-label {
+      font-size: 13px;
+      font-weight: 500;
     }
   }
 }
@@ -5380,7 +6716,7 @@ watch(
 
   // 左侧工具栏区域
   .tools-section {
-    width: 400px;
+    width: 350px;
     background: #f8f9fa;
     border-right: 1px solid #e4e7ed;
     display: flex;
@@ -5392,54 +6728,28 @@ watch(
       background: white;
       font-weight: 600;
       font-size: 16px;
+      text-align: center;
     }
 
     .tools-content {
       flex: 1;
       overflow: hidden;
 
-      .tools-tabs {
+      .combined-tools-tabs {
         display: flex;
         height: 100%;
 
         :deep(.el-tabs__header) {
+          flex-shrink: 0;
           margin: 0;
         }
 
-        :deep(.el-tabs__nav-wrap) {
-          overflow-x: auto;
-          overflow-y: hidden;
-
-          &::-webkit-scrollbar {
-            height: 6px;
-          }
-
-          &::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 3px;
-          }
-
-          &::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
-            border-radius: 3px;
-
-            &:hover {
-              background: #a8a8a8;
-            }
-          }
-        }
-
-        :deep(.el-tabs__nav) {
-          white-space: nowrap;
-          min-width: max-content;
-        }
-
-        .el-tabs__content {
+        :deep(.el-tabs__content) {
           flex: 1;
           overflow: hidden;
         }
 
-        .el-tab-pane {
+        :deep(.el-tab-pane) {
           height: 100%;
           overflow: hidden;
         }
@@ -5449,7 +6759,7 @@ watch(
           align-items: center;
           gap: 6px;
 
-          i {
+          .iconify {
             font-size: 14px;
           }
 
@@ -5457,79 +6767,152 @@ watch(
             font-size: 13px;
           }
         }
-      }
 
-      .tool-panel {
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-
-        .panel-body {
-          flex: 1;
-          padding: 16px;
-          overflow: hidden;
+        .tool-panel {
+          height: 100%;
           display: flex;
           flex-direction: column;
 
-          .search-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 12px;
-
-            .search-input {
-              flex: 1;
-            }
-
-            .refresh-btn {
-              flex-shrink: 0;
-            }
-          }
-
-          .tree-container,
-          .function-container,
-          .operator-container {
+          .panel-body {
             flex: 1;
-            overflow-y: auto;
-            overflow-x: hidden;
+            padding: 16px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
 
-            &::-webkit-scrollbar {
-              width: 6px;
-            }
+            .search-row {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+              margin-bottom: 16px;
+              flex-shrink: 0;
 
-            &::-webkit-scrollbar-track {
-              background: #f1f1f1;
-              border-radius: 3px;
-            }
+              .search-input {
+                flex: 1;
+              }
 
-            &::-webkit-scrollbar-thumb {
-              background: #c1c1c1;
-              border-radius: 3px;
-
-              &:hover {
-                background: #a8a8a8;
+              .refresh-btn {
+                flex-shrink: 0;
               }
             }
-          }
 
-          // 添加树节点高度限制覆盖样式
-          .tree-container {
-            :deep(.el-tree-node__content) {
-              height: auto !important;
-              min-height: 12px;
-              padding: 4px 0;
+            .tree-container,
+            .function-container,
+            .operator-container {
+              flex: 1;
+              overflow-y: auto;
+              overflow-x: hidden;
+
+              &::-webkit-scrollbar {
+                width: 6px;
+              }
+
+              &::-webkit-scrollbar-track {
+                background: #f1f1f1;
+                border-radius: 3px;
+              }
+
+              &::-webkit-scrollbar-thumb {
+                background: #c1c1c1;
+                border-radius: 3px;
+
+                &:hover {
+                  background: #a8a8a8;
+                }
+              }
+
+              scroll-behavior: smooth;
             }
 
-            :deep(.el-tree-node__content.category) {
-              min-height: 12px;
+            /* 覆盖Element Tree默认高度限制 */
+            .tree-container {
+              :deep(.el-tree-node__content) {
+                height: auto !important;
+                min-height: 12px;
+                padding: 4px 0;
+              }
+
+              :deep(.el-tree-node__content.category) {
+                min-height: 12px;
+              }
+
+              :deep(.el-tree-node__content.field) {
+                min-height: 12px;
+              }
+
+              :deep(.el-tree-node__content.table) {
+                min-height: 12px;
+              }
             }
 
-            :deep(.el-tree-node__content.field) {
-              min-height: 12px;
-            }
+            // 操作符容器样式 - 参考主侧边栏的实现
+            .operator-container {
+              .el-collapse {
+                border: none;
 
-            :deep(.el-tree-node__content.table) {
-              min-height: 12px;
+                :deep(.el-collapse-item__header) {
+                  background: #f8f9fa;
+                  border: 1px solid #e4e7ed;
+                  border-radius: 4px;
+                  margin-bottom: 8px;
+                  font-size: 13px;
+                  font-weight: 500;
+                  padding: 8px 12px;
+                  color: #606266;
+                }
+
+                :deep(.el-collapse-item__content) {
+                  padding: 0 0 8px 0;
+                }
+              }
+
+              .operator-list {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+                gap: 8px;
+
+                .operator-item {
+                  padding: 12px 8px;
+                  border: 1px solid #e4e7ed;
+                  border-radius: 6px;
+                  text-align: center;
+                  cursor: grab;
+                  transition: all 0.3s;
+                  user-select: none;
+
+                  &:hover {
+                    border-color: #409eff;
+                    background-color: rgba(64, 158, 255, 0.05);
+                  }
+
+                  &:active {
+                    cursor: grabbing;
+                  }
+
+                  .operator-symbol {
+                    font-size: 16px;
+                    font-weight: 600;
+                    font-family: 'Fira Code', Consolas, monospace;
+                    margin-bottom: 4px;
+                  }
+
+                  .operator-name {
+                    font-size: 12px;
+                    color: #606266;
+                    margin-bottom: 2px;
+                  }
+
+                  .tolerance-hint {
+                    font-size: 10px;
+                    color: #409eff;
+                    background: rgba(64, 158, 255, 0.1);
+                    padding: 2px 4px;
+                    border-radius: 2px;
+                    margin-top: 4px;
+                  }
+                }
+              }
             }
           }
         }
@@ -5595,6 +6978,242 @@ watch(
             .param-index {
               font-weight: 500;
               color: #409eff;
+            }
+          }
+
+          // 主抽屉表达式参数编辑器样式
+          .expression-param-editor {
+            width: 100%;
+
+            .expression-canvas-area {
+              margin-bottom: 12px;
+
+              .expression-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 12px;
+                padding: 0 4px;
+
+                .expression-label {
+                  font-weight: 500;
+                  color: #303133;
+                }
+
+                .clear-btn {
+                  padding: 4px 8px;
+                  font-size: 12px;
+                }
+              }
+
+              .expression-canvas {
+                width: 100%;
+                min-height: 120px;
+                border: 2px dashed #d9d9d9;
+                border-radius: 8px;
+                padding: 16px;
+                background: #fff;
+                transition: all 0.3s ease;
+                position: relative;
+
+                &.drag-over {
+                  border-color: #409eff;
+                  background-color: rgba(64, 158, 255, 0.08);
+                  box-shadow: inset 0 0 0 1px rgba(64, 158, 255, 0.2);
+
+                  &::before {
+                    content: '松开鼠标添加到表达式';
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background: rgba(64, 158, 255, 0.9);
+                    color: white;
+                    padding: 8px 16px;
+                    border-radius: 4px;
+                    font-size: 14px;
+                    z-index: 10;
+                    pointer-events: none;
+                  }
+                }
+
+                .empty-canvas {
+                  height: 100px;
+                  display: flex;
+                  flex-direction: column;
+                  align-items: center;
+                  justify-content: center;
+                  color: #909399;
+
+                  .empty-icon {
+                    font-size: 32px;
+                    margin-bottom: 8px;
+                    opacity: 0.6;
+                  }
+
+                  p {
+                    margin: 0;
+                    font-size: 14px;
+                    text-align: center;
+                    line-height: 1.4;
+                  }
+
+                  .canvas-add-menu {
+                    margin-top: 16px;
+                  }
+                }
+
+                .expression-components {
+                  display: flex;
+                  flex-wrap: wrap;
+                  gap: 8px;
+                  align-items: center;
+                  min-height: 40px;
+
+                  .expression-component {
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                    padding: 8px 12px;
+                    background: #f0f0f0;
+                    border: 1px solid #d9d9d9;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    transition: all 0.3s;
+
+                    &:hover {
+                      background: #e6f7ff;
+                      border-color: #409eff;
+                    }
+
+                    &.field {
+                      background: #e6f7ff;
+                      border-color: #91d5ff;
+                    }
+
+                    &.function {
+                      background: #f6ffed;
+                      border-color: #b7eb8f;
+                    }
+
+                    &.operator {
+                      background: #fff7e6;
+                      border-color: #ffd591;
+                    }
+
+                    &.literal {
+                      background: #f9f0ff;
+                      border-color: #d3adf7;
+                    }
+
+                    .component-content {
+                      display: flex;
+                      align-items: center;
+                      gap: 4px;
+
+                      .component-icon {
+                        font-size: 14px;
+                      }
+
+                      .component-label {
+                        font-size: 13px;
+                        font-weight: 500;
+                      }
+
+                      .tolerance-config {
+                        display: flex;
+                        align-items: center;
+                      }
+                    }
+
+                    .component-actions {
+                      display: flex;
+                      gap: 2px;
+                      margin-left: 8px;
+                    }
+
+                    .function-display {
+                      display: flex;
+                      align-items: center;
+                      flex-wrap: wrap;
+
+                      .function-name {
+                        font-weight: 500;
+                        font-family: 'Fira Code', Consolas, monospace;
+                      }
+
+                      .function-params-display {
+                        font-family: 'Fira Code', Consolas, monospace;
+                      }
+
+                      .function-param-display {
+                        display: inline-flex;
+                        align-items: center;
+                        margin: 0 2px;
+
+                        .param-value {
+                          display: inline-block;
+                          padding: 2px 6px;
+                          border-radius: 3px;
+                          font-size: 12px;
+                          border: 1px solid transparent;
+
+                          &.expression {
+                            background: #e6f7ff;
+                            border-color: #91d5ff;
+                            color: #1890ff;
+                          }
+
+                          &.number {
+                            background: #f6ffed;
+                            border-color: #b7eb8f;
+                            color: #52c41a;
+                          }
+
+                          &.text {
+                            background: #fff7e6;
+                            border-color: #ffd591;
+                            color: #fa8c16;
+                          }
+
+                          &.boolean {
+                            background: #f9f0ff;
+                            border-color: #d3adf7;
+                            color: #722ed1;
+                          }
+                        }
+                      }
+                    }
+
+                    .literal-display {
+                      display: flex;
+                      align-items: center;
+
+                      .component-label {
+                        font-size: 13px;
+                        font-weight: 500;
+                      }
+                    }
+                  }
+                }
+
+                .expression-add-menu {
+                  margin-left: 8px;
+                  align-self: center;
+                }
+              }
+            }
+
+            .expression-actions {
+              display: flex;
+              gap: 8px;
+              justify-content: flex-end;
+              padding-top: 8px;
+              border-top: 1px solid #e4e7ed;
+
+              .el-button {
+                font-size: 12px;
+              }
             }
           }
         }
@@ -5943,6 +7562,294 @@ watch(
       }
     }
 
+    // 表达式参数编辑器样式
+    .expression-param-editor {
+      width: 100%;
+
+      .expression-canvas-area {
+        margin-bottom: 12px;
+
+        .expression-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 12px;
+          padding: 0 4px;
+
+          .expression-label {
+            font-weight: 500;
+            color: #303133;
+          }
+
+          .clear-btn {
+            padding: 4px 8px;
+            font-size: 12px;
+          }
+        }
+
+        .expression-canvas {
+          width: 100%;
+          min-height: 120px;
+          border: 2px dashed #d9d9d9;
+          border-radius: 8px;
+          padding: 16px;
+          background: #fff;
+          transition: all 0.3s ease;
+          position: relative;
+
+          &.drag-over {
+            border-color: #409eff;
+            background-color: rgba(64, 158, 255, 0.08);
+            box-shadow: inset 0 0 0 1px rgba(64, 158, 255, 0.2);
+
+            &::before {
+              content: '松开鼠标添加到表达式';
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              background: rgba(64, 158, 255, 0.9);
+              color: white;
+              padding: 8px 16px;
+              border-radius: 4px;
+              font-size: 14px;
+              z-index: 10;
+              pointer-events: none;
+            }
+          }
+
+          .empty-canvas {
+            height: 100px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #909399;
+
+            .empty-icon {
+              font-size: 32px;
+              margin-bottom: 8px;
+              opacity: 0.6;
+            }
+
+            p {
+              margin: 0;
+              font-size: 14px;
+              text-align: center;
+              line-height: 1.4;
+            }
+
+            .canvas-add-menu {
+              margin-top: 16px;
+            }
+          }
+
+          .expression-components {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            min-height: 40px;
+
+            .expression-component {
+              display: flex;
+              align-items: center;
+              gap: 4px;
+              padding: 8px 12px;
+              background: #f0f0f0;
+              border: 1px solid #d9d9d9;
+              border-radius: 6px;
+              cursor: pointer;
+              transition: all 0.3s;
+
+              &:hover {
+                background: #e6f7ff;
+                border-color: #409eff;
+              }
+
+              &.field {
+                background: #e6f7ff;
+                border-color: #91d5ff;
+              }
+
+              &.function {
+                background: #f6ffed;
+                border-color: #b7eb8f;
+              }
+
+              &.operator {
+                background: #fff7e6;
+                border-color: #ffd591;
+              }
+
+              &.literal {
+                background: #f9f0ff;
+                border-color: #d3adf7;
+              }
+
+              .component-content {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+
+                .component-icon {
+                  font-size: 14px;
+                }
+
+                .component-label {
+                  font-size: 13px;
+                  font-weight: 500;
+                }
+
+                .tolerance-config {
+                  display: flex;
+                  align-items: center;
+                }
+              }
+
+              .component-actions {
+                display: flex;
+                gap: 2px;
+                margin-left: 8px;
+              }
+
+              .function-display {
+                display: flex;
+                align-items: center;
+                flex-wrap: wrap;
+
+                .function-name {
+                  font-weight: 500;
+                  font-family: 'Fira Code', Consolas, monospace;
+                }
+
+                .function-params-display {
+                  font-family: 'Fira Code', Consolas, monospace;
+                }
+
+                .function-param-display {
+                  display: inline-flex;
+                  align-items: center;
+                  margin: 0 2px;
+
+                  .param-value {
+                    display: inline-block;
+                    padding: 2px 6px;
+                    border-radius: 3px;
+                    font-size: 12px;
+                    border: 1px solid transparent;
+
+                    &.expression {
+                      background: #e6f7ff;
+                      border-color: #91d5ff;
+                      color: #1890ff;
+                    }
+
+                    &.number {
+                      background: #f6ffed;
+                      border-color: #b7eb8f;
+                      color: #52c41a;
+                    }
+
+                    &.text {
+                      background: #fff7e6;
+                      border-color: #ffd591;
+                      color: #fa8c16;
+                    }
+
+                    &.boolean {
+                      background: #f9f0ff;
+                      border-color: #d3adf7;
+                      color: #722ed1;
+                    }
+                  }
+                }
+              }
+
+              .literal-display {
+                display: flex;
+                align-items: center;
+
+                .component-label {
+                  font-size: 13px;
+                  font-weight: 500;
+                }
+              }
+            }
+          }
+
+          .expression-add-menu {
+            margin-left: 8px;
+            align-self: center;
+          }
+
+          .expression-preview {
+            padding: 16px;
+            background: #f8f9fa;
+            border-top: 1px solid #e4e7ed;
+            border-radius: 0 0 4px 4px;
+
+            .preview-header {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              margin-bottom: 8px;
+              font-weight: 500;
+            }
+
+            .preview-content {
+              background: #2d3748;
+              color: #e2e8f0;
+              padding: 12px;
+              border-radius: 4px;
+              font-family: 'Fira Code', Consolas, monospace;
+              font-size: 14px;
+              line-height: 1.5;
+              overflow-x: auto;
+            }
+          }
+        }
+
+        .expression-preview {
+          padding: 16px;
+          background: #f8f9fa;
+          border-top: 1px solid #e4e7ed;
+          border-radius: 0 0 4px 4px;
+
+          .preview-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-weight: 500;
+          }
+
+          .preview-content2 {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 12px;
+            border-radius: 4px;
+            font-family: 'Fira Code', Consolas, monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            overflow-x: auto;
+          }
+        }
+      }
+
+      .expression-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+        padding-top: 8px;
+        border-top: 1px solid #e4e7ed;
+
+        .el-button {
+          font-size: 12px;
+        }
+      }
+    }
+
     .no-function-selected {
       height: 100%;
       display: flex;
@@ -6025,7 +7932,7 @@ watch(
             margin-bottom: 4px;
           }
 
-          .preview-content {
+          .preview-content2 {
             padding: 6px;
             font-size: 11px;
             max-height: 40px;
@@ -6194,7 +8101,7 @@ watch(
           font-size: 13px;
         }
 
-        .preview-content {
+        .preview-content2 {
           background: #2d3748;
           color: #e2e8f0;
           padding: 8px;
@@ -6257,6 +8164,143 @@ watch(
         position: absolute;
         top: 8px;
         right: 8px;
+      }
+    }
+  }
+
+  // 单个参数拖拽区域样式
+  .param-drop-wrapper {
+    position: relative;
+    transition: all 0.3s ease;
+
+    &.drag-over {
+      &::after {
+        content: '';
+        position: absolute;
+        top: -2px;
+        left: -2px;
+        right: -2px;
+        bottom: -2px;
+        border: 2px solid #409eff;
+        border-radius: 6px;
+        background-color: rgba(64, 158, 255, 0.05);
+        pointer-events: none;
+        z-index: 1;
+      }
+    }
+  }
+
+  // 字段数组拖拽样式
+  .field-array-drop-area {
+    &.full-width {
+      width: 100% !important;
+    }
+
+    .drop-zone {
+      min-height: 120px;
+      border: 2px dashed #d9d9d9;
+      border-radius: 8px;
+      padding: 16px;
+      transition: all 0.3s ease;
+      background: #fafafa;
+      position: relative;
+
+      &.drag-over {
+        border-color: #409eff;
+        background-color: rgba(64, 158, 255, 0.08);
+        box-shadow: inset 0 0 0 1px rgba(64, 158, 255, 0.2);
+
+        &::before {
+          content: '松开鼠标添加字段';
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          color: #409eff;
+          font-size: 14px;
+          font-weight: 500;
+          z-index: 1;
+        }
+      }
+
+      .drop-placeholder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 80px;
+        color: #909399;
+        font-size: 14px;
+
+        .ep-mouse {
+          font-size: 24px;
+          margin-bottom: 8px;
+          opacity: 0.6;
+        }
+      }
+
+      .selected-fields {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        min-height: 40px;
+
+        .field-tag {
+          display: flex;
+          align-items: center;
+          padding: 6px 12px;
+          background: #f0f2f5;
+          border: 1px solid #d9d9d9;
+          border-radius: 16px;
+          font-size: 13px;
+          color: #333;
+          transition: all 0.2s ease;
+
+          &:hover {
+            background: #e6f7ff;
+            border-color: #91d5ff;
+          }
+
+          .field-icon {
+            margin-right: 4px;
+            color: #1890ff;
+          }
+
+          .field-name {
+            margin-right: 4px;
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+
+          .remove-btn {
+            padding: 0;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-left: 4px;
+
+            &:hover {
+              background: #ff4d4f;
+              color: white;
+            }
+          }
+        }
+      }
+    }
+
+    .field-count-info {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #666;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+
+      .min-items-hint {
+        color: #f56c6c;
+        font-weight: 500;
       }
     }
   }
@@ -7105,5 +9149,91 @@ watch(
   padding: 16px 20px;
   border-top: 1px solid #e4e7ed;
   background: #fafafa;
+}
+
+// 单个参数拖拽区域样式
+.single-param-drop-area {
+  width: 100%;
+
+  .drop-zone {
+    width: 100%;
+    min-height: 40px;
+    border: 2px dashed #e4e7ed;
+    border-radius: 6px;
+    background-color: #fafafa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: all 0.3s ease;
+    cursor: pointer;
+
+    &:hover,
+    &.drag-over {
+      border-color: #409eff;
+      background-color: #f0f9ff;
+    }
+
+    .drop-placeholder {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #999;
+      font-size: 14px;
+
+      .icon {
+        font-size: 16px;
+        color: #c0c4cc;
+      }
+    }
+
+    .selected-item {
+      width: 100%;
+      padding: 4px 8px;
+
+      .item-tag {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background-color: #409eff;
+        color: white;
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-size: 14px;
+
+        .item-icon {
+          margin-right: 6px;
+          font-size: 14px;
+        }
+
+        .item-name {
+          flex: 1;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .remove-btn {
+          margin-left: 8px;
+          padding: 0;
+          min-height: auto;
+          width: 20px;
+          height: 20px;
+          background: rgba(255, 255, 255, 0.2);
+          border: none;
+          border-radius: 50%;
+          color: white;
+
+          &:hover {
+            background: rgba(255, 255, 255, 0.3);
+          }
+
+          .icon {
+            font-size: 12px;
+          }
+        }
+      }
+    }
+  }
 }
 </style>

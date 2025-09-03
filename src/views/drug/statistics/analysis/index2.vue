@@ -1,12 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import * as echarts from 'echarts'
-import { ElCard, ElTabPane, ElTabs, ElInputNumber, ElInput, ElButton, ElRow, ElCol, ElSelect, ElOption, ElDatePicker, ElSpace, ElDivider } from 'element-plus'
-import { Medicine, DataLine, OfficeBuilding, TrendCharts, CircleCheck, Filter, Calendar, MapLocation, Money, Promotion, SuccessFilled } from '@element-plus/icons-vue'
+import { ElCard, ElTabPane, ElTabs, ElInputNumber, ElInput, ElButton, ElRow, ElCol, ElStatistic, ElIcon } from 'element-plus'
 import type { ECharts } from 'echarts'
 import { getAccessToken } from '@/utils/auth'
-import PageHeader from '@/components/PageHeader/index.vue'
-import StatCard from '@/components/StatCard/index.vue'
 
 // API 前缀
 const API_PREFIX = 'http://localhost:48080/admin-api/analysis/'
@@ -23,32 +20,12 @@ const fixedBaseData = ref<any[]>([])
 const cityComparisonData = ref<any[]>([])
 const hospitalEfficiencyData = ref<any[]>([])
 
-// 筛选条件
-const selectedHospitals = ref<string[]>([])
-const selectedTimeRange = ref<string>('')
-const selectedRegion = ref<string>('')
-const comparisonMode = ref<string>('none')
-
-// 筛选选项
-const hospitalOptions = ref<any[]>([])
-const regionOptions = ref<any[]>([])
-const timeRangeOptions = [
-  { label: '近7天', value: '7d' },
-  { label: '近30天', value: '30d' },
-  { label: '近3个月', value: '3m' },
-  { label: '近6个月', value: '6m' },
-  { label: '近1年', value: '1y' }
-]
-const comparisonOptions = [
-  { label: '无对比', value: 'none' },
-  { label: '同比', value: 'yoy' },
-  { label: '环比', value: 'mom' }
-]
-
 // 参数输入
 const baseYear = ref<number>(2023)
 const domainCode = ref<string>('')
 const activeTab = ref<string>('overview')
+
+// 图表实例引用
 const allocationChart = ref<HTMLElement | null>(null)
 const proportionChart = ref<HTMLElement | null>(null)
 const keyDrugsChart = ref<HTMLElement | null>(null)
@@ -59,6 +36,18 @@ const yearOnYearChart = ref<HTMLElement | null>(null)
 const fixedBaseChart = ref<HTMLElement | null>(null)
 const cityChart = ref<HTMLElement | null>(null)
 const efficiencyChart = ref<HTMLElement | null>(null)
+
+// ECharts 实例
+let allocationEchart: ECharts | null = null
+let proportionEchart: ECharts | null = null
+let keyDrugsEchart: ECharts | null = null
+let equipEchart: ECharts | null = null
+let usageEchart: ECharts | null = null
+let regionEchart: ECharts | null = null
+let yearOnYearEchart: ECharts | null = null
+let fixedBaseEchart: ECharts | null = null
+let cityEchart: ECharts | null = null
+let efficiencyEchart: ECharts | null = null
 
 // 统计数据计算
 const statistics = computed(() => {
@@ -76,40 +65,6 @@ const statistics = computed(() => {
     avgUsageRate
   }
 })
-let allocationEchart: ECharts | null = null
-let proportionEchart: ECharts | null = null
-let keyDrugsEchart: ECharts | null = null
-let equipEchart: ECharts | null = null
-let usageEchart: ECharts | null = null
-let regionEchart: ECharts | null = null
-let yearOnYearEchart: ECharts | null = null
-let fixedBaseEchart: ECharts | null = null
-let cityEchart: ECharts | null = null
-let efficiencyEchart: ECharts | null = null
-
-// 扩展统计数据计算
-const extendedStatistics = computed(() => {
-  // 基础统计
-  const basicStats = statistics.value
-  
-  // 扩展统计指标
-  const totalAmount = drugAllocationData.value.reduce((sum, item) => sum + parseFloat(item.totalAmount || 0), 0)
-  const avgAmountPerHospital = basicStats.totalHospitals > 0 ? totalAmount / basicStats.totalHospitals : 0
-  const basicDrugUsageRate = basicUsageData.value.length > 0
-    ? (basicUsageData.value.reduce((sum, item) => sum + parseFloat(item.basicDrugAmountRate || 0), 0) / basicUsageData.value.length).toFixed(1)
-    : 0
-  const complianceRate = hospitalEfficiencyData.value.length > 0
-    ? (hospitalEfficiencyData.value.filter(item => parseFloat(item.efficiencyScore) >= 80).length / hospitalEfficiencyData.value.length * 100).toFixed(1)
-    : 0
-    
-  return {
-    ...basicStats,
-    totalAmount,
-    avgAmountPerHospital,
-    basicDrugUsageRate,
-    complianceRate
-  }
-})
 
 // 获取数据函数
 const fetchData = async (method: string, params?: any) => {
@@ -124,63 +79,7 @@ const fetchData = async (method: string, params?: any) => {
   return result.data
 }
 
-// 初始化筛选选项
-const initFilterOptions = async () => {
-  try {
-    // 获取医院列表
-    const hospitalList = await fetchData('hospitalList')
-    hospitalOptions.value = hospitalList.map(item => ({
-      label: item.organizationName,
-      value: item.hospitalCode
-    }))
-    
-    // 获取地区列表
-    const regionList = await fetchData('regionList')
-    regionOptions.value = regionList.map(item => ({
-      label: item.regionName,
-      value: item.domainCode
-    }))
-  } catch (error) {
-    console.error('筛选选项加载失败:', error)
-  }
-}
-
-// 应用筛选条件
-const applyFilters = async () => {
-  const filters = {
-    hospitals: selectedHospitals.value,
-    timeRange: selectedTimeRange.value,
-    region: selectedRegion.value,
-    comparison: comparisonMode.value
-  }
-  
-  try {
-    // 重新获取数据
-    drugAllocationData.value = await fetchData('drugAllocationRate', filters)
-    proportionTrendData.value = await fetchData('proportionTrend', filters)
-    keyDrugsData.value = await fetchData('keyDrugsProportionTrend', filters)
-    basicEquipData.value = await fetchData('basicDrugsEquipRate', filters)
-    basicUsageData.value = await fetchData('basicDrugsUsageRate', filters)
-    basisRegionData.value = await fetchData('basisDrugUsageByRegion', filters)
-    yearOnYearData.value = await fetchData('drugUsageYearOnYear', filters)
-    
-    // 重新初始化图表
-    setTimeout(() => {
-      initCharts()
-    }, 500)
-  } catch (error) {
-    console.error('数据筛选失败:', error)
-  }
-}
-
-// 重置筛选条件
-const resetFilters = () => {
-  selectedHospitals.value = []
-  selectedTimeRange.value = ''
-  selectedRegion.value = ''
-  comparisonMode.value = 'none'
-  applyFilters()
-}
+// 初始化所有数据
 const initData = async () => {
   try {
     drugAllocationData.value = await fetchData('drugAllocationRate')
@@ -212,7 +111,6 @@ const initData = async () => {
 //     containLabel: true
 //   }
 // })
-// 通用图表配置
 const getChartTheme = () => ({
   backgroundColor: 'transparent',
   textStyle: {
@@ -220,75 +118,36 @@ const getChartTheme = () => ({
   },
   color: ['#1890FF', '#52C41A', '#FAAD14', '#F5222D', '#722ED1', '#13C2C2'],
   grid: {
-    left: '8%',
-    right: '8%',
-    bottom: '8%',
-    top: '15%',
+    left: '10%',  // 增加左侧边距
+    right: '10%',  // 增加右侧边距
+    bottom: '10%',  // 增加底部边距
     containLabel: true
   }
 })
 // 初始化图表
 const initCharts = () => {
-  // 1. 药品配备率与使用率（增加筛选功能）
-  const filteredAllocationData = selectedHospitals.value.length > 0
-    ? drugAllocationData.value.filter(item => selectedHospitals.value.includes(item.hospitalCode))
-    : drugAllocationData.value
-
+  // 1. 药品配备率与使用率
   allocationEchart = echarts.init(allocationChart.value!)
   allocationEchart.setOption({
     ...getChartTheme(),
     title: {
       text: '药品配备率与使用率分析',
-      textStyle: { fontSize: 16, fontWeight: 'bold', color: '#262626' },
-      subtext: selectedHospitals.value.length > 0 ? `已筛选 ${selectedHospitals.value.length} 家机构` : '全部机构'
+      textStyle: { fontSize: 16, fontWeight: 'bold', color: '#262626' }
     },
     tooltip: {
       trigger: 'axis',
       backgroundColor: 'rgba(255,255,255,0.95)',
       borderColor: '#e8e8e8',
-      textStyle: { color: '#666' },
-      formatter: function(params) {
-        let result = `<strong>${params[0].name}</strong><br/>`
-        params.forEach(param => {
-          const icon = param.seriesType === 'bar' ? '■' : '●'
-          result += `<span style="color:${param.color}">${icon} ${param.seriesName}: ${param.value}${param.seriesName.includes('率') ? '%' : ''}</span><br/>`
-        })
-        return result
-      }
-    },
-    legend: {
-      top: 35,
       textStyle: { color: '#666' }
     },
-    toolbox: {
-      show: true,
-      feature: {
-        dataZoom: {
-          title: {
-            zoom: '区域缩放',
-            back: '区域缩放还原'
-          }
-        },
-        restore: {
-          title: '还原'
-        },
-        saveAsImage: {
-          title: '保存为图片'
-        }
-      },
-      right: 20,
-      top: 20
+    legend: {
+      top: 30,
+      textStyle: { color: '#666' }
     },
     xAxis: {
       type: 'category',
-      data: filteredAllocationData.map(item => item.organizationName),
-      axisLabel: { 
-        rotate: 45, 
-        color: '#666',
-        formatter: function(value) {
-          return value.length > 8 ? value.substring(0, 8) + '...' : value
-        }
-      },
+      data: drugAllocationData.value.map(item => item.organizationName),
+      axisLabel: { rotate: 45, color: '#666' },
       axisLine: { lineStyle: { color: '#e8e8e8' } }
     },
     yAxis: [
@@ -312,113 +171,41 @@ const initCharts = () => {
       {
         name: '配备总数',
         type: 'bar',
-        data: filteredAllocationData.map(item => item.totalDrugsConfigured),
-        itemStyle: { 
-          borderRadius: [4, 4, 0, 0],
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: '#4facfe' },
-            { offset: 1, color: '#00f2fe' }
-          ])
-        },
-        emphasis: {
-          itemStyle: {
-            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: '#667eea' },
-              { offset: 1, color: '#764ba2' }
-            ])
-          }
-        }
+        data: drugAllocationData.value.map(item => item.totalDrugsConfigured),
+        itemStyle: { borderRadius: [4, 4, 0, 0] }
       },
       {
         name: '使用率',
         type: 'line',
         yAxisIndex: 1,
-        data: filteredAllocationData.map(item => item.usageRatePercent),
+        data: drugAllocationData.value.map(item => item.usageRatePercent),
         smooth: true,
-        lineStyle: { width: 3, color: '#ff6b6b' },
-        symbolSize: 8,
-        symbol: 'circle',
-        itemStyle: { color: '#ff6b6b' },
-        areaStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(255, 107, 107, 0.3)' },
-            { offset: 1, color: 'rgba(255, 107, 107, 0.05)' }
-          ])
-        }
-      }
-    ],
-    dataZoom: [
-      {
-        type: 'slider',
-        show: filteredAllocationData.length > 10,
-        xAxisIndex: [0],
-        start: 0,
-        end: 100
+        lineStyle: { width: 3 },
+        symbolSize: 6
       }
     ]
   })
 
-  // 2. 基药/非基药占比趋势（增强版）
-  const months = [...new Set(proportionTrendData.value.map(item => item.monthPeriod))].sort()
-  const basicData = months.map(m => {
-    const item = proportionTrendData.value.find(d => d.monthPeriod === m && d.drugType === '基本药物')
-    return {
-      value: item?.amountPercentage || 0,
-      amount: item?.totalAmount || 0
-    }
-  })
-  const nonBasicData = months.map(m => {
-    const item = proportionTrendData.value.find(d => d.monthPeriod === m && d.drugType === '非基本药物')
-    return {
-      value: item?.amountPercentage || 0,
-      amount: item?.totalAmount || 0
-    }
-  })
+  // 2. 基药/非基药占比趋势
+  const months = [...new Set(proportionTrendData.value.map(item => item.monthPeriod))]
+  const basicData = months.map(m => proportionTrendData.value.find(d => d.monthPeriod === m && d.drugType === '基本药物')?.amountPercentage || 0)
+  const nonBasicData = months.map(m => proportionTrendData.value.find(d => d.monthPeriod === m && d.drugType === '非基本药物')?.amountPercentage || 0)
 
   proportionEchart = echarts.init(proportionChart.value!)
   proportionEchart.setOption({
     ...getChartTheme(),
     title: {
       text: '基药/非基药使用金额占比趋势',
-      textStyle: { fontSize: 16, fontWeight: 'bold', color: '#262626' },
-      subtext: comparisonMode.value === 'yoy' ? '同比数据' : comparisonMode.value === 'mom' ? '环比数据' : '当期数据'
+      textStyle: { fontSize: 16, fontWeight: 'bold', color: '#262626' }
     },
     tooltip: {
       trigger: 'axis',
       backgroundColor: 'rgba(255,255,255,0.95)',
-      borderColor: '#e8e8e8',
-      formatter: function(params) {
-        let result = `<strong>${params[0].name}</strong><br/>`
-        let total = 0
-        params.forEach(param => {
-          const data = param.data
-          result += `<span style="color:${param.color}">■ ${param.seriesName}: ${data.value}% (${(data.amount/10000).toFixed(1)}万元)</span><br/>`
-          total += data.value
-        })
-        result += `<hr style="margin:4px 0;border:none;border-top:1px solid #eee;">总计: ${total.toFixed(1)}%`
-        return result
-      }
+      borderColor: '#e8e8e8'
     },
     legend: {
-      top: 35,
+      top: 30,
       textStyle: { color: '#666' }
-    },
-    toolbox: {
-      show: true,
-      feature: {
-        magicType: {
-          type: ['line', 'bar', 'stack'],
-          title: {
-            line: '切换为折线图',
-            bar: '切换为柱状图',
-            stack: '切换为堆叠'
-          }
-        },
-        restore: { title: '还原' },
-        saveAsImage: { title: '保存为图片' }
-      },
-      right: 20,
-      top: 20
     },
     xAxis: {
       type: 'category',
@@ -430,13 +217,9 @@ const initCharts = () => {
       type: 'value',
       name: '占比(%)',
       nameTextStyle: { color: '#666' },
-      axisLabel: { 
-        color: '#666',
-        formatter: '{value}%'
-      },
+      axisLabel: { color: '#666' },
       axisLine: { lineStyle: { color: '#e8e8e8' } },
-      splitLine: { lineStyle: { color: '#f0f0f0' } },
-      max: 100
+      splitLine: { lineStyle: { color: '#f0f0f0' } }
     },
     series: [
       {
@@ -444,26 +227,14 @@ const initCharts = () => {
         type: 'bar',
         stack: 'total',
         data: basicData,
-        itemStyle: { 
-          borderRadius: [0, 0, 0, 0],
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: '#52C41A' },
-            { offset: 1, color: '#95de64' }
-          ])
-        }
+        itemStyle: { borderRadius: [0, 0, 0, 0] }
       },
       {
         name: '非基本药物',
         type: 'bar',
         stack: 'total',
         data: nonBasicData,
-        itemStyle: { 
-          borderRadius: [4, 4, 0, 0],
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: '#fa8c16' },
-            { offset: 1, color: '#ffd666' }
-          ])
-        }
+        itemStyle: { borderRadius: [4, 4, 0, 0] }
       }
     ]
   })
@@ -1180,257 +951,114 @@ const queryCityComparison = async () => {
     })
   }
 }
-
-// 响应式图表尺寸调整
-const resizeCharts = () => {
-  const charts = [
-    allocationEchart, proportionEchart, keyDrugsEchart, equipEchart,
-    usageEchart, regionEchart, yearOnYearEchart, fixedBaseEchart,
-    cityEchart, efficiencyEchart
-  ]
-  
-  charts.forEach(chart => {
-    if (chart) {
-      chart.resize()
+const setMychart = async ()=> {
+  //原生js写法
+  //这是一个封装好的方法，兼容IE，第一个参数，element,第二个属性，css样式
+  function getStyle(obj, attr) {
+    if (obj.currentStyle) {
+      return obj.currentStyle[attr];
+    } else {
+      return document.defaultView.getComputedStyle(obj, null)[attr];
     }
-  })
+  }
+
+  //获取父元素
+  let echarts = document.querySelector('.chart-container');
+  //获取父元素宽高
+  let echartsWidth = getStyle(echarts, 'width');
+  let echartsHeight = getStyle(echarts, 'height');
+  //获取图表元素
+  let myChart = document.querySelector('#TotalRevenueChartContainer');
+  //将父元素宽高赋值给图表
+  myChart.style.width = echartsWidth;
+  myChart.style.height = echartsHeight;
 }
 
 // 生命周期钩子
 onMounted(async () => {
-  await initFilterOptions()
   await initData()
   setTimeout(() => {
     initCharts()
   }, 1000)
-  
-  // 监听窗口尺寸变化
-  window.addEventListener('resize', resizeCharts)
-})
-
-// 组件卸载时清理事件监听器
-onUnmounted(() => {
-  window.removeEventListener('resize', resizeCharts)
+  // await setMychart()
 })
 </script>
 
 <template>
   <div class="drug-analysis-container">
-    <!-- 页面头部 -->
-    <PageHeader
-      title="药品统计分析"
-      content="药品配备、使用情况综合分析报告"
-      :icon="TrendCharts"
-    />
-
-    <!-- 筛选区域 -->
-    <el-card class="filter-section" shadow="hover">
-      <el-row :gutter="16">
-        <el-col :xs="24" :sm="12" :md="6">
-          <div class="filter-item">
-            <div class="filter-label">
-              <el-icon><OfficeBuilding /></el-icon>
-              <span>医疗机构</span>
-            </div>
-            <el-select
-              v-model="selectedHospitals"
-              multiple
-              placeholder="选择医疗机构"
-              clearable
-              collapse-tags
-              collapse-tags-tooltip
-              style="width: 100%"
-            >
-              <el-option
-                v-for="item in hospitalOptions"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
-              />
-            </el-select>
-          </div>
-        </el-col>
-        
-        <el-col :xs="24" :sm="12" :md="6">
-          <div class="filter-item">
-            <div class="filter-label">
-              <el-icon><Calendar /></el-icon>
-              <span>时间范围</span>
-            </div>
-            <el-select
-              v-model="selectedTimeRange"
-              placeholder="选择时间范围"
-              clearable
-              style="width: 100%"
-            >
-              <el-option
-                v-for="item in timeRangeOptions"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
-              />
-            </el-select>
-          </div>
-        </el-col>
-        
-        <el-col :xs="24" :sm="12" :md="6">
-          <div class="filter-item">
-            <div class="filter-label">
-              <el-icon><MapLocation /></el-icon>
-              <span>所属地区</span>
-            </div>
-            <el-select
-              v-model="selectedRegion"
-              placeholder="选择地区"
-              clearable
-              style="width: 100%"
-            >
-              <el-option
-                v-for="item in regionOptions"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
-              />
-            </el-select>
-          </div>
-        </el-col>
-        
-        <el-col :xs="24" :sm="12" :md="6">
-          <div class="filter-item">
-            <div class="filter-label">
-              <el-icon><DataLine /></el-icon>
-              <span>对比模式</span>
-            </div>
-            <el-select
-              v-model="comparisonMode"
-              placeholder="选择对比模式"
-              style="width: 100%"
-            >
-              <el-option
-                v-for="item in comparisonOptions"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
-              />
-            </el-select>
-          </div>
-        </el-col>
-      </el-row>
-      
-      <el-divider />
-      
-      <div class="filter-actions">
-        <el-button type="primary" @click="applyFilters">
-          <el-icon><Filter /></el-icon>
-          应用筛选
-        </el-button>
-        <el-button @click="resetFilters">重置</el-button>
+    <!-- 页面标题 -->
+    <div class="page-header">
+      <div class="header-content">
+        <h1 class="page-title">药品统计分析</h1>
+        <p class="page-subtitle">药品配备、使用情况综合分析报告</p>
       </div>
-    </el-card>
+    </div>
 
     <!-- 统计卡片 -->
     <div class="statistics-section">
-      <!-- 第一行统计卡片 -->
       <el-row :gutter="24" class="statistics-cards">
-        <el-col :xs="24" :sm="12" :lg="6">
-          <StatCard
-            title="药品总数"
-            :value="statistics.totalDrugs"
-            icon="Medicine"
-            color="#667eea"
-            description="系统中的药品种类总数"
-            suffix="种"
-            :trend="12.5"
-          />
+        <el-col :span="6">
+          <el-card class="stat-card stat-card-blue" shadow="hover">
+            <div class="stat-content">
+              <div class="stat-icon">
+                <i class="el-icon-medicine"></i>
+              </div>
+              <div class="stat-info">
+                <div class="stat-value">{{ statistics.totalDrugs }}</div>
+                <div class="stat-label">药品总数</div>
+                <div class="stat-desc">系统中的药品种类总数</div>
+              </div>
+            </div>
+          </el-card>
         </el-col>
-        <el-col :xs="24" :sm="12" :lg="6">
-          <StatCard
-            title="基药品种"
-            :value="statistics.basicDrugs"
-            icon="CircleCheck"
-            color="#52c41a"
-            description="基本药物品种数量"
-            suffix="种"
-            :trend="8.2"
-          />
+        <el-col :span="6">
+          <el-card class="stat-card stat-card-green" shadow="hover">
+            <div class="stat-content">
+              <div class="stat-icon">
+                <i class="el-icon-check"></i>
+              </div>
+              <div class="stat-info">
+                <div class="stat-value">{{ statistics.basicDrugs }}</div>
+                <div class="stat-label">基药品种</div>
+                <div class="stat-desc">基本药物品种数量</div>
+              </div>
+            </div>
+          </el-card>
         </el-col>
-        <el-col :xs="24" :sm="12" :lg="6">
-          <StatCard
-            title="医疗机构"
-            :value="statistics.totalHospitals"
-            icon="OfficeBuilding"
-            color="#faad14"
-            description="合作医疗机构数"
-            suffix="家"
-            :trend="5.6"
-          />
+        <el-col :span="6">
+          <el-card class="stat-card stat-card-orange" shadow="hover">
+            <div class="stat-content">
+              <div class="stat-icon">
+                <i class="el-icon-office-building"></i>
+              </div>
+              <div class="stat-info">
+                <div class="stat-value">{{ statistics.totalHospitals }}</div>
+                <div class="stat-label">医疗机构</div>
+                <div class="stat-desc">合作医疗机构数</div>
+              </div>
+            </div>
+          </el-card>
         </el-col>
-        <el-col :xs="24" :sm="12" :lg="6">
-          <StatCard
-            title="平均使用率"
-            :value="statistics.avgUsageRate"
-            icon="DataLine"
-            color="#722ed1"
-            description="药品平均使用率"
-            suffix="%"
-            :trend="-2.3"
-          />
-        </el-col>
-      </el-row>
-      
-      <!-- 第二行统计卡片 -->
-      <el-row :gutter="24" class="statistics-cards" style="margin-top: 24px;">
-        <el-col :xs="24" :sm="12" :lg="6">
-          <StatCard
-            title="药品采购总额"
-            :value="extendedStatistics.totalAmount"
-            icon="Money"
-            color="#ff6b6b"
-            description="本期药品采购总金额"
-            suffix="元"
-            :trend="15.8"
-          />
-        </el-col>
-        <el-col :xs="24" :sm="12" :lg="6">
-          <StatCard
-            title="单位平均采购额"
-            :value="extendedStatistics.avgAmountPerHospital"
-            icon="TrendCharts"
-            color="#4ecdc4"
-            description="医疗机构平均采购额"
-            suffix="元"
-            :trend="6.7"
-          />
-        </el-col>
-        <el-col :xs="24" :sm="12" :lg="6">
-          <StatCard
-            title="基药使用率"
-            :value="extendedStatistics.basicDrugUsageRate"
-            icon="Promotion"
-            color="#95e1d3"
-            description="基本药物使用占比"
-            suffix="%"
-            :trend="3.4"
-          />
-        </el-col>
-        <el-col :xs="24" :sm="12" :lg="6">
-          <StatCard
-            title="合规达标率"
-            :value="extendedStatistics.complianceRate"
-            icon="SuccessFilled"
-            color="#ffd93d"
-            description="机构合规达标比例"
-            suffix="%"
-            :trend="9.2"
-          />
+        <el-col :span="6">
+          <el-card class="stat-card stat-card-purple" shadow="hover">
+            <div class="stat-content">
+              <div class="stat-icon">
+                <i class="el-icon-data-line"></i>
+              </div>
+              <div class="stat-info">
+                <div class="stat-value">{{ statistics.avgUsageRate }}%</div>
+                <div class="stat-label">平均使用率</div>
+                <div class="stat-desc">药品平均使用率</div>
+              </div>
+            </div>
+          </el-card>
         </el-col>
       </el-row>
     </div>
 
     <!-- 图表展示区域 -->
     <div class="charts-section">
-      <el-card class="charts-container">
-        <el-tabs v-model="activeTab" type="border-card" class="analysis-tabs">
+      <el-tabs v-model="activeTab" type="border-card" class="analysis-tabs">
         <el-tab-pane label="概览分析" name="overview">
           <el-row :gutter="24">
             <el-col :span="12">
@@ -1521,8 +1149,7 @@ onUnmounted(() => {
             <div ref="efficiencyChart" class="chart-container-large"></div>
           </el-card>
         </el-tab-pane>
-        </el-tabs>
-      </el-card>
+      </el-tabs>
     </div>
   </div>
 </template>
@@ -1530,50 +1157,33 @@ onUnmounted(() => {
 <style scoped>
 .drug-analysis-container {
   padding: 24px;
-  background: #f8fafc;
+  background: #f5f7fa;
   min-height: 100vh;
 }
 
-/* 筛选区域样式 */
-.filter-section {
+.page-header {
   margin-bottom: 24px;
+}
+
+.header-content {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 32px;
   border-radius: 12px;
-  border: none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  color: white;
+  box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
 }
 
-.filter-section :deep(.el-card__body) {
-  padding: 24px;
+.page-title {
+  margin: 0 0 8px 0;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: 1px;
 }
 
-.filter-item {
-  margin-bottom: 16px;
-}
-
-.filter-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
-}
-
-.filter-label .el-icon {
+.page-subtitle {
+  margin: 0;
   font-size: 16px;
-  color: #667eea;
-}
-
-.filter-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  margin-top: 12px;
-}
-
-.filter-actions .el-button {
-  min-width: 120px;
+  opacity: 0.9;
 }
 
 .statistics-section {
@@ -1584,82 +1194,134 @@ onUnmounted(() => {
   margin-bottom: 0;
 }
 
-.charts-section {
-  margin-bottom: 24px;
+.stat-card {
+  border: none;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  height: 120px;
 }
 
-.charts-container {
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15);
+}
+
+.stat-card-blue {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.stat-card-green {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+}
+
+.stat-card-orange {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: white;
+}
+
+.stat-card-purple {
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  color: white;
+}
+
+.stat-content {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0;
+}
+
+.stat-icon {
+  font-size: 48px;
+  margin-right: 20px;
+  opacity: 0.8;
+}
+
+.stat-info {
+  flex: 1;
+}
+
+.stat-value {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  opacity: 0.9;
+}
+
+.stat-desc {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.charts-section {
+  background: white;
   border-radius: 12px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
   overflow: hidden;
-  border: none;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
 }
 
 .analysis-tabs {
   border: none;
-  box-shadow: none;
 }
 
 .analysis-tabs :deep(.el-tabs__header) {
   background: #fafbfc;
   border-bottom: 1px solid #e8eaec;
   margin: 0;
-  border-radius: 8px 8px 0 0;
 }
 
 .analysis-tabs :deep(.el-tabs__item) {
   color: #666;
   font-weight: 500;
   transition: all 0.3s ease;
-  border: none;
-  padding: 0 24px;
-  height: 48px;
-  line-height: 48px;
 }
 
 .analysis-tabs :deep(.el-tabs__item:hover) {
   color: #1890ff;
-  background: rgba(24, 144, 255, 0.05);
 }
 
 .analysis-tabs :deep(.el-tabs__item.is-active) {
   color: #1890ff;
   background: white;
-  border-bottom: 2px solid #1890ff;
 }
 
 .analysis-tabs :deep(.el-tabs__content) {
   padding: 24px;
-  background: white;
 }
 
 .chart-card {
   border: 1px solid #e8eaec;
-  border-radius: 12px;
+  border-radius: 8px;
   margin-bottom: 24px;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .chart-card:hover {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
 }
 
 .chart-card :deep(.el-card__body) {
-  padding: 24px;
+  padding: 20px;
 }
 
 .chart-container {
-  height: 450px;
-  width: 100%;
-  max-width: 100%;
+  height: 400px;
+  width: 380px;
 }
 
 .chart-container-large {
-  height: 550px;
-  width: 100%;
-  max-width: 100%;
+  height: 500px;
+  width: 700px;
 }
 
 .chart-controls {
@@ -1693,15 +1355,6 @@ onUnmounted(() => {
   .statistics-cards .el-col {
     margin-bottom: 16px;
   }
-  
-  .filter-section .el-col {
-    margin-bottom: 12px;
-  }
-  
-  .chart-container,
-  .chart-container-large {
-    height: 400px;
-  }
 }
 
 @media (max-width: 768px) {
@@ -1709,25 +1362,32 @@ onUnmounted(() => {
     padding: 16px;
   }
 
-  .statistics-cards .el-col {
-    margin-bottom: 12px;
+  .header-content {
+    padding: 24px;
   }
-  
-  .filter-section .el-col {
-    margin-bottom: 12px;
+
+  .page-title {
+    font-size: 24px;
   }
-  
-  .filter-actions {
+
+  .stat-content {
     flex-direction: column;
+    text-align: center;
   }
-  
-  .filter-actions .el-button {
-    width: 100%;
+
+  .stat-icon {
+    margin-right: 0;
+    margin-bottom: 8px;
+    font-size: 32px;
+  }
+
+  .stat-value {
+    font-size: 24px;
   }
 
   .chart-container,
   .chart-container-large {
-    height: 350px;
+    height: 300px;
   }
 
   .chart-controls {
@@ -1744,14 +1404,6 @@ onUnmounted(() => {
     margin-bottom: 12px;
     width: 100%;
   }
-
-  .analysis-tabs :deep(.el-tabs__item) {
-    padding: 0 16px;
-  }
-
-  .analysis-tabs :deep(.el-tabs__content) {
-    padding: 16px;
-  }
 }
 
 /* 动画效果 */
@@ -1766,14 +1418,15 @@ onUnmounted(() => {
   }
 }
 
+.stat-card,
 .chart-card {
   animation: fadeInUp 0.6s ease-out;
 }
 
-.statistics-cards .el-col:nth-child(1) { animation: fadeInUp 0.6s ease-out 0.1s both; }
-.statistics-cards .el-col:nth-child(2) { animation: fadeInUp 0.6s ease-out 0.2s both; }
-.statistics-cards .el-col:nth-child(3) { animation: fadeInUp 0.6s ease-out 0.3s both; }
-.statistics-cards .el-col:nth-child(4) { animation: fadeInUp 0.6s ease-out 0.4s both; }
+.stat-card:nth-child(1) { animation-delay: 0.1s; }
+.stat-card:nth-child(2) { animation-delay: 0.2s; }
+.stat-card:nth-child(3) { animation-delay: 0.3s; }
+.stat-card:nth-child(4) { animation-delay: 0.4s; }
 
 /* 滚动条美化 */
 ::-webkit-scrollbar {

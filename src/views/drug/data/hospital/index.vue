@@ -170,7 +170,7 @@
     <ContentWrap>
       <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
         <el-table-column label="ID" align="center" prop="id" />
-        <el-table-column label="数据上报日期" align="center" prop="uploadDate">
+        <el-table-column label="数据上报日期" align="center" prop="uploadDate" width="100">
           <template #default="{ row }">
             {{ formatDate(row.uploadDate) }}
           </template>

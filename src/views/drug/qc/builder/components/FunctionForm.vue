@@ -71,8 +71,8 @@
             />
           </el-form-item>
 
-          <el-row :gutter="20">
-            <el-col :span="8">
+          <el-row :gutter="30">
+            <el-col :span="10">
               <el-form-item label="实现类型" prop="implementationType">
                 <el-select
                   v-model="formData.implementationType"
@@ -86,7 +86,7 @@
                 </el-select>
               </el-form-item>
             </el-col>
-            <el-col :span="8">
+            <el-col :span="10">
               <el-form-item label="排序" prop="sortOrder">
                 <el-input-number
                   v-model="formData.sortOrder"
@@ -97,7 +97,7 @@
                 />
               </el-form-item>
             </el-col>
-            <el-col :span="8">
+            <el-col :span="10">
               <el-form-item label="是否启用" prop="isActive">
                 <el-switch
                   v-model="formData.isActive"
@@ -132,11 +132,11 @@
                 <template #default="{ row }">
                   <el-select v-model="row.type" placeholder="参数类型" size="small" class="w-full">
                     <el-option label="字段" value="field" />
-                    <el-option label="表达式" value="expression" />
                     <el-option label="字符串" value="string" />
-                    <el-option label="数字" value="number" />
+                    <el-option label="数值" value="number" />
                     <el-option label="字段数组" value="field[]" />
                     <el-option label="表" value="table" />
+                    <el-option label="表达式" value="expression" />
                   </el-select>
                 </template>
               </el-table-column>
@@ -166,25 +166,6 @@
 
             <!-- 返回值配置 -->
             <div class="return-config mt-6">
-              <h4 class="mb-4">返回值配置</h4>
-              <el-row :gutter="20">
-                <el-col :span="8">
-                  <el-form-item label="返回类型">
-                    <el-select
-                      v-model="returnConfig.type"
-                      placeholder="请选择返回类型"
-                      class="w-full"
-                    >
-                      <el-option label="字符串" value="STRING" />
-                      <el-option label="整数" value="INTEGER" />
-                      <el-option label="小数" value="DECIMAL" />
-                      <el-option label="布尔值" value="BOOLEAN" />
-                      <el-option label="对象" value="OBJECT" />
-                    </el-select>
-                  </el-form-item>
-                </el-col>
-              </el-row>
-
               <div class="return-variables">
                 <div class="config-header mb-2">
                   <span>返回变量</span>
@@ -204,8 +185,7 @@
                     <template #default="{ row }">
                       <el-select v-model="row.type" placeholder="变量类型" size="small" class="w-full">
                         <el-option label="字符串" value="STRING" />
-                        <el-option label="整数" value="INTEGER" />
-                        <el-option label="小数" value="DECIMAL" />
+                        <el-option label="数值" value="number" />
                         <el-option label="布尔值" value="BOOLEAN" />
                         <el-option label="数组" value="ARRAY" />
                         <el-option label="对象" value="OBJECT" />
@@ -309,10 +289,6 @@ const formData = ref({
 // 参数列表
 const parameterList = ref<any[]>([])
 // 返回值配置
-const returnConfig = ref({
-  type: 'STRING',
-  variables: {}
-})
 // 返回变量列表
 const returnVariableList = ref<any[]>([])
 
@@ -512,10 +488,6 @@ const resetForm = () => {
   }
 
   parameterList.value = []
-  returnConfig.value = {
-    type: 'STRING',
-    variables: {}
-  }
   returnVariableList.value = []
 
   formRef.value?.resetFields()

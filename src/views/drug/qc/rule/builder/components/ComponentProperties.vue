@@ -507,8 +507,8 @@ const availableFields = ref([
   { value: 'drug_list.ypid', label: '药品本位码' },
   { value: 'drug_list.drug_name', label: '药品名称' },
   { value: 'drug_list.manufacturer', label: '生产企业' },
-  { value: 'drug_inbound.amount', label: '入库金额' },
-  { value: 'drug_inbound.quantity', label: '入库数量' }
+  { value: 'drug_post_inbound.amount', label: '入库金额' },
+  { value: 'drug_post_inbound.quantity', label: '入库数量' }
 ])
 
 // 监听组件变化

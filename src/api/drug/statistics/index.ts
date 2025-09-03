@@ -198,3 +198,51 @@ export const getAnalysisConfig = () => {
 export const saveAnalysisConfig = (data: any) => {
   return request.post({ url: '/dataqc/analysis/config', data })
 }
+
+// ========== 机构填报统计相关 API ==========
+
+// 机构填报统计数据结构
+export interface InstitutionReportStatsVO {
+  // 基本统计
+  basicStats: {
+    totalInstitutions: number    // 应监测机构数
+    reportRate: number           // 上报率
+    openTime: string            // 开放时间
+    deadlineTime: string        // 截止时间
+    reportedInstitutions: number // 已上报数
+    unreportedInstitutions: number // 未上报数  
+    unregisteredInstitutions: number // 未注册数
+  }
+  // 三级医院等级统计
+  levelStats: {
+    level3: { count: number; rate: number }    // 三级医院
+    level2: { count: number; rate: number }    // 二级医院
+    baseLevel: { count: number; rate: number } // 基层医院
+  }
+  // 各市填报情况
+  cityReports: Array<{
+    cityName: string
+    reportRate: number
+    formula: string           // 级别：未注册数/未上报数/应监测机构数
+    level3Stats: { reported: number; total: number }
+    level2Stats: { reported: number; total: number } 
+    baseStats: { reported: number; total: number }
+  }>
+  // 详细统计卡片
+  detailCards: {
+    totalInstitutions: number
+    reportedCount: number
+    unreportedCount: number
+    unregisteredCount: number
+    internalAuditCount: number
+    managedUsers: number
+  }
+}
+
+// 获取机构填报统计
+export const getInstitutionReportStats = (year?: string) => {
+  return request.get<InstitutionReportStatsVO>({
+    url: '/dataqc/statistics/institution-report',
+    params: year ? { year } : {}
+  })
+}

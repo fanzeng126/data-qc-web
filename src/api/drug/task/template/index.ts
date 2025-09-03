@@ -536,22 +536,16 @@ export const FieldLibraryApi = {
 
 // ========================= 常量定义 =========================
 
-/** 表类型枚举 */
+/** 表类型枚举（业务类型） */
 export const TABLE_TYPE = {
-  HOSPITAL_INFO: 1, // 医疗机构信息
-  DRUG_CATALOG: 2, // 药品目录
-  DRUG_INBOUND: 3, // 药品入库
-  DRUG_OUTBOUND: 4, // 药品出库
-  DRUG_USAGE: 5 // 药品使用
+  PRE_QC: 1, // 前置质控
+  YPID_COMPARISON: 2 // YPID比对
 } as const
 
-/** 表类型名称映射 */
+/** 表类型名称映射（业务类型） */
 export const TABLE_TYPE_NAMES = {
-  [TABLE_TYPE.HOSPITAL_INFO]: '医疗机构信息',
-  [TABLE_TYPE.DRUG_CATALOG]: '药品目录',
-  [TABLE_TYPE.DRUG_INBOUND]: '药品入库',
-  [TABLE_TYPE.DRUG_OUTBOUND]: '药品出库',
-  [TABLE_TYPE.DRUG_USAGE]: '药品使用'
+  [TABLE_TYPE.PRE_QC]: '前置质控',
+  [TABLE_TYPE.YPID_COMPARISON]: 'YPID比对'
 } as const
 
 /** 字段类型枚举 */

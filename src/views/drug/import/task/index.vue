@@ -127,6 +127,11 @@
     <ContentWrap>
       <el-table v-loading="loading" :data="taskList" :stripe="true" :show-overflow-tooltip="true">
         <el-table-column label="任务ID" align="center" prop="id" />
+        <el-table-column type="expand">
+          <template #default="{ row }">
+            <TaskExpandContent :task="row" />
+          </template>
+        </el-table-column>
         <el-table-column label="任务编号" align="center" prop="taskNo" />
         <el-table-column label="任务名称" align="center" prop="taskName" />
         <el-table-column label="文件名称" align="center" prop="fileName" />

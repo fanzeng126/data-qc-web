@@ -9,6 +9,14 @@
       @back-click="handleBack"
     >
       <template #extra>
+        <el-switch
+          v-model="autoRefresh"
+          size="default"
+          active-text="自动刷新"
+          inactive-text="手动刷新"
+          @change="handleAutoRefreshChange"
+          style="margin-right: 12px"
+        />
         <el-button type="primary" @click="refreshProgress" :loading="refreshing">
           <el-icon><Refresh /></el-icon>
           刷新进度
@@ -46,7 +54,7 @@
           <div class="progress-header">
             <span class="progress-label">总体进度</span>
             <span class="progress-percentage"
-              >{{ getValidProgress(progressData.overallProgress) }}%</span
+            >{{ getValidProgress(progressData.overallProgress) }}%</span
             >
           </div>
 
@@ -61,7 +69,7 @@
           <div class="progress-details">
             <div class="current-stage">
               <el-icon><Operation /></el-icon>
-              当前阶段：{{ progressData.currentStage || '准备中' }}
+              当前阶段：{{ getCurrentStageText(progressData.currentStage) }}
             </div>
             <div class="current-message" v-if="progressData.currentMessage">
               {{ progressData.currentMessage }}
@@ -108,161 +116,15 @@
         </div>
       </el-card>
 
-      <!-- 分表进度详情 -->
-      <el-card class="table-progress-card" shadow="hover">
-        <template #header>
-          <div class="card-header">
-            <div class="header-left">
-              <el-icon class="header-icon"><List /></el-icon>
-              <span class="header-title">分表处理进度</span>
-            </div>
-            <div class="header-right">
-              <el-switch
-                v-model="autoRefresh"
-                @change="handleAutoRefreshChange"
-                active-text="自动刷新"
-                inactive-text="手动刷新"
-              />
-            </div>
-          </div>
-        </template>
-
-        <!-- 表进度列表 -->
-        <div class="table-progress-list" v-if="progressData.tableProgress?.length">
-          <div
-            v-for="table in progressData.tableProgress"
-            :key="`table-${table.tableType}`"
-            class="table-progress-item"
-            :class="{ 'is-active': isTableActive(table.status) }"
-          >
-            <!-- 表头信息 -->
-            <div class="table-header">
-              <div class="table-info">
-                <div class="table-icon-wrapper">
-                  <el-icon class="table-icon" :color="getTableIconColor(table.status)" :size="24">
-                    <Document />
-                  </el-icon>
-                  <div
-                    class="status-indicator"
-                    :class="getStatusIndicatorClass(table.status)"
-                  ></div>
-                </div>
-                <div class="table-details">
-                  <div class="table-name">{{ table.tableName }}</div>
-                  <div class="file-name" v-if="table.fileName">{{ table.fileName }}</div>
-                  <div class="table-stage">{{ table.currentStage || '等待处理' }}</div>
-                </div>
-              </div>
-              <div class="table-status">
-                <el-tag :type="getStatusTagType(table.status)" size="small" class="status-tag">
-                  {{ getTableStatusDisplay(table.status) }}
-                </el-tag>
-                <div class="progress-text">{{ formatProgressText(table.progress) }}</div>
-              </div>
-            </div>
-
-            <!-- 进度条 -->
-            <div class="table-progress-bar">
-              <el-progress
-                :percentage="getValidProgress(table.progress)"
-                :stroke-width="8"
-                :status="getProgressStatus(table.status)"
-                :show-text="false"
-              />
-              <div class="progress-message" v-if="table.currentMessage">
-                {{ table.currentMessage }}
-              </div>
-            </div>
-
-            <!-- 详细统计 -->
-            <div class="table-stats">
-              <div class="stats-row">
-                <div class="stat-group">
-                  <span class="stat-label">总行数:</span>
-                  <strong class="stat-value">{{ formatNumber(table.totalRecords) }}</strong>
-                </div>
-                <div class="stat-group success">
-                  <span class="stat-label">成功:</span>
-                  <strong class="stat-value">{{ formatNumber(table.successRecords) }}</strong>
-                </div>
-                <div class="stat-group danger">
-                  <span class="stat-label">失败:</span>
-                  <strong class="stat-value">{{ formatNumber(table.failedRecords) }}</strong>
-                </div>
-                <div class="stat-group" v-if="table.qcPassedRows !== undefined">
-                  <span class="stat-label">质控通过:</span>
-                  <strong class="stat-value">{{ formatNumber(table.qcPassedRows) }}</strong>
-                </div>
-                <div class="stat-group warning" v-if="table.qcFailedRows !== undefined">
-                  <span class="stat-label">质控失败:</span>
-                  <strong class="stat-value">{{ formatNumber(table.qcFailedRows) }}</strong>
-                </div>
-              </div>
-
-              <!-- 时间信息 -->
-              <div class="time-info" v-if="table.startTime || table.endTime">
-                <span v-if="table.startTime" class="time-item">
-                  开始: {{ formatTime(table.startTime) }}
-                </span>
-                <span v-if="table.endTime" class="time-item">
-                  结束: {{ formatTime(table.endTime) }}
-                </span>
-              </div>
-            </div>
-
-            <!-- 错误信息 -->
-            <div v-if="table.errorMessage" class="table-error">
-              <el-alert
-                :title="table.errorMessage"
-                type="error"
-                :closable="false"
-                show-icon
-                class="error-alert"
-              />
-            </div>
-          </div>
-        </div>
-
-        <!-- 暂无进度数据 -->
-        <div v-else class="no-progress-data">
-          <el-empty description="暂无进度数据">
-            <el-button type="primary" @click="refreshProgress">刷新数据</el-button>
-          </el-empty>
-        </div>
-      </el-card>
-
-      <!-- 时间线信息 -->
-      <el-card class="timeline-card" shadow="hover" v-if="timelineEvents.length > 0">
-        <template #header>
-          <div class="card-header">
-            <div class="header-left">
-              <el-icon class="header-icon"><Clock /></el-icon>
-              <span class="header-title">处理时间线</span>
-            </div>
-            <div class="header-right">
-              <span class="timeline-count">{{ timelineEvents.length }} 个事件</span>
-            </div>
-          </div>
-        </template>
-
-        <el-timeline class="process-timeline">
-          <el-timeline-item
-            v-for="event in timelineEvents"
-            :key="event.id"
-            :timestamp="event.timestamp"
-            :type="event.type"
-            :icon="event.icon"
-            placement="top"
-          >
-            <div class="timeline-content">
-              <div class="timeline-title">{{ event.title }}</div>
-              <div class="timeline-description" v-if="event.description">
-                {{ event.description }}
-              </div>
-            </div>
-          </el-timeline-item>
-        </el-timeline>
-      </el-card>
+      <!-- 执行日志组件 -->
+      <TaskLogViewer
+        :task-id="taskId"
+        :auto-refresh-interval="5000"
+        :max-log-lines="1000"
+        :max-display-logs="500"
+        :auto-refresh-enabled="autoRefresh"
+        @export-logs="handleExportLogs"
+      />
     </div>
 
     <!-- 重试确认对话框 -->
@@ -280,15 +142,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElNotification } from 'element-plus'
 import {
   DataAnalysis,
-  List,
   Refresh,
-  Document,
   Clock,
   Operation,
-  RefreshRight,
-  SuccessFilled,
-  WarningFilled,
-  CircleCloseFilled
+  RefreshRight
 } from '@element-plus/icons-vue'
 import {
   DrugBatchImportApi,
@@ -303,24 +160,13 @@ import { DICT_TYPE, getDictLabel, getDictColorType } from '@/utils/dict'
 // 导入组件
 import PageHeader from '@/components/PageHeader/index.vue'
 import RetryConfirmDialog from '../task/components/RetryConfirmDialog.vue'
+import TaskLogViewer from '../detail/components/TaskLogViewer.vue'
 
 /** 组件名称定义 */
 defineOptions({ name: 'DrugImportProgressPage' })
 
 const route = useRoute()
 const router = useRouter()
-
-// ========================= 类型定义 =========================
-
-// 时间线事件的类型接口 - 明确定义确保类型安全
-interface TimelineEvent {
-  id: string // 唯一标识符，避免Vue的key重复警告
-  timestamp: string // 格式化后的时间戳
-  type: 'primary' | 'success' | 'warning' | 'danger' | 'info' // 严格的类型约束
-  icon: any // 图标组件
-  title: string // 事件标题
-  description?: string // 可选的事件描述
-}
 
 // ========================= 响应式数据 =========================
 
@@ -365,92 +211,6 @@ const pageDescription = computed(() => {
   const status = getStatusText(progressData.overallStatus)
   const progress = getValidProgress(progressData.overallProgress)
   return `任务状态：${status} | 完成进度：${progress}% | 最后更新：${formatTime(new Date().toISOString())}`
-})
-
-/** 时间线事件 - 修复类型和重复键问题 */
-const timelineEvents = computed((): TimelineEvent[] => {
-  const events: TimelineEvent[] = []
-
-  // 生成唯一ID的辅助函数 - 避免Vue的key重复警告
-  const generateEventId = (type: string, index: number = 0, timestamp: string = ''): string => {
-    // 确保timestamp是字符串类型，避免replace方法调用错误
-    const safeTimestamp = timestamp || '' // 处理null/undefined情况
-    const cleanTimestamp =
-      typeof safeTimestamp === 'string'
-        ? safeTimestamp.replace(/[^\w]/g, '_')
-        : String(safeTimestamp).replace(/[^\w]/g, '_') // 强制转换为字符串
-
-    return `${type}_${index}_${cleanTimestamp}`
-  }
-
-  // 任务开始事件
-  if (progressData.startTime) {
-    events.push({
-      id: generateEventId('task_start', 0, progressData.startTime),
-      timestamp: formatTime(progressData.startTime),
-      type: 'primary',
-      icon: SuccessFilled,
-      title: '任务开始',
-      description: '开始执行导入任务'
-    })
-  }
-
-  // 根据表进度生成事件 - 为每个表的开始和结束创建事件
-  progressData.tableProgress?.forEach((table, index) => {
-    if (table.startTime) {
-      events.push({
-        id: generateEventId('table_start', index, table.startTime),
-        timestamp: formatTime(table.startTime),
-        type: 'info',
-        icon: Operation,
-        title: `开始处理 ${table.tableName}`,
-        description: table.fileName ? `文件：${table.fileName}` : undefined
-      })
-    }
-
-    if (table.endTime) {
-      const type = table.status === 4 ? 'success' : table.status === 5 ? 'danger' : 'warning'
-      const icon =
-        table.status === 4 ? SuccessFilled : table.status === 5 ? CircleCloseFilled : WarningFilled
-
-      events.push({
-        id: generateEventId('table_end', index, table.endTime),
-        timestamp: formatTime(table.endTime),
-        type,
-        icon,
-        title: `${table.tableName} 处理完成`,
-        description: `状态：${getTableStatusDisplay(table.status)} | 成功：${formatNumber(table.successRecords)} | 失败：${formatNumber(table.failedRecords)}`
-      })
-    }
-  })
-
-  // 任务完成事件
-  if (progressData.estimatedEndTime && progressData.overallStatus >= 4) {
-    const type =
-      progressData.overallStatus === 4
-        ? 'success'
-        : progressData.overallStatus === 5
-          ? 'danger'
-          : 'warning'
-    const icon =
-      progressData.overallStatus === 4
-        ? SuccessFilled
-        : progressData.overallStatus === 5
-          ? CircleCloseFilled
-          : WarningFilled
-
-    events.push({
-      id: generateEventId('task_end', 0, progressData.estimatedEndTime),
-      timestamp: formatTime(progressData.estimatedEndTime),
-      type,
-      icon,
-      title: '任务完成',
-      description: `最终状态：${getStatusText(progressData.overallStatus)}`
-    })
-  }
-
-  // 按时间排序返回事件列表
-  return events.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
 })
 
 // ========================= 监听器 =========================
@@ -503,9 +263,15 @@ const loadProgress = async () => {
     const data = await DrugBatchImportApi.getTaskProgress(taskId.value)
     Object.assign(progressData, data)
 
-    // 如果任务已完成，停止自动刷新 - 避免不必要的网络请求
-    if (data.overallStatus >= 4) {
+    // 如果任务已完成（状态 >= 5），停止自动刷新 - 避免不必要的网络请求
+    // 状态说明：5=成功, 6=失败, 7=部分成功, 8=已取消
+    if (data.overallStatus >= 5) {
       stopAutoRefresh()
+      // 如果自动刷新开关是开启的，将其关闭
+      if (autoRefresh.value) {
+        autoRefresh.value = false
+        ElMessage.info('任务已结束，自动刷新已停止')
+      }
     }
 
     // 构建当前任务信息（用于重试对话框）
@@ -531,7 +297,19 @@ const refreshProgress = async () => {
   refreshing.value = true
   try {
     await loadProgress()
-    ElMessage.success('进度已刷新')
+    // 检查是否需要提示任务已结束
+    if (progressData.overallStatus >= 5) {
+      const statusMessages = {
+        5: '任务已成功完成',
+        6: '任务执行失败',
+        7: '任务部分成功',
+        8: '任务已取消'
+      }
+      const message = statusMessages[progressData.overallStatus] || '任务已结束'
+      ElMessage.info(message)
+    } else {
+      ElMessage.success('进度已刷新')
+    }
   } catch (error) {
     ElMessage.error('刷新失败')
   } finally {
@@ -563,6 +341,12 @@ const stopAutoRefresh = () => {
 /** 自动刷新开关变化处理 */
 const handleAutoRefreshChange = (value: boolean) => {
   if (value) {
+    // 检查任务状态，如果已结束则不允许开启
+    if (progressData.overallStatus >= 4) {
+      autoRefresh.value = false
+      ElMessage.warning('任务已结束，无需自动刷新')
+      return
+    }
     ElMessage.success('已开启自动刷新')
     startAutoRefresh()
   } else {
@@ -598,12 +382,17 @@ const handleRetryConfirm = async (params: any) => {
   }
 }
 
+/** 处理日志导出 */
+const handleExportLogs = () => {
+  console.log('导出日志')
+}
+
 /** 返回列表 */
 const handleBack = () => {
   router.push('/drug-import/task')
 }
 
-// ========================= 状态处理方法（核心修复部分）=========================
+// ========================= 状态处理方法 =========================
 
 /** 处理进度百分比，确保在有效范围内 - 防止Element Plus警告 */
 const getValidProgress = (progress: number): number => {
@@ -612,14 +401,6 @@ const getValidProgress = (progress: number): number => {
   if (progress < 0) return 0 // 失败状态(-1)转换为0
   if (progress > 100) return 100 // 超过100的值限制为100
   return progress
-}
-
-/** 格式化进度显示文本 - 提供更友好的用户体验 */
-const formatProgressText = (progress: number): string => {
-  if (progress === -1) return '失败'
-  if (progress === 0) return '等待中'
-  if (typeof progress !== 'number' || isNaN(progress)) return '计算中'
-  return `${progress}%`
 }
 
 /** 获取状态标签类型 - 使用字典统一管理 */
@@ -632,10 +413,39 @@ const getStatusText = (status: number) => {
   return getDictLabel(DICT_TYPE.DRUG_TASK_STATUS, status.toString()) || '未知状态'
 }
 
-/** 获取表状态显示文本 - 处理缺失的statusDisplay字段 */
-const getTableStatusDisplay = (status: number) => {
-  // 这里使用任务状态字典，如果将来有专门的表状态字典可以替换
-  return getDictLabel(DICT_TYPE.DRUG_TASK_STATUS, status.toString()) || '未知状态'
+/** 获取任务阶段的中文显示文本 */
+const getCurrentStageText = (currentStage: string) => {
+  const stageMapping: Record<string, string> = {
+    // 基本阶段
+    'WAITING': '等待开始',
+    'EXTRACTING': '正在解压文件',
+    'CREATING_QC': '正在创建质控记录',
+    'PARSING': '正在解析数据',
+    'IMPORTING_TO_PRE_TABLES': '正在导入数据到临时表',
+    
+    // 前置质控相关
+    'GLOBAL_PRE_QC': '正在执行前置质控',
+    'PRE_QC': '正在执行前置质控规则检查',
+    'PRE_QC_COMPLETED': '前置质控完成',
+    'PRE_QC_SQL': '正在执行前置质控规则检查',
+    'PRE_QC_SQL_COMPLETED': '前置质控完成',
+    
+    // 导入阶段
+    'IMPORTING': '正在导入数据',
+    'IMPORTING_FROM_PRE_TABLES': '正在从临时表导入到正式表',
+    
+    // 后置质控相关
+    'POST_QC': '正在执行后置质控',
+    'POST_QC_SQL': '正在执行后置质控规则检查',
+    'POST_QC_COMPLETED': '后置质控完成',
+    'POST_QC_SQL_COMPLETED': '后置质控完成',
+    
+    // 完成状态
+    'COMPLETED': '任务处理完成',
+    'CANCELLED': '任务已取消'
+  }
+  
+  return stageMapping[currentStage] || currentStage || '准备中'
 }
 
 /** 获取进度条状态 */
@@ -643,39 +453,6 @@ const getProgressStatus = (status: number) => {
   if (status === TASK_STATUS.COMPLETED) return 'success'
   if (status === TASK_STATUS.FAILED) return 'exception'
   return undefined
-}
-
-/** 获取表图标颜色 - 根据状态提供视觉反馈 */
-const getTableIconColor = (status: number) => {
-  const colorMap = {
-    0: '#909399', // 等待中 - 灰色
-    1: '#E6A23C', // 进行中 - 橙色
-    2: '#E6A23C', // 进行中 - 橙色
-    3: '#E6A23C', // 进行中 - 橙色
-    4: '#67C23A', // 成功 - 绿色
-    5: '#F56C6C', // 失败 - 红色
-    6: '#409EFF' // 部分成功 - 蓝色
-  }
-  return colorMap[status] || '#909399'
-}
-
-/** 获取状态指示器类名 - 提供动画和视觉效果 */
-const getStatusIndicatorClass = (status: number) => {
-  const classMap = {
-    0: 'pending', // 等待中
-    1: 'processing', // 进行中（带动画）
-    2: 'processing', // 进行中（带动画）
-    3: 'processing', // 进行中（带动画）
-    4: 'success', // 成功
-    5: 'error', // 失败
-    6: 'warning' // 部分成功
-  }
-  return classMap[status] || 'pending'
-}
-
-/** 判断表是否处于活跃状态 - 影响UI显示效果 */
-const isTableActive = (status: number) => {
-  return status >= 1 && status <= 3 // 正在处理的状态
 }
 
 // ========================= 工具方法 =========================
@@ -746,31 +523,45 @@ const formatDuration = (seconds: number) => {
   font-weight: 600;
 }
 
-.timeline-count {
-  font-size: 12px;
-  color: #909399;
+/* 任务概览卡片样式 - 改为更淡的背景色 */
+.task-overview-card {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  position: relative;
+  overflow: hidden;
 }
 
-/* 任务概览卡片样式 */
-.task-overview-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
+/* 添加一个装饰性的背景元素 */
+.task-overview-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(102, 126, 234, 0.05) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 .task-overview-card :deep(.el-card__header) {
-  background: rgba(255, 255, 255, 0.1);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.5);
+  border-bottom: 1px solid rgba(102, 126, 234, 0.15);
   backdrop-filter: blur(10px);
 }
 
-.task-overview-card .header-title,
+/* 调整文字颜色为深色，提高可读性 */
+.task-overview-card .header-title {
+  color: #303133;
+}
+
 .task-overview-card .header-icon {
-  color: white;
+  color: #667eea;
 }
 
 .overall-progress-section {
   margin: 20px 0;
+  position: relative;
+  z-index: 1;
 }
 
 .progress-header {
@@ -783,16 +574,22 @@ const formatDuration = (seconds: number) => {
 .progress-label {
   font-size: 16px;
   font-weight: 500;
-  opacity: 0.9;
+  color: #606266;
 }
 
 .progress-percentage {
   font-size: 24px;
   font-weight: 600;
+  color: #303133;
 }
 
 .main-progress {
   margin-bottom: 16px;
+}
+
+/* 修改进度条的样式，使用主题色 */
+.main-progress :deep(.el-progress-bar__outer) {
+  background-color: rgba(102, 126, 234, 0.1);
 }
 
 .progress-details {
@@ -800,7 +597,7 @@ const formatDuration = (seconds: number) => {
   flex-direction: column;
   gap: 8px;
   font-size: 14px;
-  opacity: 0.9;
+  color: #606266;
 }
 
 .current-stage,
@@ -816,31 +613,37 @@ const formatDuration = (seconds: number) => {
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 16px;
   margin-top: 20px;
+  position: relative;
+  z-index: 1;
 }
 
 .stat-item {
   text-align: center;
   padding: 16px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(102, 126, 234, 0.15);
   border-radius: 12px;
   backdrop-filter: blur(10px);
   position: relative;
-  transition: transform 0.2s ease;
+  transition: all 0.3s ease;
 }
 
 .stat-item:hover {
   transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+  background: rgba(255, 255, 255, 0.95);
 }
 
 .stat-value {
   font-size: 20px;
   font-weight: 600;
   margin-bottom: 4px;
+  color: #303133;
 }
 
 .stat-label {
   font-size: 12px;
-  opacity: 0.8;
+  color: #909399;
 }
 
 .stat-icon {
@@ -859,243 +662,6 @@ const formatDuration = (seconds: number) => {
   color: #f56c6c;
 }
 
-/* 分表进度卡片样式 */
-.table-progress-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.table-progress-item {
-  padding: 20px;
-  border: 1px solid #ebeef5;
-  border-radius: 12px;
-  background: #fafafa;
-  transition: all 0.3s ease;
-}
-
-.table-progress-item.is-active {
-  border-color: #409eff;
-  background: #f0f9ff;
-  box-shadow: 0 2px 12px rgba(64, 158, 255, 0.1);
-}
-
-.table-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.table-info {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.table-icon-wrapper {
-  position: relative;
-}
-
-.status-indicator {
-  position: absolute;
-  top: -2px;
-  right: -2px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  border: 2px solid white;
-}
-
-.status-indicator.pending {
-  background-color: #909399;
-}
-
-.status-indicator.processing {
-  background-color: #e6a23c;
-  animation: pulse 2s infinite;
-}
-
-.status-indicator.success {
-  background-color: #67c23a;
-}
-
-.status-indicator.error {
-  background-color: #f56c6c;
-}
-
-.status-indicator.warning {
-  background-color: #409eff;
-}
-
-@keyframes pulse {
-  0% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-  100% {
-    opacity: 1;
-  }
-}
-
-.table-details {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.table-name {
-  font-weight: 600;
-  font-size: 15px;
-  color: #303133;
-}
-
-.file-name {
-  font-size: 12px;
-  color: #909399;
-}
-
-.table-stage {
-  font-size: 12px;
-  color: #606266;
-}
-
-.table-status {
-  text-align: right;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-}
-
-.progress-text {
-  font-size: 14px;
-  font-weight: 600;
-  color: #606266;
-}
-
-.table-progress-bar {
-  margin: 16px 0;
-}
-
-.progress-message {
-  font-size: 12px;
-  color: #909399;
-  margin-top: 8px;
-}
-
-.table-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.stats-row {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-}
-
-.stat-group {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 13px;
-}
-
-.stat-label {
-  color: #606266;
-}
-
-.stat-value {
-  color: #303133;
-}
-
-.stat-group.success .stat-value {
-  color: #67c23a;
-}
-
-.stat-group.danger .stat-value {
-  color: #f56c6c;
-}
-
-.stat-group.warning .stat-value {
-  color: #e6a23c;
-}
-
-.time-info {
-  display: flex;
-  gap: 16px;
-  font-size: 12px;
-  color: #909399;
-  margin-top: 8px;
-}
-
-.time-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.table-error {
-  margin-top: 12px;
-}
-
-.error-alert {
-  border-radius: 6px;
-}
-
-.no-progress-data {
-  padding: 40px 0;
-  text-align: center;
-}
-
-/* 时间线样式 */
-.timeline-content {
-  padding-left: 12px;
-}
-
-.timeline-title {
-  font-weight: 500;
-  color: #303133;
-  margin-bottom: 4px;
-}
-
-.timeline-description {
-  font-size: 12px;
-  color: #909399;
-}
-
-.process-timeline {
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-/* 滚动条样式 */
-:deep(.el-card__body) {
-  padding: 20px;
-}
-
-.progress-content::-webkit-scrollbar {
-  width: 6px;
-}
-
-.progress-content::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 3px;
-}
-
-.progress-content::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 3px;
-}
-
-.progress-content::-webkit-scrollbar-thumb:hover {
-  background: #a1a1a1;
-}
-
 /* 响应式设计 */
 @media (max-width: 768px) {
   .drug-import-progress-page {
@@ -1104,21 +670,6 @@ const formatDuration = (seconds: number) => {
 
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
-  }
-
-  .stats-row {
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .table-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .table-status {
-    align-items: flex-start;
   }
 }
 </style>

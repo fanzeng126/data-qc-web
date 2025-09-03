@@ -549,8 +549,8 @@ const dataSources = ref([
 
 const availableTables = ref([
   { name: 'drug_list', label: '药品目录表' },
-  { name: 'drug_inbound', label: '药品入库表' },
-  { name: 'drug_outbound', label: '药品出库表' }
+  { name: 'drug_post_inbound', label: '药品入库表' },
+  { name: 'drug_post_outbound', label: '药品出库表' }
 ])
 
 // 计算属性

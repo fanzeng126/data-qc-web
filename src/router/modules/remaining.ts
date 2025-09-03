@@ -475,6 +475,28 @@ const remainingRouter: AppRouteRecordRaw[] = [
         }
       }
     ]
+  },
+  {
+    path: '/drug/statistics',
+    component: Layout,
+    name: 'DrugStatisticsCenter',
+    meta: {
+      hidden: true
+    },
+    children: [
+      {
+        path: 'progress',
+        name: 'DrugStatisticsProgress',
+        component: () => import('@/views/drug/statistics/progress/index.vue'),
+        meta: {
+          title: '机构填报进度统计',
+          icon: 'ep:data-line',
+          noCache: false,
+          canTo: true,
+          hidden: true
+        }
+      }
+    ]
   }
 ]
 

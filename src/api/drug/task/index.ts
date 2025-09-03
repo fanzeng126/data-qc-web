@@ -6,6 +6,8 @@ import request from '@/config/axios'
 export interface ImportTaskCreateParams {
   taskName: string
   description?: string
+  dataSource?: string
+  executeMode?: string
 }
 
 /** 批量导入任务创建结果 */
@@ -27,10 +29,10 @@ export interface ImportProgressVO {
   estimatedRemainingTime?: number
   startTime?: string
   estimatedEndTime?: string
-  extractEndTime?: string     // 新增：解压完成时间
-  importEndTime?: string      // 新增：导入完成时间
-  qcEndTime?: string          // 新增：质控完成时间
-  endTime?: string            // 新增：任务结束时间
+  extractEndTime?: string // 新增：解压完成时间
+  importEndTime?: string // 新增：导入完成时间
+  qcEndTime?: string // 新增：质控完成时间
+  endTime?: string // 新增：任务结束时间
   totalFiles: number
   successFiles: number
   failedFiles: number
@@ -40,24 +42,24 @@ export interface ImportProgressVO {
   tableProgress: TableProgressVO[]
   canRetry: boolean
   // 新增：QC状态相关
-  qcStatus?: number           // 质控状态: 0-未开始,1-进行中,2-成功,3-失败
-  extractStatus?: number      // 解压状态: 0-未开始,1-进行中,2-成功,3-失败
-  importStatus?: number       // 导入状态: 0-未开始,1-进行中,2-成功,3-失败
+  qcStatus?: number // 质控状态: 0-未开始,1-进行中,2-成功,3-失败
+  extractStatus?: number // 解压状态: 0-未开始,1-进行中,2-成功,3-失败
+  importStatus?: number // 导入状态: 0-未开始,1-进行中,2-成功,3-失败
 }
 
 /** 表级进度信息 */
 export interface TableProgressVO {
-  tableType: number | string  // 支持字符串类型的tableType
+  tableType: number | string // 支持字符串类型的tableType
   tableName: string
   fileName?: string
-  status: number | string     // 支持字符串状态如 "PENDING", "PROCESSING", "SUCCESS", "FAILED"
+  status: number | string // 支持字符串状态如 "PENDING", "PROCESSING", "SUCCESS", "FAILED"
   statusDisplay: string
   currentStage: string
   progress: number
-  progressPercent?: number    // 新增：进度百分比
+  progressPercent?: number // 新增：进度百分比
   currentMessage: string
   totalRecords: number
-  processedRecords?: number   // 新增：已处理记录数
+  processedRecords?: number // 新增：已处理记录数
   successRecords: number
   failedRecords: number
   qcPassedRows?: number
@@ -250,14 +252,19 @@ export const DrugBatchImportApi = {
    */
   createImportTask: async (
     file: File,
-    params: { description: string | undefined; taskName: string; dataSource: string }
+    params: ImportTaskCreateParams
   ): Promise<ImportTaskCreateResult> => {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('taskName', params.taskName)
-    formData.append('dataSource', params.dataSource)
+    if (params.dataSource) {
+      formData.append('dataSource', params.dataSource)
+    }
     if (params.description) {
       formData.append('description', params.description)
+    }
+    if (params.executeMode) {
+      formData.append('executeMode', params.executeMode)
     }
 
     return await request.post({
@@ -391,21 +398,23 @@ export const DrugBatchImportApi = {
 /** 任务状态枚举 */
 export const TASK_STATUS = {
   PENDING: 0, // 待处理
-  EXTRACTING: 1, // 解压中
-  IMPORTING: 2, // 导入中
-  QC_CHECKING: 3, // 质控中
-  COMPLETED: 4, // 完成
-  FAILED: 5, // 失败
-  PARTIAL_SUCCESS: 6, // 部分成功
-  CANCELLED: 7 // 已取消
+  PARSING: 1, // 解压中
+  QC_PRE_CHECKING: 2, // 前置质控中
+  IMPORTING: 3, // 数据导入中
+  QC_POST_CHECKING: 4, // 后置质控中
+  COMPLETED: 5, // 完成
+  FAILED: 6, // 失败
+  PARTIAL_SUCCESS: 7, // 部分成功
+  CANCELLED: 8 // 已取消
 } as const
 
 /** 任务状态显示文本 */
 export const TASK_STATUS_TEXT = {
   [TASK_STATUS.PENDING]: '待处理',
-  [TASK_STATUS.EXTRACTING]: '解压中',
-  [TASK_STATUS.IMPORTING]: '导入中',
-  [TASK_STATUS.QC_CHECKING]: '质控中',
+  [TASK_STATUS.PARSING]: '解压中',
+  [TASK_STATUS.QC_PRE_CHECKING]: '前置质控中',
+  [TASK_STATUS.IMPORTING]: '数据导入中',
+  [TASK_STATUS.QC_POST_CHECKING]: '后置质控中',
   [TASK_STATUS.COMPLETED]: '已完成',
   [TASK_STATUS.FAILED]: '失败',
   [TASK_STATUS.PARTIAL_SUCCESS]: '部分成功',

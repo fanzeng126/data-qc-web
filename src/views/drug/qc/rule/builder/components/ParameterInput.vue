@@ -70,9 +70,17 @@
     <!-- 表达式参数 -->
     <div v-else-if="parameter.type === 'expression'" class="param-expression">
       <Icon icon="ep:cpu" class="param-icon" />
-      <el-button size="small" text @click="editExpression" class="expression-btn">
-        {{ parameter.label || '编辑表达式' }}
-      </el-button>
+      <div class="expression-container">
+        <el-button size="small" text @click="editExpression" class="expression-btn">
+          {{ parameter.label || '编辑表达式' }}
+        </el-button>
+        <div class="expression-preview">
+          <code class="expression-text">{{ getExpressionPreview() }}</code>
+        </div>
+        <el-tag size="small" type="success" class="expression-tag">
+          {{ (parameter.expression?.components || []).length }} 个组件
+        </el-tag>
+      </div>
     </div>
 
     <!-- 函数参数 -->
@@ -318,6 +326,33 @@ const generateExpressionText = (expression: any) => {
     })
     .join(' ')
 }
+
+// 获取表达式预览文本
+const getExpressionPreview = () => {
+  const expressionComponents = props.parameter.expression?.components || []
+  if (expressionComponents.length === 0) {
+    return '点击编辑表达式'
+  }
+  
+  // 生成简化预览
+  const preview = expressionComponents
+    .map((comp: any) => {
+      if (comp.type === 'field') {
+        return comp.label || comp.value
+      } else if (comp.type === 'operator') {
+        return comp.value
+      } else if (comp.type === 'constant') {
+        return `"${comp.value}"`
+      } else if (comp.type === 'function') {
+        return `${comp.value}(...)`
+      }
+      return comp.value || comp.type
+    })
+    .join(' ')
+  
+  // 限制预览长度
+  return preview.length > 30 ? preview.substring(0, 30) + '...' : preview
+}
 </script>
 
 <style lang="scss" scoped>
@@ -378,15 +413,48 @@ const generateExpressionText = (expression: any) => {
   // 表达式参数样式
   .param-expression {
     display: flex;
-    align-items: center;
-    gap: 4px;
+    align-items: flex-start;
+    gap: 6px;
+    background: #f0fdf4;
+    padding: 6px 8px;
+    border-radius: 4px;
 
-    .expression-btn {
-      font-size: 12px;
-      color: #e6a23c;
+    .expression-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
 
-      &:hover {
-        background: rgba(230, 162, 60, 0.1);
+      .expression-btn {
+        font-size: 12px;
+        color: #16a34a;
+        font-weight: 500;
+        align-self: flex-start;
+
+        &:hover {
+          background: rgba(22, 163, 74, 0.1);
+        }
+      }
+
+      .expression-preview {
+        background: #dcfce7;
+        border: 1px solid #bbf7d0;
+        border-radius: 3px;
+        padding: 4px 6px;
+
+        .expression-text {
+          font-family: 'Fira Code', Consolas, monospace;
+          font-size: 11px;
+          color: #15803d;
+          line-height: 1.2;
+        }
+      }
+
+      .expression-tag {
+        align-self: flex-start;
+        background: #16a34a;
+        color: white;
+        border: none;
       }
     }
   }
@@ -487,7 +555,7 @@ const generateExpressionText = (expression: any) => {
   }
 
   &.expression {
-    border-color: #e6a23c;
+    border-color: #16a34a;
   }
 
   &.function {
@@ -510,6 +578,14 @@ const generateExpressionText = (expression: any) => {
       .param-input {
         width: 100%;
         min-width: auto;
+      }
+    }
+
+    .param-expression {
+      .expression-container {
+        .expression-preview .expression-text {
+          font-size: 10px;
+        }
       }
     }
 

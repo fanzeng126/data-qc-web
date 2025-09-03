@@ -448,7 +448,8 @@ export const getCategoryDisplayName = (categoryCode: string) => {
     SET: '集合操作符',
     PATTERN: '模式匹配',
     ARITHMETIC: '算术操作符',
-    RANGE: '范围操作符'
+    RANGE: '范围操作符',
+    CUSTOM: '自定义函数'
   }
 
   return nameMap[categoryCode] || categoryCode

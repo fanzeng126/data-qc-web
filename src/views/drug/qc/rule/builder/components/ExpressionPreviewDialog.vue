@@ -68,7 +68,7 @@
                   :loading="group.compiling"
                 >
                   <Icon icon="ep:cpu" class="mr-5px" />
-                  编译检查
+                  编译SQL
                 </el-button>
                 <el-button size="small" text @click="toggleGroupExpand(index)">
                   <Icon :icon="group.expanded ? 'ep:arrow-up' : 'ep:arrow-down'" />

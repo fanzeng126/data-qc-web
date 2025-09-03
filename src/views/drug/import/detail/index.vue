@@ -5,7 +5,6 @@
     <PageHeader
       :title="pageTitle"
       :content="pageDescription"
-      :icon="ViewIcon"
       :tag="statusTag"
       :tag-type="statusTagType"
       :meta="metaInfo"
@@ -627,7 +626,6 @@ import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
 import {
-  View as ViewIcon,
   InfoFilled,
   TrendCharts,
   Folder,

@@ -1,6 +1,6 @@
 <template>
   <div class="task-log-viewer">
-    <el-card class="log-card" shadow="never">
+    <el-card class="log-card" shadow="never" ref="logCardRef">
       <template #header>
         <div class="log-header">
           <div class="header-left">
@@ -11,6 +11,10 @@
             </el-tag>
           </div>
           <div class="header-actions">
+            <el-button link size="small" @click="toggleFullscreen">
+              <el-icon><component :is="isFullscreen ? Close : FullScreen" /></el-icon>
+              {{ isFullscreen ? '退出全屏' : '全屏' }}
+            </el-button>
             <el-button link size="small" @click="refreshLogs" :loading="refreshing">
               <el-icon><Refresh /></el-icon>
               刷新
@@ -166,7 +170,7 @@
         </div>
       </div>
 
-      <!-- 底部信息栏和导出对话框保持不变... -->
+      <!-- 底部信息栏 -->
       <div class="log-footer">
         <div class="footer-left">
           <span class="status-text">{{ getStatusText() }}</span>
@@ -232,7 +236,7 @@
 <script setup lang="ts">
 import { ref, reactive, watch, onMounted, onUnmounted, nextTick, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import { DocumentCopy, Refresh, Delete, Download, Search, ArrowDown } from '@element-plus/icons-vue'
+import { DocumentCopy, Refresh, Delete, Download, Search, ArrowDown, FullScreen, Close } from '@element-plus/icons-vue'
 import { DrugBatchImportApi } from '@/api/drug/task'
 
 defineOptions({ name: 'TaskLogViewer' })
@@ -253,12 +257,14 @@ interface Props {
   autoRefreshInterval?: number
   maxLogLines?: number
   maxDisplayLogs?: number // 新增：最大显示日志数，控制性能
+  autoRefreshEnabled?: boolean // 新增：从父组件接收自动刷新状态
 }
 
 const props = withDefaults(defineProps<Props>(), {
   autoRefreshInterval: 5000,
   maxLogLines: 1000,
-  maxDisplayLogs: 500 // 默认只显示最新500条，保证性能
+  maxDisplayLogs: 500, // 默认只显示最新500条，保证性能
+  autoRefreshEnabled: true // 默认开启自动刷新
 })
 
 const emit = defineEmits<{
@@ -271,18 +277,20 @@ const loading = ref(false)
 const refreshing = ref(false)
 const exporting = ref(false)
 const exportDialogVisible = ref(false)
+const isFullscreen = ref(false) // 新增：全屏状态
 
 const logs = ref<LogEntry[]>([])
 const filteredLogs = ref<LogEntry[]>([])
 const selectedLogLevel = ref('ALL')
 const searchKeyword = ref('')
-const autoRefresh = ref(false)
+const autoRefresh = ref(props.autoRefreshEnabled) // 从props初始化
 const showScrollToBottom = ref(false)
 
 const lastUpdateTime = ref<string>('')
 const logContainer = ref<HTMLElement>()
 const scrollContainer = ref<HTMLElement>()
 const logContainerHeight = ref(400)
+const logCardRef = ref<HTMLElement>() // 新增：用于全屏的元素引用
 
 // 修复：使用ref避免生命周期问题
 const refreshTimer = ref<NodeJS.Timeout | null>(null)
@@ -336,10 +344,24 @@ const hasMoreLogs = computed(() => {
 // ========================= 监听器 =========================
 
 watch(
+  () => props.autoRefreshEnabled,
+  (newValue) => {
+    if (newValue !== autoRefresh.value) {
+      autoRefresh.value = newValue
+    }
+  }
+)
+
+watch(
   () => props.taskId,
   (newTaskId) => {
     if (newTaskId && isComponentMounted.value) {
       loadLogs()
+      // 如果自动刷新已开启，重启定时器
+      if (autoRefresh.value) {
+        stopAutoRefresh()
+        startAutoRefresh()
+      }
     }
   }
 )
@@ -348,24 +370,49 @@ watch(searchKeyword, () => {
   handleSearch()
 })
 
+watch(autoRefresh, (newVal) => {
+  if (newVal) {
+    startAutoRefresh()
+  } else {
+    stopAutoRefresh()
+  }
+})
+
 // ========================= 生命周期 =========================
 
 onMounted(() => {
   isComponentMounted.value = true
   initComponent()
+
+  // 添加全屏变化事件监听
+  document.addEventListener('fullscreenchange', handleFullscreenChange)
+  document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
+  document.addEventListener('mozfullscreenchange', handleFullscreenChange)
+  document.addEventListener('MSFullscreenChange', handleFullscreenChange)
 })
 
 onUnmounted(() => {
   isComponentMounted.value = false
   stopAutoRefresh()
+
+  // 移除全屏变化事件监听
+  document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
+  document.removeEventListener('mozfullscreenchange', handleFullscreenChange)
+  document.removeEventListener('MSFullscreenChange', handleFullscreenChange)
 })
 
-// ========================= 核心方法（与原版本基本相同，省略重复代码） =========================
+// ========================= 核心方法（与原版本基本相同，省略重复代码）=========================
 
 const initComponent = () => {
   if (!isComponentMounted.value) return
   loadLogs()
   updateContainerHeight()
+
+  // 如果自动刷新已开启，启动定时器
+  if (autoRefresh.value) {
+    startAutoRefresh()
+  }
 }
 
 /**
@@ -485,8 +532,14 @@ const updateContainerHeight = () => {
   )
 }
 
+/**
+ * 开始自动刷新 - 修复：确保定时器正确调用loadLogs
+ */
 const startAutoRefresh = () => {
   if (refreshTimer.value || !isComponentMounted.value) return
+
+  // 立即执行一次
+  loadLogs()
 
   refreshTimer.value = setInterval(() => {
     if (isComponentMounted.value) {
@@ -495,11 +548,88 @@ const startAutoRefresh = () => {
   }, props.autoRefreshInterval)
 }
 
+/**
+ * 停止自动刷新
+ */
 const stopAutoRefresh = () => {
   if (refreshTimer.value) {
     clearInterval(refreshTimer.value)
     refreshTimer.value = null
   }
+}
+
+/**
+ * 切换全屏
+ */
+const toggleFullscreen = async () => {
+  if (!logCardRef.value) return
+
+  // 获取实际的DOM元素
+  const element = logCardRef.value.$el as HTMLElement
+  if (!element) {
+    ElMessage.error('无法找到日志容器元素')
+    return
+  }
+
+  try {
+    if (!isFullscreen.value) {
+      // 进入全屏
+      if (element.requestFullscreen) {
+        await element.requestFullscreen()
+      } else if ((element as any).webkitRequestFullscreen) {
+        await (element as any).webkitRequestFullscreen()
+      } else if ((element as any).mozRequestFullScreen) {
+        await (element as any).mozRequestFullScreen()
+      } else if ((element as any).msRequestFullscreen) {
+        await (element as any).msRequestFullscreen()
+      } else {
+        throw new Error('浏览器不支持全屏模式')
+      }
+    } else {
+      // 退出全屏 - 检查是否真的处于全屏状态
+      const isCurrentlyFullscreen = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      )
+      
+      if (!isCurrentlyFullscreen) {
+        // 如果当前实际上不在全屏状态，直接更新状态
+        isFullscreen.value = false
+        return
+      }
+
+      if (document.exitFullscreen) {
+        await document.exitFullscreen()
+      } else if ((document as any).webkitExitFullscreen) {
+        await (document as any).webkitExitFullscreen()
+      } else if ((document as any).mozCancelFullScreen) {
+        await (document as any).mozCancelFullScreen()
+      } else if ((document as any).msExitFullscreen) {
+        await (document as any).msExitFullscreen()
+      } else {
+        throw new Error('浏览器不支持退出全屏')
+      }
+    }
+  } catch (error) {
+    console.error('全屏操作失败:', error)
+    // 同步状态到实际的全屏状态
+    handleFullscreenChange()
+    ElMessage.error(`${isFullscreen.value ? '退出' : '进入'}全屏失败`)
+  }
+}
+
+/**
+ * 监听全屏变化事件
+ */
+const handleFullscreenChange = () => {
+  isFullscreen.value = !!(
+    document.fullscreenElement ||
+    (document as any).webkitFullscreenElement ||
+    (document as any).mozFullScreenElement ||
+    (document as any).msFullscreenElement
+  )
 }
 
 // ========================= 事件处理方法 =========================
@@ -558,8 +688,10 @@ const handleAutoRefreshChange = (enabled: boolean) => {
 
   if (enabled) {
     startAutoRefresh()
+    ElMessage.success('已开启自动刷新')
   } else {
     stopAutoRefresh()
+    ElMessage.info('已关闭自动刷新')
   }
 }
 
@@ -738,9 +870,59 @@ const handleExport = async () => {
 </script>
 
 <style scoped>
-/* 保持原有样式，只修复必要的部分 */
 .task-log-viewer {
   width: 100%;
+}
+
+/* 全屏模式样式 */
+.log-card:fullscreen,
+.log-card:-webkit-full-screen,
+.log-card:-moz-full-screen,
+.log-card:-ms-fullscreen {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: white !important;
+  display: flex;
+  flex-direction: column;
+}
+
+.log-card:fullscreen :deep(.el-card__header),
+.log-card:-webkit-full-screen :deep(.el-card__header),
+.log-card:-moz-full-screen :deep(.el-card__header),
+.log-card:-ms-fullscreen :deep(.el-card__header) {
+  border-radius: 0 !important;
+}
+
+.log-card:fullscreen :deep(.el-card__body),
+.log-card:-webkit-full-screen :deep(.el-card__body),
+.log-card:-moz-full-screen :deep(.el-card__body),
+.log-card:-ms-fullscreen :deep(.el-card__body) {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 120px) !important;
+}
+
+.log-card:fullscreen .log-content-area,
+.log-card:-webkit-full-screen .log-content-area,
+.log-card:-moz-full-screen .log-content-area,
+.log-card:-ms-fullscreen .log-content-area {
+  flex: 1;
+  height: 100% !important;
+}
+
+.log-card:fullscreen .log-scroll-container,
+.log-card:-webkit-full-screen .log-scroll-container,
+.log-card:-moz-full-screen .log-scroll-container,
+.log-card:-ms-fullscreen .log-scroll-container {
+  height: calc(100vh - 180px) !important;
+  max-height: none !important;
 }
 
 .log-header {

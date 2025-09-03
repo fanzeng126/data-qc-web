@@ -65,7 +65,7 @@
     <el-card v-if="previewData.length > 0" class="mb-4">
       <template #header>
         <div class="card-header">
-          <span>数据预览（前5条）</span>
+          <span>数据预览</span>
           <el-tag :type="hasErrors ? 'danger' : 'success'" size="small">
             {{ hasErrors ? '存在错误数据' : '数据校验通过' }}
           </el-tag>

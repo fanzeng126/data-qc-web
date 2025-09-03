@@ -436,15 +436,15 @@ const applicableTables = computed(() => {
   // 优先使用传入的表映射，否则使用默认映射
   const tableMapping = props.tableMapping || {
     'drug_list': { label: '药品目录表 (drug_list)', value: 'drug_list' },
-    'drug_inbound': { label: '药品入库表 (drug_inbound)', value: 'drug_inbound' },
-    'drug_outbound': { label: '药品出库表 (drug_outbound)', value: 'drug_outbound' },
-    'drug_usage': { label: '药品使用表 (drug_usage)', value: 'drug_usage' },
+    'drug_post_inbound': { label: '药品入库表 (drug_post_inbound)', value: 'drug_post_inbound' },
+    'drug_post_outbound': { label: '药品出库表 (drug_post_outbound)', value: 'drug_post_outbound' },
+    'drug_post_usage': { label: '药品使用表 (drug_post_usage)', value: 'drug_post_usage' },
     'hospital_info': { label: '机构信息表 (hospital_info)', value: 'hospital_info' },
     'CATALOG_DEFAULT': { label: '药品目录表 (CATALOG_DEFAULT)', value: 'CATALOG_DEFAULT' },
     'INBOUND': { label: '药品入库表 (INBOUND)', value: 'INBOUND' },
     'OUTBOUND': { label: '药品出库表 (OUTBOUND)', value: 'OUTBOUND' },
     'USAGE': { label: '药品使用表 (USAGE)', value: 'USAGE' },
-    'HOSPITAL_INFO': { label: '机构信息表 (HOSPITAL_INFO)', value: 'HOSPITAL_INFO' }
+    'HOSPITAL': { label: '机构信息表 (HOSPITAL)', value: 'HOSPITAL' }
   }
   
   // 如果有明确的适用表字段

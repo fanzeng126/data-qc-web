@@ -122,6 +122,32 @@
       <span class="bracket">)</span>
     </div>
 
+    <!-- 表达式组件 -->
+    <div v-else-if="component.type === 'expression'" class="component-expression">
+      <div class="expression-header">
+        <Icon icon="ep:cpu" class="expression-icon" />
+        <span class="expression-label">{{ component.label || '子表达式' }}</span>
+        <el-button size="small" text @click="editExpression" class="edit-expression-btn">
+          <Icon icon="ep:edit" />
+          编辑
+        </el-button>
+        <el-button size="small" text @click="removeComponent" class="remove-btn">
+          <Icon icon="ep:close" />
+        </el-button>
+      </div>
+
+      <div class="expression-content">
+        <div class="expression-preview">
+          <code class="expression-code">{{ getExpressionPreview() }}</code>
+        </div>
+        <div class="expression-info">
+          <el-tag size="small" type="info">
+            {{ (component.expression?.components || []).length }} 个组件
+          </el-tag>
+        </div>
+      </div>
+    </div>
+
     <!-- 插入按钮 -->
     <div class="insert-actions">
       <el-dropdown @command="handleInsertCommand" trigger="click">
@@ -132,6 +158,7 @@
           <el-dropdown-menu>
             <el-dropdown-item command="operator">插入操作符</el-dropdown-item>
             <el-dropdown-item command="constant">插入常量</el-dropdown-item>
+            <el-dropdown-item command="expression">插入表达式</el-dropdown-item>
             <el-dropdown-item command="group">插入分组</el-dropdown-item>
           </el-dropdown-menu>
         </template>
@@ -145,7 +172,7 @@ import { ref, computed } from 'vue'
 import ParameterInput from './ParameterInput.vue'
 
 interface ExpressionComponent {
-  type: 'field' | 'function' | 'operator' | 'constant' | 'group'
+  type: 'field' | 'function' | 'operator' | 'constant' | 'group' | 'expression'
   value: any
   label?: string
   dataType?: string
@@ -153,6 +180,7 @@ interface ExpressionComponent {
   components?: ExpressionComponent[]
   operator?: string
   config?: any
+  expression?: any
 }
 
 interface Props {
@@ -164,6 +192,7 @@ interface Emits {
   (e: 'update', component: ExpressionComponent): void
   (e: 'remove'): void
   (e: 'insert', component: ExpressionComponent): void
+  (e: 'edit-expression', component: ExpressionComponent): void
 }
 
 const props = defineProps<Props>()
@@ -210,6 +239,17 @@ const handleInsertCommand = (command: string) => {
         type: 'constant',
         value: '',
         label: '常量'
+      }
+      break
+
+    case 'expression':
+      newComponent = {
+        type: 'expression',
+        value: '',
+        label: '子表达式',
+        expression: {
+          components: []
+        }
       }
       break
 
@@ -315,6 +355,35 @@ const insertSubComponent = (index: number, subComponent: ExpressionComponent) =>
     updatedComponent.components.splice(index + 1, 0, subComponent)
     emit('update', updatedComponent)
   }
+}
+
+// 表达式相关方法
+const editExpression = () => {
+  // 触发表达式编辑事件，这将被父组件处理
+  emit('edit-expression', props.component)
+}
+
+const getExpressionPreview = () => {
+  const expressionComponents = props.component.expression?.components || []
+  if (expressionComponents.length === 0) {
+    return '空表达式'
+  }
+  
+  // 简化的表达式预览
+  return expressionComponents
+    .map((comp: any) => {
+      if (comp.type === 'field') {
+        return comp.label || comp.value
+      } else if (comp.type === 'operator') {
+        return comp.value
+      } else if (comp.type === 'constant') {
+        return `"${comp.value}"`
+      } else if (comp.type === 'function') {
+        return `${comp.value}(...)`
+      }
+      return comp.value || comp.type
+    })
+    .join(' ')
 }
 </script>
 
@@ -566,6 +635,74 @@ const insertSubComponent = (index: number, subComponent: ExpressionComponent) =>
     }
   }
 
+  // 表达式组件样式
+  .component-expression {
+    background: #f0fdf4;
+    border: 2px solid #16a34a;
+    border-radius: 8px;
+    padding: 12px;
+    min-width: 280px;
+
+    .expression-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+
+      .expression-icon {
+        color: #16a34a;
+        font-size: 16px;
+      }
+
+      .expression-label {
+        font-weight: 600;
+        color: #16a34a;
+        flex: 1;
+      }
+
+      .edit-expression-btn {
+        color: #16a34a;
+        font-size: 12px;
+
+        &:hover {
+          background: rgba(22, 163, 74, 0.1);
+        }
+      }
+
+      .remove-btn {
+        color: #909399;
+
+        &:hover {
+          color: #f56c6c;
+        }
+      }
+    }
+
+    .expression-content {
+      .expression-preview {
+        background: #dcfce7;
+        border: 1px solid #bbf7d0;
+        border-radius: 4px;
+        padding: 8px 12px;
+        margin-bottom: 8px;
+
+        .expression-code {
+          font-family: 'Fira Code', Consolas, monospace;
+          font-size: 13px;
+          color: #15803d;
+          word-break: break-all;
+          line-height: 1.4;
+        }
+      }
+
+      .expression-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+    }
+  }
+
   // 插入按钮
   .insert-actions {
     position: absolute;
@@ -610,6 +747,27 @@ const insertSubComponent = (index: number, subComponent: ExpressionComponent) =>
         flex-direction: column;
         align-items: flex-start;
         gap: 4px;
+      }
+    }
+
+    .component-expression {
+      min-width: 240px;
+
+      .expression-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+
+        .edit-expression-btn,
+        .remove-btn {
+          align-self: flex-end;
+        }
+      }
+
+      .expression-content {
+        .expression-preview .expression-code {
+          font-size: 12px;
+        }
       }
     }
   }

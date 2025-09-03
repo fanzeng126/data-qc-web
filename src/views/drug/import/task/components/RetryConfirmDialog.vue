@@ -87,11 +87,11 @@
               placeholder="请选择要重试的文件类型"
               style="width: 100%"
             >
-              <el-option label="机构信息" value="HOSPITAL_INFO" />
-              <el-option label="药品目录" value="DRUG_CATALOG" />
-              <el-option label="药品入库" value="DRUG_INBOUND" />
-              <el-option label="药品出库" value="DRUG_OUTBOUND" />
-              <el-option label="药品使用" value="DRUG_USAGE" />
+              <el-option label="机构信息" value="HOSPITAL" />
+              <el-option label="药品目录" value="CATALOG" />
+              <el-option label="药品入库" value="INBOUND" />
+              <el-option label="药品出库" value="OUTBOUND" />
+              <el-option label="药品使用" value="USAGE" />
             </el-select>
           </el-form-item>
         </div>

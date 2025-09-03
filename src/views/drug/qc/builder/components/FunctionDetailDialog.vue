@@ -12,9 +12,9 @@
           <el-descriptions-item label="函数名">
             <el-tag type="primary" size="large">{{ currentFunction.functionName }}</el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="中文名称">{{
-            currentFunction.chineseName
-          }}</el-descriptions-item>
+          <el-descriptions-item label="中文名称"
+            >{{ currentFunction.chineseName }}
+          </el-descriptions-item>
           <el-descriptions-item label="函数分类">
             <el-tag :type="getCategoryColor(currentFunction.functionCategory)">
               {{ getCategoryName(currentFunction.functionCategory) }}
@@ -90,11 +90,6 @@
       <div class="detail-section">
         <h3 class="section-title">返回值配置</h3>
         <div class="return-config">
-          <div class="return-type mb-3">
-            <span class="label">返回类型：</span>
-            <el-tag type="primary">{{ returnType }}</el-tag>
-          </div>
-
           <div v-if="returnVariables.length > 0" class="return-variables">
             <div class="label mb-2">返回变量：</div>
             <el-table :data="returnVariables" border size="small">
@@ -159,7 +154,18 @@
                     }}
                   </span>
                 </p>
-                <p><strong>返回类型：</strong>{{ returnType }}</p>
+                <p v-if="returnVariables.length > 0">
+                  <strong>返回变量：</strong>
+                  <span
+                    v-for="(variable, index) in returnVariables"
+                    :key="index"
+                    class="param-hint"
+                  >
+                    {{ variable.key }}({{ variable.type }}){{
+                      index < returnVariables.length - 1 ? '、' : ''
+                    }}
+                  </span>
+                </p>
               </div>
             </template>
           </el-alert>
@@ -184,7 +190,6 @@ defineOptions({ name: 'FunctionDetailDialog' })
 const dialogVisible = ref(false)
 const currentFunction = ref<QcFunctionConfigVO | null>(null)
 const parameterList = ref<any[]>([])
-const returnType = ref('STRING')
 const returnVariables = ref<any[]>([])
 
 // 获取分类名称
@@ -238,9 +243,9 @@ const getImplementationTypeColor = (type: number) => {
 // 获取级别名称
 const getLevelName = (level: string) => {
   const levelMap: Record<string, string> = {
-    'RECORD_LEVEL': '记录维度',
-    'AGGREGATE_LEVEL': '聚合维度',
-    'MIXED_LEVEL': '混合维度'
+    RECORD_LEVEL: '记录维度',
+    AGGREGATE_LEVEL: '聚合维度',
+    MIXED_LEVEL: '混合维度'
   }
   return levelMap[level] || '未知'
 }
@@ -248,9 +253,9 @@ const getLevelName = (level: string) => {
 // 获取级别颜色
 const getLevelColor = (level: string) => {
   const colorMap: Record<string, string> = {
-    'RECORD_LEVEL': 'primary',
-    'AGGREGATE_LEVEL': 'warning',
-    'MIXED_LEVEL': 'danger'
+    RECORD_LEVEL: 'primary',
+    AGGREGATE_LEVEL: 'warning',
+    MIXED_LEVEL: 'danger'
   }
   return colorMap[level] || 'info'
 }
@@ -309,7 +314,7 @@ const parseParameterConfig = (configStr: string) => {
 const parseReturnConfig = (configStr: string) => {
   try {
     const config = JSON.parse(configStr)
-    
+
     // 只支持新格式 {"variables": {"result": {"type": "BOOLEAN", "description": "描述"}}}
     if (config.variables && typeof config.variables === 'object') {
       const variableEntries = Object.entries(config.variables)
@@ -318,21 +323,11 @@ const parseReturnConfig = (configStr: string) => {
         type: (varInfo as any).type || 'STRING',
         description: (varInfo as any).description || ''
       }))
-      
-      // 如果有变量，使用第一个变量的类型作为主返回类型显示
-      if (variableEntries.length > 0) {
-        const firstVar = variableEntries[0][1] as any
-        returnType.value = firstVar.type || 'STRING'
-      } else {
-        returnType.value = 'STRING'
-      }
     } else {
-      returnType.value = 'STRING'
       returnVariables.value = []
     }
   } catch (error) {
     console.warn('解析返回值配置失败：', error)
-    returnType.value = 'STRING'
     returnVariables.value = []
   }
 }
@@ -352,7 +347,6 @@ const open = (functionData: QcFunctionConfigVO) => {
   if (functionData.returnConfig) {
     parseReturnConfig(functionData.returnConfig)
   } else {
-    returnType.value = 'STRING'
     returnVariables.value = []
   }
 }
