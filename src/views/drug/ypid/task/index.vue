@@ -19,7 +19,7 @@
             :value="statistics.processing"
             icon="Clock"
             color="#e6a23c"
-            :rate="calculateRate(statistics.processing, statistics.total)"
+            :description="`占比: ${calculateRate(statistics.processing, statistics.total)}%`"
           />
         </el-col>
         <el-col :xs="12" :sm="6" :md="6" :lg="6">
@@ -28,7 +28,7 @@
             :value="statistics.completed"
             icon="CircleCheck"
             color="#67c23a"
-            :rate="calculateRate(statistics.completed, statistics.total)"
+            :description="`占比: ${calculateRate(statistics.completed, statistics.total)}%`"
           />
         </el-col>
         <el-col :xs="12" :sm="6" :md="6" :lg="6">
@@ -59,7 +59,7 @@
           </el-button>
           <el-button type="success" @click="createFromTemplate2">
             <Icon icon="ep:upload" />
-           导入result
+            导入result
           </el-button>
           <el-button @click="downloadTemplate">
             <Icon icon="ep:download" />
@@ -468,12 +468,12 @@ const createFromTemplate2 = () => {
 // }
 
 const getCurrentDateString = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0'); // 月份从0开始，需要+1
-    const day = String(now.getDate()).padStart(2, '0');
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0'); // 月份从0开始，需要+1
+  const day = String(now.getDate()).padStart(2, '0');
 
-    return `${year}${month}${day}`;
+  return `${year}${month}${day}`;
 }
 const handlerTemplateCreate2 = async () => {
   const form = new FormData()
@@ -530,9 +530,9 @@ onMounted(() => {
 
 <style scoped>
 .ypid-task-container {
+  min-height: calc(100vh - 50px);
   padding: 20px;
   background-color: #f5f5f5;
-  min-height: calc(100vh - 50px);
 }
 
 .stats-overview {
@@ -569,9 +569,9 @@ onMounted(() => {
 }
 
 .progress-text {
+  min-width: 50px;
   font-size: 12px;
   color: #666;
-  min-width: 50px;
 }
 
 .text-right {

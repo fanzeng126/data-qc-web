@@ -18,7 +18,7 @@
             :value="statistics.matchedDrugs"
             icon="CircleCheck"
             color="#67c23a"
-            :rate="calculateRate(statistics.matchedDrugs, statistics.totalDrugs)"
+            :description="`占比: ${calculateRate(statistics.matchedDrugs, statistics.totalDrugs)}%`"
           />
         </el-col>
         <el-col :xs="12" :sm="6" :md="6" :lg="6">
@@ -27,7 +27,7 @@
             :value="statistics.unmatchedDrugs"
             icon="Warning"
             color="#e6a23c"
-            :rate="calculateRate(statistics.unmatchedDrugs, statistics.totalDrugs)"
+            :description="`占比: ${calculateRate(statistics.unmatchedDrugs, statistics.totalDrugs)}%`"
           />
         </el-col>
         <el-col :xs="12" :sm="6" :md="6" :lg="6">
@@ -359,9 +359,9 @@ const getCategoryTag = (category: string) => {
 
 <style scoped>
 .ypid-search-container {
+  min-height: calc(100vh - 50px);
   padding: 20px;
   background-color: #f5f5f5;
-  min-height: calc(100vh - 50px);
 }
 
 .stats-overview {

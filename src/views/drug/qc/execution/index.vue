@@ -28,7 +28,7 @@
             suffix="%"
             icon="CircleCheck"
             color="#67c23a"
-            :trend="monitorStats.passRateTrend"
+            :description="monitorStats.passRateTrend"
             :loading="statsLoading"
           />
         </el-col>
@@ -46,6 +46,7 @@
           <MonitorCard
             title="平均处理时长"
             :value="formatDuration(monitorStats.avgDuration)"
+            suffix="秒"
             icon="Clock"
             color="#909399"
             :description="`最长: ${formatDuration(monitorStats.maxDuration)}`"
@@ -442,10 +443,10 @@ const loadTrendChart = async () => {
         trendPeriod.value === '7d'
           ? ['07-17', '07-18', '07-19', '07-20', '07-21', '07-22', '07-23']
           : Array.from({ length: 30 }, (_, i) => {
-              const date = new Date()
-              date.setDate(date.getDate() - 29 + i)
-              return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-            }),
+            const date = new Date()
+            date.setDate(date.getDate() - 29 + i)
+            return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+          }),
       totalTasks:
         trendPeriod.value === '7d'
           ? [45, 52, 38, 41, 67, 59, 72]
@@ -723,13 +724,21 @@ const getDuration = (startTime: string, endTime: string): string => {
 }
 
 /** 格式化时长 */
-const formatDuration = (seconds: number): string => {
-  if (!seconds || seconds === 0) return '0秒'
+// const formatDuration = (seconds: number): string => {
+//   if (!seconds || seconds === 0) return '0秒'
 
-  if (seconds < 60) return `${Math.round(seconds)}秒`
-  if (seconds < 3600) return `${Math.round(seconds / 60)}分钟`
-  return `${Math.round(seconds / 3600)}小时`
+//   if (seconds < 60) return `${Math.round(seconds)}秒`
+//   if (seconds < 3600) return `${Math.round(seconds / 60)}分钟`
+//   return `${Math.round(seconds / 3600)}小时`
+// }
+const formatDuration = (seconds: number): number => {
+  if (!seconds || seconds === 0) return 0
+
+  if (seconds < 60) return Math.round(seconds)
+  if (seconds < 3600) return Math.round(seconds / 60)
+  return Math.round(seconds / 3600)
 }
+
 
 /** 格式化数字 */
 const formatNumber = (num: number): string => {
@@ -739,25 +748,45 @@ const formatNumber = (num: number): string => {
 </script>
 
 <style scoped>
+
+
+@keyframes rotating {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 响应式设计 */
+@media (width <= 768px) {
+  .chart-container {
+    margin-bottom: 15px;
+  }
+}
+
 .qc-execution-container {
+  min-height: calc(100vh - 50px);
   padding: 20px;
   background-color: #f5f5f5;
-  min-height: calc(100vh - 50px);
 }
+
 .chart-container {
   padding: 10px;
+  background: #fff;
   border: 1px solid #ebeef5;
   border-radius: 4px;
-  background: #fff;
 }
 
 .chart-header {
   display: flex;
+  padding-bottom: 10px;
+  margin-bottom: 15px;
+  border-bottom: 1px solid #f0f0f0;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #f0f0f0;
 }
 
 .chart-title {
@@ -791,18 +820,18 @@ const formatNumber = (num: number): string => {
 }
 
 .stat-item.success .value {
-  color: #67c23a;
   font-weight: 500;
+  color: #67c23a;
 }
 
 .stat-item.error .value {
-  color: #f56c6c;
   font-weight: 500;
+  color: #f56c6c;
 }
 
 .stat-item.warning .value {
-  color: #e6a23c;
   font-weight: 500;
+  color: #e6a23c;
 }
 
 .time-info {
@@ -811,28 +840,12 @@ const formatNumber = (num: number): string => {
 }
 
 .duration {
-  color: #909399;
   margin-top: 2px;
+  color: #909399;
 }
 
 /* 加载动画 */
 .is-loading {
   animation: rotating 2s linear infinite;
-}
-
-@keyframes rotating {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .chart-container {
-    margin-bottom: 15px;
-  }
 }
 </style>

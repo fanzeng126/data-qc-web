@@ -53,7 +53,7 @@
             icon="CircleCheck"
             color="#E6A23C"
             :trend="statistics.qcTrend"
-            :footerText="getQcStatusText()"
+            :description="getQcStatusText()"
           />
         </el-col>
         <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
@@ -210,45 +210,45 @@
         </el-card>
 
         <!-- 系统警报 -->
-<!--
-        <el-card class="content-card" shadow="never">
-          <template #header>
-            <div class="card-header">
-              <div class="header-title">
-                <el-icon>
-                  <Bell />
-                </el-icon>
-                <span>系统提醒</span>
-                <el-badge :value="unreadAlerts" :hidden="unreadAlerts === 0" class="alert-badge" />
-              </div>
-              <el-button link type="primary" size="small" @click="handleViewAllAlerts">
-                全部
-              </el-button>
-            </div>
-          </template>
+        <!--
+                <el-card class="content-card" shadow="never">
+                  <template #header>
+                    <div class="card-header">
+                      <div class="header-title">
+                        <el-icon>
+                          <Bell />
+                        </el-icon>
+                        <span>系统提醒</span>
+                        <el-badge :value="unreadAlerts" :hidden="unreadAlerts === 0" class="alert-badge" />
+                      </div>
+                      <el-button link type="primary" size="small" @click="handleViewAllAlerts">
+                        全部
+                      </el-button>
+                    </div>
+                  </template>
 
-          <div class="alerts-container" v-loading="alertsLoading">
-            <el-empty v-if="alerts.length === 0" description="暂无提醒" :image-size="80" />
-            <div v-else class="alert-list">
-              <div
-                v-for="alert in alerts"
-                :key="alert.id"
-                class="alert-item"
-                :class="{ unread: !alert.read }"
-                @click="handleViewAlert(alert)"
-              >
-                <el-icon class="alert-icon" :style="{ color: getAlertColor(alert.type) }">
-                  <component :is="getAlertIcon(alert.type)" />
-                </el-icon>
-                <div class="alert-content">
-                  <div class="alert-title">{{ alert.title }}</div>
-                  <div class="alert-time">{{ formatPast(alert.createTime) }}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </el-card>
--->
+                  <div class="alerts-container" v-loading="alertsLoading">
+                    <el-empty v-if="alerts.length === 0" description="暂无提醒" :image-size="80" />
+                    <div v-else class="alert-list">
+                      <div
+                        v-for="alert in alerts"
+                        :key="alert.id"
+                        class="alert-item"
+                        :class="{ unread: !alert.read }"
+                        @click="handleViewAlert(alert)"
+                      >
+                        <el-icon class="alert-icon" :style="{ color: getAlertColor(alert.type) }">
+                          <component :is="getAlertIcon(alert.type)" />
+                        </el-icon>
+                        <div class="alert-content">
+                          <div class="alert-title">{{ alert.title }}</div>
+                          <div class="alert-time">{{ formatPast(alert.createTime) }}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </el-card>
+        -->
 
         <!-- Data Statistics Summary -->
         <el-card class="content-card" shadow="never">
@@ -714,10 +714,94 @@ const getAlertColor = (type) => {
 </script>
 
 <style scoped>
+
+
+/* Responsive design */
+@media (width <= 1200px) {
+  .content-section {
+    margin-top: 0;
+  }
+
+  .content-section .el-col-lg-16,
+  .content-section .el-col-lg-8 {
+    margin-bottom: 20px;
+  }
+}
+
+@media (width <= 768px) {
+  .dashboard-container {
+    padding: 10px;
+  }
+
+  .stats-section .el-col {
+    margin-bottom: 12px;
+  }
+
+  .card-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .action-item {
+    padding: 12px;
+  }
+
+  .action-icon {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* 响应式调整 */
+@media (width <= 768px) {
+  :deep(.stat-card .stat-bottom) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  :deep(.stat-card .stat-footer) {
+    text-align: left;
+  }
+}
+
+/* 响应式调整 */
+@media (width <= 768px) {
+  :deep(.stat-card .stat-main) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  :deep(.stat-card .stat-value) {
+    font-size: 24px;
+  }
+
+  :deep(.stat-card .stat-extra-info) {
+    width: 100%;
+    max-width: none;
+    text-align: left;
+  }
+}
+
+@media (width <= 480px) {
+  :deep(.stat-card) {
+    padding: 16px;
+  }
+
+  :deep(.stat-card .stat-value) {
+    font-size: 22px;
+  }
+
+  :deep(.stat-card .stat-main) {
+    gap: 8px;
+  }
+}
+
 .dashboard-container {
+  min-height: calc(100vh - 50px);
   padding: 20px;
   background-color: #f5f5f5;
-  min-height: calc(100vh - 50px);
 }
 
 .stats-section {
@@ -731,7 +815,7 @@ const getAlertColor = (type) => {
 .content-card {
   margin-bottom: 20px;
   border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 12px rgb(0 0 0 / 8%);
 }
 
 .content-card:last-child {
@@ -776,13 +860,13 @@ const getAlertColor = (type) => {
 
 .action-item {
   display: flex;
-  align-items: center;
-  gap: 12px;
   padding: 16px;
+  cursor: pointer;
   background-color: #f8f9fa;
   border-radius: 8px;
-  cursor: pointer;
   transition: all 0.3s ease;
+  align-items: center;
+  gap: 12px;
 }
 
 .action-item:hover {
@@ -791,13 +875,13 @@ const getAlertColor = (type) => {
 }
 
 .action-icon {
+  display: flex;
   width: 48px;
   height: 48px;
+  color: white;
   border-radius: 8px;
-  display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
   flex-shrink: 0;
 }
 
@@ -806,10 +890,10 @@ const getAlertColor = (type) => {
 }
 
 .action-title {
+  margin-bottom: 4px;
   font-size: 15px;
   font-weight: 600;
   color: #303133;
-  margin-bottom: 4px;
 }
 
 .action-desc {
@@ -840,13 +924,13 @@ const getAlertColor = (type) => {
 
 .alert-item {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
   padding: 12px;
+  cursor: pointer;
   background-color: #f8f9fa;
   border-radius: 6px;
-  cursor: pointer;
   transition: all 0.2s ease;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 .alert-item:hover {
@@ -862,8 +946,8 @@ const getAlertColor = (type) => {
 }
 
 .alert-icon {
-  font-size: 20px;
   margin-top: 2px;
+  font-size: 20px;
 }
 
 .alert-content {
@@ -871,10 +955,10 @@ const getAlertColor = (type) => {
 }
 
 .alert-title {
-  font-size: 14px;
-  color: #303133;
   margin-bottom: 4px;
+  font-size: 14px;
   line-height: 1.4;
+  color: #303133;
 }
 
 .alert-time {
@@ -913,14 +997,14 @@ const getAlertColor = (type) => {
 
 /* Table styles */
 :deep(.el-table) {
-  border-radius: 8px;
   overflow: hidden;
+  border-radius: 8px;
 }
 
 :deep(.el-table th) {
-  background-color: #fafafa;
-  color: #606266;
   font-weight: 600;
+  color: #606266;
+  background-color: #fafafa;
 }
 
 :deep(.el-progress) {
@@ -931,45 +1015,9 @@ const getAlertColor = (type) => {
   font-size: 12px !important;
 }
 
-/* Responsive design */
-@media (max-width: 1200px) {
-  .content-section {
-    margin-top: 0;
-  }
-
-  .content-section .el-col-lg-16,
-  .content-section .el-col-lg-8 {
-    margin-bottom: 20px;
-  }
-}
-
-@media (max-width: 768px) {
-  .dashboard-container {
-    padding: 10px;
-  }
-
-  .stats-section .el-col {
-    margin-bottom: 12px;
-  }
-
-  .card-header {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .action-item {
-    padding: 12px;
-  }
-
-  .action-icon {
-    width: 40px;
-    height: 40px;
-  }
-}
-
 /* Loading states */
 :deep(.el-loading-mask) {
-  background-color: rgba(255, 255, 255, 0.8);
+  background-color: rgb(255 255 255 / 80%);
 }
 
 /* Empty state */
@@ -980,4 +1028,12 @@ const getAlertColor = (type) => {
 :deep(.el-empty__description) {
   margin-top: 8px;
 }
+
+
+/* 修改统计卡片的样式 */
+
+
+
+
+
 </style>

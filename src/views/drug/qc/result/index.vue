@@ -38,7 +38,7 @@
             :value="globalStats.passedRecords"
             icon="CircleCheck"
             color="#67c23a"
-            :rate="globalStats.passRate"
+            :description="`占比: ${globalStats.passRate}%`"
             :loading="statsLoading"
           />
         </el-col>
@@ -48,7 +48,7 @@
             :value="globalStats.failedRecords"
             icon="Warning"
             color="#f56c6c"
-            :rate="globalStats.failureRate"
+            :description="`占比: ${globalStats.failureRate}%`"
             :loading="statsLoading"
           />
         </el-col>
@@ -1216,6 +1216,20 @@ const getLogLevelType = (level) => {
 </script>
 
 <style lang="scss" scoped>
+
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .qc-result-container {
   padding: 20px;
 }
@@ -1230,22 +1244,11 @@ const getLogLevelType = (level) => {
 
 .chart-card {
   border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 12px rgb(0 0 0 / 8%);
 }
 
 .result-detail {
   animation: fadeIn 0.3s;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 .card-header {
@@ -1259,36 +1262,36 @@ const getLogLevelType = (level) => {
 }
 
 .text-success {
-  color: #67c23a;
   font-weight: bold;
+  color: #67c23a;
 }
 
 .text-warning {
-  color: #e6a23c;
   font-weight: bold;
+  color: #e6a23c;
 }
 
 .text-danger {
-  color: #f56c6c;
   font-weight: bold;
+  color: #f56c6c;
 }
 
 // 日志样式
 .log-container {
   max-height: 500px;
-  overflow-y: auto;
   padding: 10px;
+  overflow-y: auto;
   background: #f5f5f5;
   border-radius: 4px;
 }
 
 .log-item {
+  display: flex;
   padding: 8px 12px;
   margin-bottom: 8px;
   background: white;
-  border-radius: 4px;
   border-left: 3px solid transparent;
-  display: flex;
+  border-radius: 4px;
   align-items: center;
   gap: 10px;
 
@@ -1305,15 +1308,15 @@ const getLogLevelType = (level) => {
   }
 
   &.log-error {
-    border-left-color: #f56c6c;
     background: #fef0f0;
+    border-left-color: #f56c6c;
   }
 }
 
 .log-time {
-  color: #909399;
-  font-size: 12px;
   min-width: 140px;
+  font-size: 12px;
+  color: #909399;
 }
 
 .log-message {
