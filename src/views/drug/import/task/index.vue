@@ -5,7 +5,7 @@
       title="药品数据导入管理"
       content="支持批量导入药品相关数据，提供完整的进度监控和任务管理功能"
     >
-      <template #extra>
+<!--      <template #extra>
         <el-button type="primary" @click="openBatchImport">
           <el-icon><Upload /></el-icon>
           批量导入
@@ -14,7 +14,7 @@
           <el-icon><Download /></el-icon>
           下载模板
         </el-button>
-      </template>
+      </template>-->
     </PageHeader>
 
     <!-- 统计概览卡片 -->
@@ -116,7 +116,15 @@
         <el-form-item>
           <el-button @click="handleQuery"><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button>
           <el-button @click="resetQuery"><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button>
-          <el-button type="success" plain @click="handleExport" :loading="exportLoading">
+          <el-button type="primary" @click="openBatchImport">
+            <el-icon><Upload /></el-icon>
+            批量导入
+          </el-button>
+          <el-button @click="downloadTemplate">
+            <el-icon><Download /></el-icon>
+            下载模板
+          </el-button>
+          <el-button type="success" @click="handleExport" :loading="exportLoading">
             <Icon icon="ep:download" class="mr-5px" /> 导出
           </el-button>
         </el-form-item>
@@ -126,13 +134,12 @@
     <!-- 列表 -->
     <ContentWrap>
       <el-table v-loading="loading" :data="taskList" :stripe="true" :show-overflow-tooltip="true">
-        <el-table-column label="任务ID" align="center" prop="id" />
+        <el-table-column label="任务编号" align="center" prop="taskNo" width="200"/>
         <el-table-column type="expand">
           <template #default="{ row }">
             <TaskExpandContent :task="row" />
           </template>
         </el-table-column>
-        <el-table-column label="任务编号" align="center" prop="taskNo" />
         <el-table-column label="任务名称" align="center" prop="taskName" />
         <el-table-column label="文件名称" align="center" prop="fileName" />
         <el-table-column label="状态" align="center" prop="status">
@@ -199,14 +206,13 @@
           <template #default="{ row }">
             <div class="action-buttons">
               <router-link :to="'/drug-import/monitor/' + row.id">
-                <el-button type="primary" link size="small"> 查看进度 </el-button>
+                <el-button type="primary" link> 查看进度 </el-button>
               </router-link>
 
               <el-button
                 v-if="row.canRetry"
                 type="warning"
                 link
-                size="small"
                 @click="handleRetry(row)"
               >
                 重试
@@ -216,14 +222,13 @@
                 v-if="row.canCancel"
                 type="danger"
                 link
-                size="small"
                 @click="handleCancel(row)"
               >
                 取消
               </el-button>
 
               <el-dropdown trigger="click" @command="(command) => handleMoreAction(command, row)">
-                <el-button link size="small"> 更多 </el-button>
+                <el-button link> 更多 </el-button>
                 <template #dropdown>
                   <el-dropdown-menu>
                     <el-dropdown-item command="detail"> 查看详情 </el-dropdown-item>

@@ -210,6 +210,7 @@
         </el-card>
 
         <!-- 系统警报 -->
+<!--
         <el-card class="content-card" shadow="never">
           <template #header>
             <div class="card-header">
@@ -247,6 +248,7 @@
             </div>
           </div>
         </el-card>
+-->
 
         <!-- Data Statistics Summary -->
         <el-card class="content-card" shadow="never">

@@ -497,6 +497,29 @@ const remainingRouter: AppRouteRecordRaw[] = [
         }
       }
     ]
+  },
+  {
+    path: '/shortage',
+    component: Layout,
+    name: 'ShortageCenter',
+    meta: {
+      hidden: true
+    },
+    children: [
+      {
+        path: 'drug-config',
+        name: 'ShortageDrugConfig',
+        component: () => import('@/views/shortage/drugconfig/index.vue'),
+        meta: {
+          title: '专区药品配置',
+          icon: 'ep:setting',
+          noCache: true,
+          canTo: true,
+          hidden: true,
+          activeMenu: '/shortage/report-zone'
+        }
+      }
+    ]
   }
 ]
 

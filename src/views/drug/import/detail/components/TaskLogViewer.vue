@@ -42,11 +42,31 @@
           <!-- 修复：使用value而不是label -->
           <div class="filter-group">
             <el-radio-group v-model="selectedLogLevel" size="small" @change="handleLogLevelChange">
-              <el-radio-button value="ALL">全部</el-radio-button>
-              <el-radio-button value="INFO">信息</el-radio-button>
-              <el-radio-button value="WARN">警告</el-radio-button>
-              <el-radio-button value="ERROR">错误</el-radio-button>
-              <el-radio-button value="DEBUG">调试</el-radio-button>
+              <el-radio-button value="ALL">
+                <el-badge :value="logStats.totalLines" :hidden="logStats.totalLines === 0">
+                  <span>全部</span>
+                </el-badge>
+              </el-radio-button>
+              <el-radio-button value="INFO">
+                <el-badge :value="logStats.infoCount" :hidden="logStats.infoCount === 0">
+                  <span>信息</span>
+                </el-badge>
+              </el-radio-button>
+              <el-radio-button value="WARN">
+                <el-badge :value="logStats.warnCount" :hidden="logStats.warnCount === 0" type="warning">
+                  <span>警告</span>
+                </el-badge>
+              </el-radio-button>
+              <el-radio-button value="ERROR">
+                <el-badge :value="logStats.errorCount" :hidden="logStats.errorCount === 0" type="danger">
+                  <span>错误</span>
+                </el-badge>
+              </el-radio-button>
+              <el-radio-button value="DEBUG">
+                <el-badge :value="logStats.debugCount" :hidden="logStats.debugCount === 0" type="success">
+                  <span>调试</span>
+                </el-badge>
+              </el-radio-button>
             </el-radio-group>
           </div>
 
@@ -74,18 +94,6 @@
               active-text="自动刷新"
               @change="handleAutoRefreshChange"
             />
-          </div>
-
-          <div class="log-stats">
-            <el-tag v-if="logStats.errorCount > 0" type="danger" size="small" class="stat-tag">
-              错误: {{ logStats.errorCount }}
-            </el-tag>
-            <el-tag v-if="logStats.warnCount > 0" type="warning" size="small" class="stat-tag">
-              警告: {{ logStats.warnCount }}
-            </el-tag>
-            <el-tag v-if="logStats.infoCount > 0" type="info" size="small" class="stat-tag">
-              信息: {{ logStats.infoCount }}
-            </el-tag>
           </div>
         </div>
       </div>
@@ -416,14 +424,15 @@ const initComponent = () => {
 }
 
 /**
- * 加载日志 - 核心逻辑不变
+ * 加载日志 - 始终请求全部级别的日志数据，避免统计错误
  */
 const loadLogs = async () => {
   if (!props.taskId || !isComponentMounted.value) return
 
   loading.value = true
   try {
-    const response = await DrugBatchImportApi.getTaskLogs(props.taskId, selectedLogLevel.value)
+    // 始终请求 ALL 级别的日志，然后在前端进行过滤和统计
+    const response = await DrugBatchImportApi.getTaskLogs(props.taskId, 'ALL')
 
     if (response.logs) {
       logs.value = parseLogContent(response.logs)
@@ -593,7 +602,7 @@ const toggleFullscreen = async () => {
         (document as any).mozFullScreenElement ||
         (document as any).msFullscreenElement
       )
-      
+
       if (!isCurrentlyFullscreen) {
         // 如果当前实际上不在全屏状态，直接更新状态
         isFullscreen.value = false
@@ -662,7 +671,7 @@ const clearLogs = () => {
 const handleLogLevelChange = () => {
   if (!isComponentMounted.value) return
   filterLogs()
-  loadLogs()
+  // 移除 loadLogs() 调用，避免重新请求数据导致统计错误
 }
 
 const handleSearch = () => {
@@ -1263,5 +1272,32 @@ const handleExport = async () => {
     opacity: 1;
     transform: translateX(0);
   }
+}
+
+/* Badge 在按钮中的样式优化 */
+.filter-group :deep(.el-radio-button__inner) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding-right: 20px; /* 为Badge预留空间 */
+}
+
+.filter-group :deep(.el-badge) {
+  line-height: 1;
+  position: relative;
+}
+
+.filter-group :deep(.el-badge__content) {
+  position: absolute;
+  top: -15px;
+  right: -25px;
+  transform: none; /* 移除transform，使用固定定位 */
+  font-size: 10px;
+  height: 16px;
+  line-height: 16px;
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
 }
 </style>

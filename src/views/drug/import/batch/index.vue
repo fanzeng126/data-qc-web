@@ -69,7 +69,6 @@
                   style="width: 100%"
                 >
                   <el-option label="仅前置质控" value="1" />
-                  <el-option label="仅后置质控" value="2" />
                   <el-option label="全部执行" value="3" />
                 </el-select>
               </el-form-item>
@@ -826,7 +825,6 @@ const getDataSourceText = (value: string) => {
 const getExecuteModeText = (value: string) => {
   const modes: Record<string, string> = {
     '1': '仅前置质控',
-    '2': '仅后置质控', 
     '3': '全部执行'
   }
   return modes[value] || '未知模式'

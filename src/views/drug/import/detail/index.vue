@@ -815,11 +815,6 @@ const tabList = computed((): TabItem[] => {
     { key: 'quality', label: '质量报告', icon: Medal }
   ]
 
-  const logsCount = taskDetail.value?.recentLogs?.length || 0
-  if (logsCount > 0) {
-    tabs[2].badge = logsCount
-  }
-
   return tabs
 })
 
