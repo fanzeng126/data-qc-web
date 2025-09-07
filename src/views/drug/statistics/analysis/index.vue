@@ -4,12 +4,11 @@ import * as echarts from 'echarts'
 import { ElCard, ElTabPane, ElTabs, ElInputNumber, ElInput, ElButton, ElRow, ElCol, ElSelect, ElOption, ElDatePicker, ElSpace, ElDivider } from 'element-plus'
 import { Medicine, DataLine, OfficeBuilding, TrendCharts, CircleCheck, Filter, Calendar, MapLocation, Money, Promotion, SuccessFilled } from '@element-plus/icons-vue'
 import type { ECharts } from 'echarts'
-import { getAccessToken } from '@/utils/auth'
 import PageHeader from '@/components/PageHeader/index.vue'
 import StatCard from '@/components/StatCard/index.vue'
+import { AnalysisApi } from '@/api/drug/statistics/analysis'
 
-// API 前缀
-const API_PREFIX = 'http://localhost:48080/admin-api/analysis/'
+// 统一通过 AnalysisApi 发起请求
 
 // 响应式数据引用
 const drugAllocationData = ref<any[]>([])
@@ -113,18 +112,7 @@ const extendedStatistics = computed(() => {
   }
 })
 
-// 获取数据函数
-const fetchData = async (method: string, params?: any) => {
-  const url = `${API_PREFIX}${method}${params ? `?${new URLSearchParams(params)}` : ''}`
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'Authorization': 'Bearer ' + getAccessToken()
-    }
-  })
-  const result = await response.json()
-  return result.data
-}
+// 使用 AnalysisApi，不再自定义 fetch
 
 // 初始化筛选选项
 const initFilterOptions = async () => {
@@ -132,18 +120,18 @@ const initFilterOptions = async () => {
     let params = {}
     params.orgs = selectedHospitals.value
     // 获取医院列表
-    const hospitalList = await fetchData('hospitalList',params)
+    const hospitalList = await AnalysisApi.hospitalList(params)
     hospitalOptions.value = hospitalList.map(item => ({
       label: item.organizationName,
       value: item.hospitalCode
     }))
 
     // 获取地区列表
-    const regionList = await fetchData('regionList')
-    regionOptions.value = regionList.map(item => ({
-      label: item.regionName,
-      value: item.domainCode
-    }))
+    // const regionList = await AnalysisApi.regionList()
+    // regionOptions.value = regionList.map(item => ({
+    //   label: item.regionName,
+    //   value: item.domainCode
+    // }))
   } catch (error) {
     console.error('筛选选项加载失败:', error)
   }
@@ -160,16 +148,16 @@ const applyFilters = async () => {
 
   try {
     // 重新获取数据
-    drugAllocationData.value = await fetchData('drugAllocationRate', filters)
-    proportionTrendData.value = await fetchData('proportionTrend', filters)
-    keyDrugsData.value = await fetchData('keyDrugsProportionTrend', filters)
-    basicEquipData.value = await fetchData('basicDrugsEquipRate', filters)
-    basicUsageData.value = await fetchData('basicDrugsUsageRate', filters)
-    basisRegionData.value = await fetchData('basisDrugUsageByRegion', filters)
-    yearOnYearData.value = await fetchData('drugUsageYearOnYear', filters)
-    fixedBaseData.value = await fetchData('drugUsageFixedBase', { baseYear: baseYear.value })
-    cityComparisonData.value = await fetchData('provincialCityComparison', { domainCode: domainCode.value })
-    hospitalEfficiencyData.value = await fetchData('hospitalEfficiencyComparison')
+    drugAllocationData.value = await AnalysisApi.drugAllocationRate(filters)
+    proportionTrendData.value = await AnalysisApi.proportionTrend(filters)
+    keyDrugsData.value = await AnalysisApi.keyDrugsProportionTrend(filters)
+    basicEquipData.value = await AnalysisApi.basicDrugsEquipRate(filters)
+    basicUsageData.value = await AnalysisApi.basicDrugsUsageRate(filters)
+    basisRegionData.value = await AnalysisApi.basisDrugUsageByRegion(filters)
+    yearOnYearData.value = await AnalysisApi.drugUsageYearOnYear(filters)
+    fixedBaseData.value = await AnalysisApi.drugUsageFixedBase({ baseYear: baseYear.value })
+    cityComparisonData.value = await AnalysisApi.provincialCityComparison({ domainCode: domainCode.value })
+    hospitalEfficiencyData.value = await AnalysisApi.hospitalEfficiencyComparison()
     // 使用新的初始化方法
     await nextTick()
     await new Promise(resolve => setTimeout(resolve, 100))
@@ -189,16 +177,16 @@ const resetFilters = () => {
 }
 const initData = async () => {
   try {
-    drugAllocationData.value = await fetchData('drugAllocationRate')
-    proportionTrendData.value = await fetchData('proportionTrend')
-    keyDrugsData.value = await fetchData('keyDrugsProportionTrend')
-    basicEquipData.value = await fetchData('basicDrugsEquipRate')
-    basicUsageData.value = await fetchData('basicDrugsUsageRate')
-    basisRegionData.value = await fetchData('basisDrugUsageByRegion')
-    yearOnYearData.value = await fetchData('drugUsageYearOnYear')
-    fixedBaseData.value = await fetchData('drugUsageFixedBase', { baseYear: baseYear.value })
-    cityComparisonData.value = await fetchData('provincialCityComparison', { domainCode: domainCode.value })
-    hospitalEfficiencyData.value = await fetchData('hospitalEfficiencyComparison')
+    drugAllocationData.value = await AnalysisApi.drugAllocationRate()
+    proportionTrendData.value = await AnalysisApi.proportionTrend()
+    keyDrugsData.value = await AnalysisApi.keyDrugsProportionTrend()
+    basicEquipData.value = await AnalysisApi.basicDrugsEquipRate()
+    basicUsageData.value = await AnalysisApi.basicDrugsUsageRate()
+    basisRegionData.value = await AnalysisApi.basisDrugUsageByRegion()
+    yearOnYearData.value = await AnalysisApi.drugUsageYearOnYear()
+    fixedBaseData.value = await AnalysisApi.drugUsageFixedBase({ baseYear: baseYear.value })
+    cityComparisonData.value = await AnalysisApi.provincialCityComparison({ domainCode: domainCode.value })
+    hospitalEfficiencyData.value = await AnalysisApi.hospitalEfficiencyComparison()
   } catch (error) {
     console.error('数据加载失败:', error)
   }
@@ -727,7 +715,7 @@ const initOtherCharts = () => {
 // 查询带参数的数据
 const queryFixedBase = async () => {
   try {
-    fixedBaseData.value = await fetchData('drugUsageFixedBase', { baseYear: baseYear.value })
+    fixedBaseData.value = await AnalysisApi.drugUsageFixedBase({ baseYear: baseYear.value })
     await nextTick()
     await new Promise(resolve => setTimeout(resolve, 100))
     initFixedBaseChart()
@@ -738,7 +726,7 @@ const queryFixedBase = async () => {
 
 const queryCityComparison = async () => {
   try {
-    cityComparisonData.value = await fetchData('provincialCityComparison', { domainCode: domainCode.value })
+    cityComparisonData.value = await AnalysisApi.provincialCityComparison({ domainCode: domainCode.value })
     await nextTick()
     await new Promise(resolve => setTimeout(resolve, 100))
     initCityChart()
