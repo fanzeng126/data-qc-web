@@ -67,23 +67,27 @@
       v-if="refreshTable"
     >
       <el-table-column prop="name" label="机构名称" />
+      <el-table-column prop="area" label="区域"/>
       <el-table-column prop="deptType" label="机构层级" width="100">
         <template #default="scope">
-          <el-tag v-if="scope.row.deptExt?.deptType" :type="getDeptTypeTagType(scope.row.deptExt.deptType)">
-            {{ getDeptTypeLabel(scope.row.deptExt.deptType) }}
+          <el-tag v-if="scope.row.deptType" :type="getDeptTypeTagType(scope.row.deptType)">
+            {{ getDeptTypeLabel(scope.row.deptType) }}
           </el-tag>
         </template>
       </el-table-column>
       <el-table-column prop="institutionCategory" label="机构类别" width="100">
         <template #default="scope">
-          <span v-if="scope.row.deptExt?.institutionCategory">{{ scope.row.deptExt.institutionCategory }}</span>
+<!--          {{ getDictLabel(DICT_TYPE.INSTITUTION_CATEGORY, scope.row.institutionCategory.substring(0, 1))}}-->
+          <span v-if="scope.row.institutionCategory.startsWith('A')">医院</span>
+          <span v-if="scope.row.institutionCategory.startsWith('B1')">社区卫生服务中心</span>
+          <span v-if="scope.row.institutionCategory.startsWith('C')">乡镇卫生院</span>
         </template>
       </el-table-column>
-      <el-table-column prop="leader" label="负责人">
-        <template #default="scope">
-          {{ userList.find((user) => user.id === scope.row.leaderUserId)?.nickname }}
-        </template>
-      </el-table-column>
+<!--      <el-table-column prop="leader" label="负责人">-->
+<!--        <template #default="scope">-->
+<!--          {{ userList.find((user) => user.id === scope.row.leaderUserId)?.nickname }}-->
+<!--        </template>-->
+<!--      </el-table-column>-->
       <el-table-column prop="sort" label="排序" />
       <el-table-column prop="status" label="状态">
         <template #default="scope">
@@ -127,7 +131,7 @@
   <InstitutionSyncModal ref="syncModalRef" @success="getList" />
 </template>
 <script lang="ts" setup>
-import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
+import { DICT_TYPE, getIntDictOptions ,getDictLabel} from '@/utils/dict'
 import { dateFormatter } from '@/utils/formatTime'
 import { handleTree } from '@/utils/tree'
 import * as DeptApi from '@/api/system/dept'
@@ -259,8 +263,9 @@ const handleDelete = async (id: number) => {
 
 /** 初始化 **/
 onMounted(async () => {
-  await getList()
   // 获取用户列表
   userList.value = await UserApi.getSimpleUserList()
+  await getList()
+
 })
 </script>
