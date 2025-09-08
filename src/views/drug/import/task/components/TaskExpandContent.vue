@@ -18,13 +18,25 @@
           <span class="info-value">{{ formatFileSize(task.fileSize || 0) }}</span>
         </div>
         <div class="info-item">
+          <span class="info-label">执行模式:</span>
+          <span class="info-value">{{ getExecuteModeText(task.executeMode) }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">数据来源:</span>
+          <span class="info-value">{{ getDataSourceText(task.dataSource) || '-' }}</span>
+        </div>
+        <div class="info-item">
           <span class="info-label">创建时间:</span>
           <span class="info-value">{{ formatTime(task.createTime) }}</span>
+        </div>
+        <div class="info-item" v-if="task.description">
+          <span class="info-label">任务描述:</span>
+          <span class="info-value">{{ task.description }}</span>
         </div>
       </div>
     </div>
 
-    <!-- 处理进度行 -->
+    <!-- 处理进度行 - 基于qc_stages -->
     <div class="expand-section">
       <h4 class="section-title">
         <el-icon><TrendCharts /></el-icon>
@@ -33,61 +45,51 @@
       <div class="progress-details">
         <!-- 阶段进度指示器 -->
         <div class="stage-indicators">
-          <div class="stage-item" :class="getStageClass('extract', task)">
+          <div
+            v-for="(stage, index) in processStages"
+            :key="stage.name"
+            class="stage-item"
+            :class="getStageClass(stage.status)"
+          >
             <div class="stage-icon">
-              <el-icon><Box /></el-icon>
+              <el-icon><component :is="getStageIcon(stage.name)" /></el-icon>
             </div>
             <div class="stage-content">
-              <div class="stage-title">文件解压</div>
-              <div class="stage-status">{{ getStageStatus('extract', task) }}</div>
-              <div class="stage-time" v-if="task.extractEndTime">
-                {{ formatTime(task.extractEndTime) }}
+              <div class="stage-title">{{ stage.name }}</div>
+              <div class="stage-status">{{ stage.statusDescription || stage.message || getStageStatusText(stage.status) }}</div>
+              <div class="stage-time" v-if="stage.endTime">
+                {{ formatTime(stage.endTime) }}
+              </div>
+              <div class="stage-duration" v-if="stage.duration">
+                耗时: {{ formatDurationFromMs(stage.duration) }}
+              </div>
+              <div class="stage-error" v-if="stage.errorMessage">
+                <span class="error-text">{{ stage.errorMessage }}</span>
               </div>
             </div>
-          </div>
-
-          <div class="stage-connector"></div>
-
-          <div class="stage-item" :class="getStageClass('import', task)">
-            <div class="stage-icon">
-              <el-icon><Upload /></el-icon>
-            </div>
-            <div class="stage-content">
-              <div class="stage-title">数据导入</div>
-              <div class="stage-status">{{ getStageStatus('import', task) }}</div>
-              <div class="stage-time" v-if="task.importEndTime">
-                {{ formatTime(task.importEndTime) }}
-              </div>
-            </div>
-          </div>
-
-          <div class="stage-connector"></div>
-
-          <div class="stage-item" :class="getStageClass('qc', task)">
-            <div class="stage-icon">
-              <el-icon><CircleCheck /></el-icon>
-            </div>
-            <div class="stage-content">
-              <div class="stage-title">质控检查</div>
-              <div class="stage-status">{{ getStageStatus('qc', task) }}</div>
-              <div class="stage-time" v-if="task.qcEndTime">
-                {{ formatTime(task.qcEndTime) }}
-              </div>
-            </div>
+            <!-- 连接线 -->
+            <div v-if="index < processStages.length - 1" class="stage-connector" :class="getConnectorClass(stage.status)"></div>
           </div>
         </div>
 
         <!-- 总体进度条 -->
         <div class="overall-progress">
-          <div class="progress-header">
+<!--          <div class="progress-header">
             <span class="progress-label">总体进度</span>
             <span class="progress-value">{{ task.progressPercent || 0 }}%</span>
-          </div>
+          </div>-->
           <el-progress
             :percentage="task.progressPercent || 0"
             :stroke-width="12"
             :status="getProgressStatus(task.status)"
-          />
+          >
+            <template #default="{ percentage }">
+              <span class="progress-text">{{ percentage }}%</span>
+            </template>
+          </el-progress>
+          <div class="progress-message" v-if="task.message">
+            {{ task.message }}
+          </div>
         </div>
       </div>
     </div>
@@ -109,13 +111,16 @@
               <span class="stat-value">{{ task.successFiles || 0 }}</span>
               <span class="stat-total">/ {{ task.totalFiles || 0 }}</span>
             </div>
+            <div class="stat-secondary" v-if="task.warningFiles && task.warningFiles > 0">
+              <span class="warning-text">警告文件: {{ task.warningFiles }}</span>
+            </div>
             <div class="stat-label">成功/总计</div>
             <div class="stat-progress">
               <el-progress
-                :percentage="getFileSuccessRate(task)"
+                :percentage="fileSuccessRate"
                 :stroke-width="4"
                 :show-text="false"
-                :status="getFileSuccessRate(task) === 100 ? 'success' : undefined"
+                :status="fileSuccessRate === 100 ? 'success' : undefined"
               />
             </div>
           </div>
@@ -131,19 +136,54 @@
               <span class="stat-value">{{ formatNumber(task.successRecords || 0) }}</span>
               <span class="stat-total">/ {{ formatNumber(task.totalRecords || 0) }}</span>
             </div>
+            <div class="stat-breakdown">
+              <div class="breakdown-item" v-if="task.warningRecords && task.warningRecords > 0">
+                <span class="breakdown-label">警告:</span>
+                <span class="breakdown-value warning">{{ formatNumber(task.warningRecords) }}</span>
+              </div>
+              <div class="breakdown-item" v-if="task.anomalyRecords && task.anomalyRecords > 0">
+                <span class="breakdown-label">异常:</span>
+                <span class="breakdown-value error">{{ formatNumber(task.anomalyRecords) }}</span>
+              </div>
+            </div>
             <div class="stat-label">成功/总计</div>
             <div class="stat-progress">
               <el-progress
-                :percentage="getRecordSuccessRate(task)"
+                :percentage="recordSuccessRate"
                 :stroke-width="4"
                 :show-text="false"
                 :status="
-                  getRecordSuccessRate(task) >= 95
+                  recordSuccessRate >= 95
                     ? 'success'
-                    : getRecordSuccessRate(task) >= 80
+                    : recordSuccessRate >= 80
                       ? undefined
                       : 'exception'
                 "
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="stat-card rules" v-if="task.totalRules && task.totalRules > 0">
+          <div class="stat-header">
+            <el-icon class="stat-icon"><Checked /></el-icon>
+            <span class="stat-title">规则检查</span>
+          </div>
+          <div class="stat-content">
+            <div class="stat-main">
+              <span class="stat-value">{{ task.passedRules || 0 }}</span>
+              <span class="stat-total">/ {{ task.totalRules || 0 }}</span>
+            </div>
+            <div class="stat-secondary">
+              <span class="secondary-text">已执行: {{ task.executedRules || 0 }}</span>
+            </div>
+            <div class="stat-label">通过/总计</div>
+            <div class="stat-progress">
+              <el-progress
+                :percentage="rulePassRate"
+                :stroke-width="4"
+                :show-text="false"
+                :status="rulePassRate >= 90 ? 'success' : 'warning'"
               />
             </div>
           </div>
@@ -158,26 +198,38 @@
             <div class="performance-metrics">
               <div class="metric-item">
                 <span class="metric-label">处理耗时:</span>
-                <span class="metric-value">{{ getDuration(task) || '计算中...' }}</span>
+                <span class="metric-value">{{ formatDurationFromMs(task.durationMs) || '计算中...' }}</span>
+              </div>
+              <div class="metric-item" v-if="task.avgRecordTime">
+                <span class="metric-label">单条记录:</span>
+                <span class="metric-value">{{ task.avgRecordTime }}ms</span>
               </div>
               <div class="metric-item">
                 <span class="metric-label">处理速度:</span>
-                <span class="metric-value">{{ getProcessingSpeed(task) }}</span>
+                <span class="metric-value">{{ processingSpeed }}</span>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="stat-card quality">
+        <div class="stat-card quality" v-if="task.qualityScore">
           <div class="stat-header">
             <el-icon class="stat-icon"><Medal /></el-icon>
             <span class="stat-title">质量评分</span>
           </div>
           <div class="stat-content">
             <div class="quality-score">
-              <div class="score-value">{{ getQualityScore(task) }}</div>
+              <div class="score-value" :class="getQualityScoreClass(task.qualityScore)">
+                {{ task.qualityScore }}
+              </div>
               <div class="score-label">质量分</div>
-              <div class="score-description">{{ getQualityDescription(task) }}</div>
+              <div class="score-description">{{ getQualityDescription(task.qualityScore) }}</div>
+              <div class="score-breakdown" v-if="task.scoreDetail">
+                <div class="breakdown-item" v-for="(score, dimension) in getScoreBreakdown(task.scoreDetail)" :key="dimension">
+                  <span class="breakdown-label">{{ dimension }}:</span>
+                  <span class="breakdown-value">{{ score }}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -219,7 +271,7 @@
       <div class="suggestions-content">
         <div class="suggestion-list">
           <div
-            v-for="suggestion in getSuggestions(task)"
+            v-for="suggestion in suggestions"
             :key="suggestion.type"
             class="suggestion-item"
             :class="suggestion.type"
@@ -231,6 +283,11 @@
               <div class="suggestion-title">{{ suggestion.title }}</div>
               <div class="suggestion-description">{{ suggestion.description }}</div>
             </div>
+            <div class="suggestion-action" v-if="suggestion.action">
+              <el-button size="small" type="primary" link @click="suggestion.action">
+                {{ suggestion.actionText }}
+              </el-button>
+            </div>
           </div>
         </div>
       </div>
@@ -239,6 +296,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref, computed } from 'vue'
 import {
   InfoFilled,
   TrendCharts,
@@ -254,7 +312,10 @@ import {
   Lightning,
   View,
   RefreshRight,
-  Download
+  Download,
+  Checked ,
+  DocumentChecked,
+  Setting
 } from '@element-plus/icons-vue'
 import type { ImportTaskRespVO } from '@/api/drug/task'
 import { DICT_TYPE, getDictLabel } from '@/utils/dict'
@@ -270,6 +331,30 @@ interface Props {
 
 const props = defineProps<Props>()
 
+/** 组件事件 */
+interface Emits {
+  (e: 'retry-task', task: ImportTaskRespVO): void
+  (e: 'download-report', task: ImportTaskRespVO): void
+  (e: 'download-error-file', task: ImportTaskRespVO): void
+  (e: 'view-details', task: ImportTaskRespVO): void
+}
+
+const emit = defineEmits<Emits>()
+
+// ========================= 响应式数据 =========================
+
+/** 展开状态管理 */
+const expandedSections = ref({
+  basicInfo: true,
+  progress: true,
+  statistics: true,
+  error: true,
+  suggestions: true
+})
+
+/** 刷新状态 */
+const isRefreshing = ref(false)
+
 // ========================= 工具方法 =========================
 
 /** 格式化文件大小 */
@@ -283,53 +368,134 @@ const formatFileSize = (bytes: number): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
-/** 格式化数字 */
+/** 格式化数字（带缓存） */
+const formatNumberCache = new Map<number, string>()
 const formatNumber = (num: number) => {
   if (!num) return '0'
-  return num.toLocaleString()
+  
+  if (formatNumberCache.has(num)) {
+    return formatNumberCache.get(num)!
+  }
+  
+  const result = num.toLocaleString()
+  formatNumberCache.set(num, result)
+  return result
 }
 
-/** 格式化时间 */
+/** 格式化时间（带缓存） */
+const formatTimeCache = new Map<string, string>()
 const formatTime = (time: string) => {
   if (!time) return ''
-  return new Date(time).toLocaleString()
+  
+  if (formatTimeCache.has(time)) {
+    return formatTimeCache.get(time)!
+  }
+  
+  const result = new Date(time).toLocaleString()
+  formatTimeCache.set(time, result)
+  return result
 }
 
-/** 获取阶段状态 */
-const getStageStatus = (stage: string, task: ImportTaskRespVO) => {
+/** 格式化毫秒数为可读时间 */
+const formatDurationFromMs = (durationMs: number) => {
+  if (!durationMs || durationMs === 0) return null
+
+  const seconds = Math.floor(durationMs / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const hours = Math.floor(minutes / 60)
+
+  if (hours > 0) {
+    return `${hours}小时${minutes % 60}分钟`
+  } else if (minutes > 0) {
+    return `${minutes}分钟${seconds % 60}秒`
+  } else {
+    return `${seconds}秒`
+  }
+}
+
+/** 获取执行模式文本 */
+const getExecuteModeText = (mode: number) => {
+  const modeMap = {
+    1: '仅前置质控',
+    2: '仅后置质控',
+    3: '全部执行'
+  }
+  return modeMap[mode] || '未知模式'
+}
+/** 获取数据来源文本 */
+const getDataSourceText = (value: string) => {
+  return getDictLabel(DICT_TYPE.DRUG_DATA_SOURCE, value)
+}
+/** 获取处理阶段数据 */
+const getProcessStages = (task: ImportTaskRespVO) => {
+  // 从 qc_stages JSON 字段解析阶段信息
+  if (task.qcStages) {
+    let stages = task.qcStages
+    
+    // 如果是字符串，尝试解析为 JSON
+    if (typeof task.qcStages === 'string') {
+      try {
+        stages = JSON.parse(task.qcStages)
+      } catch (error) {
+        console.warn('Failed to parse qcStages JSON:', error)
+        stages = null
+      }
+    }
+    
+    // 如果解析成功且是数组，返回阶段数据
+    if (stages && Array.isArray(stages)) {
+      return stages
+    }
+  }
+
+  // 如果没有 qc_stages 数据，使用默认阶段
+  return [
+    { name: '文件解析', status: 0, statusDescription: '待开始' },
+    { name: '基础验证', status: 0, statusDescription: '待开始' },
+    { name: '前置质控', status: 0, statusDescription: '待开始' },
+    { name: '数据导入', status: 0, statusDescription: '待开始' }
+  ]
+}
+
+/** 获取阶段状态文本 */
+const getStageStatusText = (status: number) => {
   const statusMap = {
-    extract: task.extractStatus,
-    import: task.importStatus,
-    qc: task.qcStatus
+    0: '待开始',
+    1: '进行中',
+    2: '已完成',
+    3: '失败'
   }
+  return statusMap[status] || '未知状态'
+}
 
-  const status = statusMap[stage] || 0
-  const dictType = {
-    extract: DICT_TYPE.DRUG_EXTRACT_STATUS,
-    import: DICT_TYPE.DRUG_IMPORT_STATUS,
-    qc: DICT_TYPE.DRUG_QC_STATUS
+/** 获取阶段图标 */
+const getStageIcon = (stageName: string) => {
+  const iconMap = {
+    '文件解析': Box,
+    '基础验证': DocumentChecked,
+    '前置质控': Checked,
+    '数据导入': Upload,
+    '后置质控': CircleCheck
   }
-
-  return getDictLabel(dictType[stage], status.toString())
+  return iconMap[stageName] || Setting
 }
 
 /** 获取阶段样式类 */
-const getStageClass = (stage: string, task: ImportTaskRespVO) => {
-  const statusMap = {
-    extract: task.extractStatus,
-    import: task.importStatus,
-    qc: task.qcStatus
-  }
-
-  const status = statusMap[stage] || 0
+const getStageClass = (status: number) => {
   const classMap = {
     0: 'pending',
     1: 'processing',
     2: 'completed',
     3: 'failed'
   }
-
   return classMap[status] || 'pending'
+}
+
+/** 获取连接线样式类 */
+const getConnectorClass = (status: number) => {
+  if (status === 2) return 'completed'
+  if (status === 3) return 'failed'
+  return 'pending'
 }
 
 /** 获取进度条状态 */
@@ -351,57 +517,71 @@ const getRecordSuccessRate = (task: ImportTaskRespVO) => {
   return Math.round((task.successRecords / task.totalRecords) * 100)
 }
 
-/** 获取持续时间 */
-const getDuration = (task: ImportTaskRespVO) => {
-  if (!task.startTime) return null
-
-  const endTime = task.endTime || new Date().toISOString()
-  const start = new Date(task.startTime).getTime()
-  const end = new Date(endTime).getTime()
-  const duration = Math.floor((end - start) / 1000)
-
-  if (duration < 60) return `${duration}秒`
-  if (duration < 3600) return `${Math.floor(duration / 60)}分${duration % 60}秒`
-  return `${Math.floor(duration / 3600)}小时${Math.floor((duration % 3600) / 60)}分`
+/** 获取规则通过率 */
+const getRulePassRate = (task: ImportTaskRespVO) => {
+  if (!task.totalRules || task.totalRules === 0) return 0
+  return Math.round((task.passedRules / task.totalRules) * 100)
 }
 
 /** 获取处理速度 */
 const getProcessingSpeed = (task: ImportTaskRespVO) => {
-  if (!task.startTime || !task.totalRecords) return '-'
+  if (!task.startTime || !task.totalRecords || !task.durationMs) return '-'
 
-  const endTime = task.endTime || new Date().toISOString()
-  const start = new Date(task.startTime).getTime()
-  const end = new Date(endTime).getTime()
-  const durationSeconds = (end - start) / 1000
-
-  if (durationSeconds <= 0) return '-'
-
-  const recordsPerSecond = task.successRecords / durationSeconds
+  const recordsPerSecond = task.successRecords / (task.durationMs / 1000)
   if (recordsPerSecond < 1) {
     return `${(recordsPerSecond * 60).toFixed(1)}条/分钟`
   }
   return `${recordsPerSecond.toFixed(1)}条/秒`
 }
 
-/** 获取质量评分 */
-const getQualityScore = (task: ImportTaskRespVO) => {
-  const recordRate = getRecordSuccessRate(task)
-  const fileRate = getFileSuccessRate(task)
-
-  // 综合文件成功率和记录成功率计算质量分
-  const score = Math.round(recordRate * 0.7 + fileRate * 0.3)
-  return Math.min(100, Math.max(0, score))
+/** 获取质量评分样式类 */
+const getQualityScoreClass = (score: number) => {
+  if (score >= 90) return 'excellent'
+  if (score >= 80) return 'good'
+  if (score >= 70) return 'average'
+  if (score >= 60) return 'poor'
+  return 'very-poor'
 }
 
 /** 获取质量描述 */
-const getQualityDescription = (task: ImportTaskRespVO) => {
-  const score = getQualityScore(task)
-
+const getQualityDescription = (score: number) => {
   if (score >= 95) return '优秀'
   if (score >= 85) return '良好'
   if (score >= 70) return '一般'
   if (score >= 50) return '较差'
   return '很差'
+}
+
+/** 获取评分明细 */
+const getScoreBreakdown = (scoreDetail: any) => {
+  if (!scoreDetail) return {}
+
+  let parsedDetail = scoreDetail
+  
+  // 如果是字符串，尝试解析为 JSON
+  if (typeof scoreDetail === 'string') {
+    try {
+      parsedDetail = JSON.parse(scoreDetail)
+    } catch {
+      return {}
+    }
+  }
+
+  const dimensionMap = {
+    file: '文件质量',
+    record: '记录质量',
+    rule: '规则检查'
+  }
+
+  const breakdown = {}
+  Object.keys(parsedDetail).forEach(key => {
+    const displayName = dimensionMap[key] || key
+    const value = parsedDetail[key]
+    // 格式化数值，保留两位小数
+    breakdown[displayName] = typeof value === 'number' ? value.toFixed(2) : value
+  })
+
+  return breakdown
 }
 
 /** 格式化错误详情 */
@@ -425,14 +605,19 @@ const getSuggestions = (task: ImportTaskRespVO) => {
   // 根据任务状态生成不同建议
   switch (task.status) {
     case TASK_STATUS.PENDING:
-    case TASK_STATUS.EXTRACTING:
+    case TASK_STATUS.PARSING:
+    case TASK_STATUS.QC_PRE_CHECKING:
     case TASK_STATUS.IMPORTING:
-    case TASK_STATUS.QC_CHECKING:
+    case TASK_STATUS.QC_POST_CHECKING:
       suggestions.push({
         type: 'info',
         icon: View,
         title: '实时监控',
-        description: '任务正在处理中，可以点击"查看进度"实时监控处理状态'
+        description: '任务正在处理中，可以点击"查看进度"实时监控处理状态',
+        actionText: '查看详情',
+        action: () => {
+          emit('view-details', task)
+        }
       })
       break
 
@@ -441,7 +626,11 @@ const getSuggestions = (task: ImportTaskRespVO) => {
         type: 'warning',
         icon: RefreshRight,
         title: '重试任务',
-        description: '任务执行失败，建议检查错误信息后选择合适的重试策略'
+        description: '任务执行失败，建议检查错误信息后选择合适的重试策略',
+        actionText: '立即重试',
+        action: () => {
+          emit('retry-task', task)
+        }
       })
       break
 
@@ -450,7 +639,11 @@ const getSuggestions = (task: ImportTaskRespVO) => {
         type: 'warning',
         icon: RefreshRight,
         title: '部分重试',
-        description: '部分数据处理失败，建议使用"仅失败部分重试"功能处理失败的数据'
+        description: '部分数据处理失败，建议使用"仅失败部分重试"功能处理失败的数据',
+        actionText: '部分重试',
+        action: () => {
+          emit('retry-task', task)
+        }
       })
       break
 
@@ -459,8 +652,26 @@ const getSuggestions = (task: ImportTaskRespVO) => {
         type: 'success',
         icon: Download,
         title: '下载报告',
-        description: '任务已成功完成，可以下载详细的处理报告进行查看和存档'
+        description: '任务已成功完成，可以下载详细的处理报告进行查看和存档',
+        actionText: '下载报告',
+        action: () => {
+          emit('download-report', task)
+        }
       })
+
+      // 如果有错误文件，添加下载错误文件的建议
+      if (task.hasErrorFile) {
+        suggestions.push({
+          type: 'info',
+          icon: Download,
+          title: '错误文件',
+          description: '检测到有错误记录，可以下载错误文件进行数据修正',
+          actionText: '下载错误文件',
+          action: () => {
+            emit('download-error-file', task)
+          }
+        })
+      }
       break
   }
 
@@ -471,11 +682,70 @@ const getSuggestions = (task: ImportTaskRespVO) => {
       type: 'warning',
       icon: WarningFilled,
       title: '数据质量检查',
-      description: '记录成功率较低，建议检查源数据格式是否符合要求'
+      description: '记录成功率较低，建议检查源数据格式是否符合要求',
+      actionText: '查看规范',
+      action: () => {
+        // 这里可以打开数据规范文档或页面
+        window.open('/data-specification', '_blank')
+      }
+    })
+  }
+
+  // 根据质量评分添加建议
+  if (task.qualityScore && task.qualityScore < 70) {
+    suggestions.push({
+      type: 'warning',
+      icon: Medal,
+      title: '提升数据质量',
+      description: '当前数据质量评分较低，建议优化数据源质量后重新导入',
+      actionText: '查看质量报告',
+      action: () => {
+        // 这里可以打开质量报告页面
+        emit('view-details', task)
+      }
     })
   }
 
   return suggestions
+}
+
+// ========================= 计算属性 =========================
+
+/** 处理阶段数据（使用计算属性优化） */
+const processStages = computed(() => getProcessStages(props.task))
+
+/** 文件成功率 */
+const fileSuccessRate = computed(() => getFileSuccessRate(props.task))
+
+/** 记录成功率 */
+const recordSuccessRate = computed(() => getRecordSuccessRate(props.task))
+
+/** 规则通过率 */
+const rulePassRate = computed(() => getRulePassRate(props.task))
+
+/** 处理速度 */
+const processingSpeed = computed(() => getProcessingSpeed(props.task))
+
+/** 操作建议 */
+const suggestions = computed(() => getSuggestions(props.task))
+
+// ========================= 方法 =========================
+
+/** 切换区块展开状态 */
+const toggleSection = (section: string) => {
+  expandedSections.value[section] = !expandedSections.value[section]
+}
+
+/** 刷新任务数据 */
+const refreshTask = async () => {
+  isRefreshing.value = true
+  try {
+    emit('view-details', props.task)
+  } finally {
+    setTimeout(() => {
+      isRefreshing.value = false
+    }, 1000)
+  }
 }
 </script>
 
@@ -550,6 +820,7 @@ const getSuggestions = (task: ImportTaskRespVO) => {
   display: flex;
   align-items: center;
   margin-bottom: 24px;
+  position: relative;
 }
 
 .stage-item {
@@ -592,11 +863,29 @@ const getSuggestions = (task: ImportTaskRespVO) => {
   color: #909399;
 }
 
+.stage-duration {
+  font-size: 11px;
+  color: #409eff;
+  margin-top: 2px;
+}
+
+.stage-error {
+  margin-top: 4px;
+}
+
+.error-text {
+  font-size: 11px;
+  color: #f56c6c;
+  font-weight: 500;
+}
+
 .stage-connector {
-  width: 60px;
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  width: calc(100% - 60px);
   height: 2px;
-  margin: 0 10px;
-  margin-top: -20px;
+  z-index: 1;
 }
 
 /* 阶段状态样式 */
@@ -605,7 +894,7 @@ const getSuggestions = (task: ImportTaskRespVO) => {
   color: #909399;
 }
 
-.stage-item.pending .stage-connector {
+.stage-connector.pending {
   background-color: #e4e7ed;
 }
 
@@ -615,7 +904,7 @@ const getSuggestions = (task: ImportTaskRespVO) => {
   animation: pulse 2s infinite;
 }
 
-.stage-item.processing .stage-connector {
+.stage-connector.processing {
   background-color: #f5dab1;
 }
 
@@ -624,7 +913,7 @@ const getSuggestions = (task: ImportTaskRespVO) => {
   color: #67c23a;
 }
 
-.stage-item.completed .stage-connector {
+.stage-connector.completed {
   background-color: #b3e5fc;
 }
 
@@ -633,7 +922,7 @@ const getSuggestions = (task: ImportTaskRespVO) => {
   color: #f56c6c;
 }
 
-.stage-item.failed .stage-connector {
+.stage-connector.failed {
   background-color: #fbc4c4;
 }
 
@@ -671,10 +960,17 @@ const getSuggestions = (task: ImportTaskRespVO) => {
   color: #303133;
 }
 
+.progress-message {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #606266;
+  text-align: center;
+}
+
 /* 统计网格样式 */
 .statistics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 16px;
 }
 
@@ -732,6 +1028,47 @@ const getSuggestions = (task: ImportTaskRespVO) => {
   color: #909399;
 }
 
+.stat-secondary {
+  font-size: 11px;
+  color: #909399;
+}
+
+.warning-text {
+  color: #e6a23c;
+}
+
+.secondary-text {
+  color: #606266;
+}
+
+.stat-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+}
+
+.breakdown-item {
+  display: flex;
+  justify-content: space-between;
+}
+
+.breakdown-label {
+  color: #909399;
+}
+
+.breakdown-value {
+  font-weight: 500;
+}
+
+.breakdown-value.warning {
+  color: #e6a23c;
+}
+
+.breakdown-value.error {
+  color: #f56c6c;
+}
+
 .stat-label {
   font-size: 12px;
   color: #606266;
@@ -769,66 +1106,98 @@ const getSuggestions = (task: ImportTaskRespVO) => {
 .score-value {
   font-size: 32px;
   font-weight: 600;
-  color: #67c23a;
   line-height: 1;
+}
+
+.score-value.excellent {
+  color: #67c23a;
+}
+
+.score-value.good {
+  color: #409eff;
+}
+
+.score-value.average {
+  color: #e6a23c;
+}
+
+.score-value.poor {
+  color: #f56c6c;
+}
+
+.score-value.very-poor {
+  color: #f56c6c;
 }
 
 .score-label {
   font-size: 12px;
-  color: #606266;
-  margin: 4px 0;
+  color: #909399;
+  margin-top: 4px;
 }
 
 .score-description {
   font-size: 11px;
-  color: #909399;
+  color: #606266;
+  margin-top: 4px;
+}
+
+.score-breakdown {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 /* 错误信息样式 */
 .error-section {
-  background: #fef0f0;
-  border-radius: 6px;
+  background-color: #fef0f0;
+  border-radius: 8px;
   padding: 16px;
   border: 1px solid #fbc4c4;
 }
 
 .error-content {
-  margin-top: 8px;
+  margin: 0;
 }
 
 .error-alert {
-  border-radius: 6px;
+  border: none;
+  background: transparent;
 }
 
 .error-detail {
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .error-details-toggle {
   cursor: pointer;
-  font-size: 13px;
-  color: #409eff;
 }
 
 .error-details-toggle summary {
+  font-size: 12px;
+  color: #606266;
   outline: none;
   user-select: none;
 }
 
-.error-detail-text {
-  margin-top: 8px;
-  padding: 12px;
-  background: #fff5f5;
-  border: 1px solid #fed7d7;
-  border-radius: 4px;
-  font-size: 12px;
-  line-height: 1.4;
-  color: #742a2a;
-  overflow-x: auto;
-  white-space: pre-wrap;
+.error-details-toggle summary:hover {
+  color: #303133;
 }
 
-/* 建议样式 */
+.error-detail-text {
+  margin-top: 8px;
+  padding: 8px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #606266;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* 操作建议样式 */
 .suggestions-content {
   background: white;
   border-radius: 8px;
@@ -848,87 +1217,153 @@ const getSuggestions = (task: ImportTaskRespVO) => {
   gap: 12px;
   padding: 12px;
   border-radius: 6px;
-  border-left: 4px solid transparent;
+  border: 1px solid #ebeef5;
+  background: #fafafa;
+  transition: all 0.3s ease;
+}
+
+.suggestion-item:hover {
+  background: #f0f9ff;
+  border-color: #b3d8ff;
 }
 
 .suggestion-item.info {
-  background: #f0f9ff;
-  border-left-color: #409eff;
-}
-
-.suggestion-item.success {
-  background: #f0f9ff;
-  border-left-color: #67c23a;
+  border-left: 4px solid #409eff;
 }
 
 .suggestion-item.warning {
-  background: #fdf6ec;
-  border-left-color: #e6a23c;
+  border-left: 4px solid #e6a23c;
+}
+
+.suggestion-item.success {
+  border-left: 4px solid #67c23a;
+}
+
+.suggestion-item.error {
+  border-left: 4px solid #f56c6c;
 }
 
 .suggestion-icon {
-  margin-top: 2px;
   font-size: 16px;
+  margin-top: 2px;
+  flex-shrink: 0;
 }
 
 .suggestion-item.info .suggestion-icon {
   color: #409eff;
 }
 
-.suggestion-item.success .suggestion-icon {
-  color: #67c23a;
-}
-
 .suggestion-item.warning .suggestion-icon {
   color: #e6a23c;
 }
 
+.suggestion-item.success .suggestion-icon {
+  color: #67c23a;
+}
+
+.suggestion-item.error .suggestion-icon {
+  color: #f56c6c;
+}
+
 .suggestion-content {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .suggestion-title {
   font-size: 13px;
   font-weight: 600;
   color: #303133;
-  margin-bottom: 4px;
 }
 
 .suggestion-description {
   font-size: 12px;
   color: #606266;
-  line-height: 1.4;
+  line-height: 1.5;
+}
+
+.suggestion-action {
+  flex-shrink: 0;
+  align-self: flex-start;
 }
 
 /* 响应式设计 */
+@media (max-width: 1200px) {
+  .statistics-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+  }
+  
+  .stat-card {
+    padding: 12px;
+  }
+}
+
 @media (max-width: 768px) {
+  .task-expand-content {
+    padding: 0;
+  }
+  
+  .expand-section {
+    margin-bottom: 16px;
+  }
+  
   .basic-info-grid {
     grid-template-columns: 1fr;
+    gap: 8px;
   }
-
+  
   .statistics-grid {
     grid-template-columns: 1fr;
+    gap: 8px;
   }
-
+  
   .stage-indicators {
     flex-direction: column;
     gap: 16px;
   }
-
-  .stage-connector {
-    width: 2px;
-    height: 30px;
-    margin: 8px 0;
-  }
-
+  
   .stage-item {
     flex-direction: row;
     align-items: center;
     gap: 12px;
-  }
-
-  .stage-content {
     text-align: left;
+  }
+  
+  .stage-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+  }
+  
+  .stage-connector {
+    display: none;
+  }
+  
+  .suggestion-item {
+    flex-direction: column;
+    gap: 8px;
+    align-items: stretch;
+  }
+  
+  .suggestion-action {
+    align-self: stretch;
+  }
+}
+
+@media (max-width: 480px) {
+  .section-title {
+    font-size: 13px;
+  }
+  
+  .stat-value {
+    font-size: 18px;
+  }
+  
+  .score-value {
+    font-size: 28px;
   }
 }
 </style>

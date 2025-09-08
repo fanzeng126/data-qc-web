@@ -1,238 +1,551 @@
 <template>
-  <ContentWrap>
-    <!-- 查询条件 -->
-    <el-card class="search-card" shadow="never">
-      <el-form :model="queryParams" :inline="true" label-width="80px">
-        <el-form-item label="专区">
-          <el-select v-model="queryParams.zoneId" placeholder="全部" clearable style="width: 160px">
-            <el-option label="全部" :value="undefined" />
-            <el-option 
-              v-for="zone in zoneList" 
-              :key="zone.id" 
-              :label="zone.zoneName" 
-              :value="zone.id" 
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="时间">
-          <el-select v-model="queryParams.reportWeek" placeholder="请选择周期" style="width: 160px">
-            <el-option 
-              v-for="week in weekOptions" 
-              :key="week.value" 
-              :label="week.label" 
-              :value="week.value" 
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="行政区划">
-          <el-select v-model="queryParams.administrativeRegion" placeholder="全部" clearable style="width: 160px">
-            <el-option label="全部" :value="undefined" />
-            <el-option label="北京市" value="北京市" />
-            <el-option label="上海市" value="上海市" />
-            <el-option label="广州市" value="广州市" />
-            <el-option label="深圳市" value="深圳市" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="loadStatistics" :loading="loading">
-            <Icon icon="ep:search" class="mr-1" />
-            查询
-          </el-button>
-          <el-button @click="resetQuery">
-            <Icon icon="ep:refresh" class="mr-1" />
-            重置
-          </el-button>
-          <el-button type="success" plain @click="handleExport" :loading="exportLoading">
-            <Icon icon="ep:download" class="mr-1" />
-            导出
-          </el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-
-    <!-- 总体概况 -->
-    <el-card v-if="statistics" class="overview-card" shadow="never">
-      <template #header>
-        <div class="card-header">
-          <Icon icon="ep:data-analysis" class="mr-2" />
-          <span>总体概况</span>
-        </div>
+  <div class="statistics-container">
+    <!-- 页面头部 -->
+    <PageHeader
+      title="短缺药品统计分析"
+      content="全面监控和分析药品短缺情况，提供多维度统计报表"
+      :actions="headerActions"
+      @action-click="handleHeaderAction"
+    >
+      <template #extra>
+        <el-form :model="queryParams" :inline="true" class="search-form">
+          <el-form-item label="专区">
+            <el-select
+              v-model="queryParams.zoneId"
+              placeholder="全部"
+              clearable
+              style="width: 130px"
+              @change="loadAllData"
+            >
+              <el-option label="全部" :value="null" />
+              <el-option
+                v-for="zone in zoneList"
+                :key="zone.id"
+                :label="zone.zoneName"
+                :value="zone.id"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="时间">
+            <el-select
+              v-model="queryParams.reportWeek"
+              placeholder="选择周期"
+              style="width: 130px"
+              @change="loadAllData"
+            >
+              <el-option
+                v-for="week in weekOptions"
+                :key="week.value"
+                :label="week.label"
+                :value="week.value"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <el-button 
+              type="primary" 
+              @click="loadAllData"
+            >
+              <el-icon v-if="!loading"><Refresh /></el-icon>
+              <el-icon v-else><Loading /></el-icon>
+              刷新
+            </el-button>
+          </el-form-item>
+        </el-form>
       </template>
-      
+    </PageHeader>
+
+    <!-- 核心指标卡片 - 新增的4个主要指标 -->
+    <div class="core-stats-cards">
       <el-row :gutter="20">
-        <el-col :span="6">
-          <div class="statistic-item">
-            <div class="statistic-value">{{ statistics.overview.reportOrgCount }}</div>
-            <div class="statistic-title">填报机构数</div>
+        <!-- 填报机构数 -->
+        <el-col :xs="24" :sm="12" :md="6">
+          <div class="core-stat-card">
+            <div class="stat-icon-wrapper" style="background: rgba(64, 158, 255, 0.1)">
+              <Icon icon="ep:office-building" class="stat-icon" style="color: #409eff" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                <CountTo
+                  :start-val="0"
+                  :end-val="simpleOverview?.reportOrgCount || 0"
+                  :duration="1500"
+                />
+                <span class="stat-suffix">家</span>
+              </div>
+              <div class="stat-label">填报机构数</div>
+            </div>
           </div>
         </el-col>
-        <el-col :span="6">
-          <div class="statistic-item">
-            <div class="statistic-value">{{ statistics.overview.reportDrugCount }}</div>
-            <div class="statistic-title">填报药品数</div>
+
+        <!-- 填报药品数 -->
+        <el-col :xs="24" :sm="12" :md="6">
+          <div class="core-stat-card">
+            <div class="stat-icon-wrapper" style="background: rgba(103, 194, 58, 0.1)">
+              <Icon icon="ep:medicine-box" class="stat-icon" style="color: #67c23a" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                <CountTo
+                  :start-val="0"
+                  :end-val="simpleOverview?.reportDrugCount || 0"
+                  :duration="1500"
+                />
+                <span class="stat-suffix">种</span>
+              </div>
+              <div class="stat-label">填报药品数</div>
+            </div>
           </div>
         </el-col>
-        <el-col :span="6">
-          <div class="statistic-item">
-            <div class="statistic-value text-red">{{ statistics.overview.shortageDrugCount }}</div>
-            <div class="statistic-title">短缺药品数</div>
+
+        <!-- 短缺药品数 -->
+        <el-col :xs="24" :sm="12" :md="6">
+          <div class="core-stat-card">
+            <div class="stat-icon-wrapper" style="background: rgba(245, 108, 108, 0.1)">
+              <Icon icon="ep:warning-filled" class="stat-icon" style="color: #f56c6c" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                <CountTo
+                  :start-val="0"
+                  :end-val="simpleOverview?.shortageDrugCount || 0"
+                  :duration="1500"
+                />
+                <span class="stat-suffix">种</span>
+              </div>
+              <div class="stat-label">短缺药品数</div>
+            </div>
           </div>
         </el-col>
-        <el-col :span="6">
-          <div class="statistic-item">
-            <div class="statistic-value text-green">{{ statistics.overview.completionRate }}%</div>
-            <div class="statistic-title">填报完成率</div>
+
+        <!-- 填报完成率 -->
+        <el-col :xs="24" :sm="12" :md="6">
+          <div class="core-stat-card">
+            <div class="stat-icon-wrapper" style="background: rgba(230, 162, 60, 0.1)">
+              <Icon icon="ep:circle-check-filled" class="stat-icon" style="color: #e6a23c" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                <CountTo
+                  :start-val="0"
+                  :end-val="simpleOverview?.completionRate || 0"
+                  :duration="1500"
+                  :decimals="1"
+                />
+                <span class="stat-suffix">%</span>
+              </div>
+              <div class="stat-label">填报完成率</div>
+              <el-progress
+                :percentage="simpleOverview?.completionRate || 0"
+                :stroke-width="3"
+                :show-text="false"
+                :color="getCompletionColor(simpleOverview?.completionRate || 0)"
+                class="stat-progress"
+              />
+            </div>
           </div>
         </el-col>
       </el-row>
-    </el-card>
+    </div>
 
-    <!-- 供应状况分布 -->
-    <el-card v-if="statistics" class="distribution-card" shadow="never">
-      <template #header>
-        <div class="card-header">
-          <Icon icon="ep:pie-chart" class="mr-2" />
-          <span>供应状况分布</span>
-        </div>
-      </template>
-      
-      <div class="distribution-content">
-        <div class="chart-container">
-          <div ref="pieChartRef" class="pie-chart"></div>
-        </div>
-        
-        <div class="distribution-list">
-          <div 
-            v-for="item in statistics.supplyDistribution" 
-            :key="item.supplyStatus"
-            class="distribution-item"
-          >
-            <div class="item-indicator" :class="getStatusClass(item.supplyStatus)"></div>
-            <div class="item-content">
-              <div class="item-label">{{ item.statusName }}</div>
-              <div class="item-stats">
-                <span class="count">{{ item.count }}</span>
-                <span class="percentage">{{ item.percentage }}%</span>
-              </div>
+    <!-- 其他指标 -->
+    <div class="other-stats-cards" v-if="overview">
+      <el-row :gutter="20">
+        <el-col :xs="24" :sm="12" :md="6">
+          <div class="core-stat-card">
+            <div class="stat-icon-wrapper" style="background: rgba(230, 162, 60, 0.1)">
+              <Icon icon="ep:grid" class="stat-icon" style="color: #e6a23c" />
             </div>
-            <div class="item-bar">
-              <div 
-                class="bar-fill" 
-                :class="getStatusClass(item.supplyStatus)"
-                :style="{ width: item.percentage + '%' }"
-              ></div>
+            <div class="stat-content">
+              <div class="stat-value">
+                <CountTo
+                  :start-val="0"
+                  :end-val="overview?.dosageFormCount || 0"
+                  :duration="1500"
+                />
+                <span class="stat-suffix">类</span>
+              </div>
+              <div class="stat-label">剂型分类</div>
             </div>
           </div>
-        </div>
-      </div>
-    </el-card>
+        </el-col>
+        <el-col :xs="24" :sm="12" :md="6">
+          <div class="core-stat-card">
+            <div class="stat-icon-wrapper" style="background: rgba(144, 147, 153, 0.1)">
+              <Icon icon="ep:trend-charts" class="stat-icon" style="color: #909399" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                <CountTo
+                  :start-val="0"
+                  :end-val="overview?.weeklyUsageTotal || 0"
+                  :duration="1500"
+                />
+              </div>
+              <div class="stat-label">周使用量</div>
+            </div>
+          </div>
+        </el-col>
+        <el-col :xs="24" :sm="12" :md="6">
+          <div class="core-stat-card">
+            <div class="stat-icon-wrapper" style="background: rgba(64, 158, 255, 0.1)">
+              <Icon icon="ep:goods" class="stat-icon" style="color: #409eff" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                <CountTo
+                  :start-val="0"
+                  :end-val="overview?.currentStockTotal || 0"
+                  :duration="1500"
+                />
+              </div>
+              <div class="stat-label">实时库存</div>
+            </div>
+          </div>
+        </el-col>
+        <el-col :xs="24" :sm="12" :md="6">
+          <div class="core-stat-card">
+            <div class="stat-icon-wrapper" style="background: rgba(245, 108, 108, 0.1)">
+              <Icon icon="ep:bell" class="stat-icon" style="color: #f56c6c" />
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">
+                <CountTo
+                  :start-val="0"
+                  :end-val="overview?.stockAlertCount || 0"
+                  :duration="1500"
+                />
+                <span class="stat-suffix">个</span>
+              </div>
+              <div class="stat-label">库存预警</div>
+            </div>
+          </div>
+        </el-col>
+      </el-row>
+    </div>
 
-    <!-- 短缺药品详情 -->
-    <el-card v-if="statistics" class="shortage-card" shadow="never">
-      <template #header>
-        <div class="card-header">
-          <Icon icon="ep:warning" class="mr-2" />
-          <span>短缺药品详情</span>
-        </div>
-      </template>
-      
-      <el-table :data="statistics.shortageDetails" border>
-        <el-table-column label="药品名称" prop="drugName" width="200" />
-        <el-table-column label="剂型" prop="dosageForm" width="120" />
-        <el-table-column label="短缺机构数" prop="shortageOrgCount" width="120" align="center">
+    <!-- 图表区域 - 优化布局 -->
+    <el-row :gutter="16" class="chart-row">
+      <!-- 供应状况分布 - 紧凑版 -->
+      <el-col :xs="24" :sm="12" :md="8">
+        <ContentWrap class="chart-card">
+          <div class="card-header-compact">
+            <Icon icon="ep:pie-chart" />
+            <span>供应状况分布</span>
+          </div>
+          <div class="supply-distribution-compact">
+            <div ref="supplyPieChartRef" class="compact-pie-chart"></div>
+            <div class="distribution-legend">
+              <div v-for="item in supplyDistribution" :key="item.supplyStatus"
+                   class="legend-item-compact">
+                <div class="legend-dot" :style="{ backgroundColor: getStatusColor(item.supplyStatus) }"></div>
+                <span class="legend-label">{{ item.statusName }}</span>
+                <span class="legend-value">{{ item.percentage }}%</span>
+                <span class="legend-trend" v-if="item.monthOnMonth">
+                  <Icon :icon="getTrendIcon(item.monthOnMonth)" />
+                </span>
+              </div>
+            </div>
+          </div>
+        </ContentWrap>
+      </el-col>
+
+      <!-- 剂型分类图 -->
+      <el-col :xs="24" :sm="12" :md="8">
+        <ContentWrap class="chart-card">
+          <div class="card-header-compact">
+            <Icon icon="ep:grid" />
+            <span>剂型分类统计</span>
+          </div>
+          <div ref="dosageFormChartRef" class="chart-container-compact"></div>
+        </ContentWrap>
+      </el-col>
+
+      <!-- 库存分析图 -->
+      <el-col :xs="24" :sm="12" :md="8">
+        <ContentWrap class="chart-card">
+          <div class="card-header-compact">
+            <Icon icon="ep:goods" />
+            <span>库存分布分析</span>
+          </div>
+          <div ref="stockAnalysisChartRef" class="chart-container-compact"></div>
+        </ContentWrap>
+      </el-col>
+    </el-row>
+
+    <!-- 趋势图表 -->
+    <el-row :gutter="16" class="chart-row">
+      <!-- 周使用量趋势 -->
+      <el-col :xs="24" :md="12">
+        <ContentWrap class="chart-card">
+          <div class="card-header-compact">
+            <Icon icon="ep:trend-charts" />
+            <span>周使用量趋势</span>
+            <el-tag size="small" class="trend-tag">
+              均值: {{ formatNumber(weeklyUsageTrend?.avgUsage) }}
+            </el-tag>
+          </div>
+          <div ref="usageTrendChartRef" class="chart-container-medium"></div>
+        </ContentWrap>
+      </el-col>
+
+      <!-- 短缺趋势预测 -->
+      <el-col :xs="24" :md="12">
+        <ContentWrap class="chart-card">
+          <div class="card-header-compact">
+            <Icon icon="ep:data-analysis" />
+            <span>短缺趋势预测</span>
+            <el-tag size="small" type="warning" class="trend-tag">
+              含预测数据
+            </el-tag>
+          </div>
+          <div ref="shortageTrendChartRef" class="chart-container-medium"></div>
+        </ContentWrap>
+      </el-col>
+    </el-row>
+
+    <!-- 短缺药品详情表格 -->
+    <ContentWrap>
+      <div class="card-header-compact" style="margin-bottom: 16px">
+        <Icon icon="ep:warning" />
+        <span>短缺药品详情</span>
+        <el-badge :value="shortageDetails.length" class="item" type="danger" />
+      </div>
+
+      <el-table :data="shortageDetails" border v-loading="loading" size="small">
+        <el-table-column label="药品名称" prop="drugName" width="180" fixed>
           <template #default="scope">
-            <el-tag type="warning">{{ scope.row.shortageOrgCount }}</el-tag>
+            <el-tooltip :content="scope.row.drugName + ' - ' + scope.row.dosageForm">
+              <span class="drug-name">{{ scope.row.drugName }}</span>
+            </el-tooltip>
           </template>
         </el-table-column>
-        <el-table-column label="严重短缺机构数" prop="severeShortageOrgCount" width="140" align="center">
+        <el-table-column label="剂型" prop="dosageForm" width="100" />
+        <el-table-column label="短缺机构" prop="shortageOrgCount" width="90" align="center">
           <template #default="scope">
-            <el-tag type="danger">{{ scope.row.severeShortageOrgCount }}</el-tag>
+            <el-tag size="small" type="warning">{{ scope.row.shortageOrgCount }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="平均库存天数" prop="avgStockDays" width="120" align="center">
+        <el-table-column label="严重短缺" prop="severeShortageOrgCount" width="90" align="center">
           <template #default="scope">
-            <span :class="{ 'text-red': scope.row.avgStockDays < 3 }">
-              {{ scope.row.avgStockDays }}
+            <el-tag size="small" type="danger">{{ scope.row.severeShortageOrgCount }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="平均库存(天)" prop="avgStockDays" width="110" align="center">
+          <template #default="scope">
+            <el-progress
+              :percentage="Math.min(scope.row.avgStockDays * 10, 100)"
+              :color="getStockDaysColor(scope.row.avgStockDays)"
+              :stroke-width="6"
+              :show-text="false"
+            />
+            <span class="stock-days-text"
+                  :style="{ color: getStockDaysColor(scope.row.avgStockDays) }">
+              {{ scope.row.avgStockDays.toFixed(1) }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column label="风险等级" width="100" align="center">
+        <el-table-column label="风险等级" width="90" align="center">
           <template #default="scope">
-            <el-tag :type="getRiskLevel(scope.row).type">
-              {{ getRiskLevel(scope.row).label }}
+            <el-tag size="small" :type="getRiskLevelType(scope.row.riskLevel)">
+              {{ scope.row.riskLevelName }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120" align="center">
+        <el-table-column label="操作" width="100" align="center" fixed="right">
           <template #default="scope">
-            <el-button link type="primary" @click="viewDetail(scope.row)">
-              查看详情
+            <el-button link type="primary" size="small" @click="viewDetail(scope.row)">
+              详情
             </el-button>
           </template>
         </el-table-column>
       </el-table>
-    </el-card>
 
-    <!-- 空状态 -->
-    <el-empty 
-      v-if="!loading && !statistics" 
-      description="暂无统计数据"
-      :image-size="120"
-    />
-  </ContentWrap>
+      <!-- 分页 -->
+      <div class="pagination-container">
+        <el-pagination
+          v-model:current-page="tablePageNo"
+          v-model:page-size="tablePageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="shortageTotal"
+          layout="total, sizes, prev, pager, next, jumper"
+          size="small"
+          @size-change="loadShortageDetails"
+          @current-change="loadShortageDetails"
+        />
+      </div>
+    </ContentWrap>
+
+    <!-- 机构排名 -->
+    <ContentWrap>
+      <div class="card-header-compact" style="margin-bottom: 16px">
+        <Icon icon="ep:trophy" />
+        <span>机构填报排名</span>
+      </div>
+
+      <el-table :data="orgRanking" stripe size="small" max-height="300">
+        <el-table-column label="排名" prop="rank" width="60" align="center">
+          <template #default="scope">
+            <div class="rank-badge" :class="'rank-' + scope.row.rank">
+              {{ scope.row.rank }}
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="机构名称" prop="orgName" min-width="200" />
+        <el-table-column label="完成率" prop="completionRate" width="100" align="center">
+          <template #default="scope">
+            <el-progress
+              :percentage="scope.row.completionRate"
+              :color="getCompletionColor(scope.row.completionRate)"
+              :stroke-width="4"
+              :text-inside="true"
+            />
+          </template>
+        </el-table-column>
+        <el-table-column label="填报药品" prop="reportDrugCount" width="90" align="center" />
+        <el-table-column label="短缺药品" prop="shortageDrugCount" width="90" align="center">
+          <template #default="scope">
+            <el-tag size="small" v-if="scope.row.shortageDrugCount > 0" type="warning">
+              {{ scope.row.shortageDrugCount }}
+            </el-tag>
+            <span v-else>0</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="及时率" prop="timelyRate" width="80" align="center">
+          <template #default="scope">
+            {{ scope.row.timelyRate }}%
+          </template>
+        </el-table-column>
+      </el-table>
+    </ContentWrap>
+  </div>
 
   <!-- 详情对话框 -->
   <DetailDialog ref="detailDialogRef" />
 </template>
 
 <script setup lang="ts">
-import { 
-  ReportZoneApi, 
-  ReportRecordApi, 
-  type ReportZoneVO,
-  type ReportStatisticsReqVO, 
-  type ReportStatisticsRespVO,
-  type ShortageDetail
+import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { Refresh, Loading } from '@element-plus/icons-vue'
+import { CountTo } from '@/components/CountTo'
+import {
+  ReportZoneApi,
+  type ReportZoneVO
 } from '@/api/shortage'
+import {
+  StatisticsApi,
+  type StatisticsQueryVO,
+  type StatisticsOverviewVO,
+  type SimpleQueryVO,
+  type SimpleOverviewVO,
+  type SupplyDistributionVO,
+  type ShortageDetailVO,
+  type DosageFormChartVO,
+  type WeeklyUsageTrendVO,
+  type StockAnalysisVO,
+  type OrgRankingVO,
+  type DrugShortageTrendVO,
+  formatNumber,
+  getTrendIcon,
+  getTrendColor
+} from '@/api/shortage/statistics'
 import * as echarts from 'echarts'
 import DetailDialog from './components/DetailDialog.vue'
+import PageHeader from '@/components/PageHeader/index.vue'
 
-/** 短缺药品统计分析页面 */
-defineOptions({ name: 'ShortageStatistics' })
+defineOptions({ name: 'ShortageStatisticsEnhanced' })
 
 const message = useMessage()
 const loading = ref(false)
 const exportLoading = ref(false)
-const statistics = ref<ReportStatisticsRespVO>()
-const zoneList = ref<ReportZoneVO[]>([])
-const pieChartRef = ref()
-let pieChart: echarts.ECharts | null = null
 
-const queryParams = reactive<ReportStatisticsReqVO>({
-  zoneId: undefined,
-  reportWeek: getCurrentWeek(),
-  administrativeRegion: undefined
+// 查询参数
+const queryParams = reactive<StatisticsQueryVO>({
+  zoneId: null,
+  reportWeek: getCurrentWeek()
 })
+
+// 数据状态
+const overview = ref<StatisticsOverviewVO>()
+const simpleOverview = ref<SimpleOverviewVO>()  // 核心指标专用
+const supplyDistribution = ref<SupplyDistributionVO[]>([])
+const shortageDetails = ref<ShortageDetailVO[]>([])
+const dosageFormData = ref<DosageFormChartVO[]>([])
+const weeklyUsageTrend = ref<WeeklyUsageTrendVO>()
+const stockAnalysis = ref<StockAnalysisVO>()
+const orgRanking = ref<OrgRankingVO[]>([])
+const shortageTrend = ref<DrugShortageTrendVO>()
+const zoneList = ref<ReportZoneVO[]>([])
+
+// 简化查询参数 - 专用于核心指标
+const simpleQueryParams = computed<SimpleQueryVO>(() => ({
+  zoneId: queryParams.zoneId,
+  reportWeek: queryParams.reportWeek
+}))
+
+// 表格分页
+const tablePageNo = ref(1)
+const tablePageSize = ref(20)
+const shortageTotal = ref(0)
+
+// 图表实例
+const supplyPieChartRef = ref()
+const dosageFormChartRef = ref()
+const stockAnalysisChartRef = ref()
+const usageTrendChartRef = ref()
+const shortageTrendChartRef = ref()
+
+let supplyPieChart: echarts.ECharts | null = null
+let dosageFormChart: echarts.ECharts | null = null
+let stockAnalysisChart: echarts.ECharts | null = null
+let usageTrendChart: echarts.ECharts | null = null
+let shortageTrendChart: echarts.ECharts | null = null
+
+// 头部操作按钮
+const headerActions = computed(() => [
+  {
+    key: 'search',
+    text: '查询',
+    type: 'primary' as const,
+    icon: 'Search',
+    loading: loading.value,
+    handler: () => loadAllData()
+  },
+  {
+    key: 'reset',
+    text: '重置',
+    type: 'default' as const,
+    icon: 'Refresh',
+    handler: () => resetQuery()
+  },
+  {
+    key: 'export',
+    text: '导出',
+    type: 'success' as const,
+    icon: 'Download',
+    loading: exportLoading.value,
+    handler: () => handleExport()
+  }
+])
 
 // 周期选项
 const weekOptions = computed(() => {
   const options = []
   const now = new Date()
-  
-  // 生成最近8周的选项
-  for (let i = 0; i < 8; i++) {
+
+  for (let i = 0; i < 12; i++) {
     const date = new Date(now)
     date.setDate(date.getDate() - i * 7)
     const week = getWeekNumber(date)
     const year = date.getFullYear()
     const weekStr = `${year}-${week.toString().padStart(2, '0')}`
-    
+
     options.push({
       value: weekStr,
       label: `${weekStr}周${i === 0 ? ' (本周)' : ''}`
     })
   }
-  
+
   return options
 })
 
@@ -253,13 +566,146 @@ function getWeekNumber(date: Date): number {
   return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
 }
 
+// 处理头部操作
+const handleHeaderAction = (action: any) => {
+  if (action.handler) {
+    action.handler()
+  }
+}
+
+// 格式化统计值
+const formatStatValue = (value: number | undefined, suffix: string): string => {
+  if (value == null) return '0' + suffix
+
+  if (suffix === '类' || suffix === '个') {
+    return value + suffix
+  }
+
+  return formatNumber(value)
+}
+
+// 获取供应状态颜色
+const getStatusColor = (status: number): string => {
+  const colors: Record<number, string> = {
+    1: '#67c23a',
+    2: '#e6a23c',
+    3: '#f56c6c',
+    4: '#ff3333'
+  }
+  return colors[status] || '#909399'
+}
+
+// 获取库存天数颜色
+const getStockDaysColor = (days: number): string => {
+  if (days <= 3) return '#ff3333'
+  if (days <= 7) return '#e6a23c'
+  return '#67c23a'
+}
+
+// 获取风险等级类型
+const getRiskLevelType = (level: number | undefined): string => {
+  const types: Record<number, string> = {
+    1: 'info',
+    2: 'warning',
+    3: 'danger'
+  }
+  return types[level || 1] || 'info'
+}
+
+// 获取完成率颜色
+const getCompletionColor = (rate: number): string => {
+  if (rate >= 95) return '#67c23a'
+  if (rate >= 80) return '#e6a23c'
+  return '#f56c6c'
+}
+
+// 加载所有数据
+const loadAllData = async () => {
+  loading.value = true
+  try {
+    await Promise.all([
+      loadSimpleOverview(),  // 新增简化概览
+      loadOverview(),
+      loadSupplyDistribution(),
+      loadShortageDetails(),
+      loadDosageFormChart(),
+      loadWeeklyUsageTrend(),
+      loadStockAnalysis(),
+      loadOrgRanking(),
+      loadShortageTrend()
+    ])
+
+    // 更新图表
+    nextTick(() => {
+      updateAllCharts()
+    })
+  } catch (error) {
+    console.error('加载数据失败:', error)
+    message.error('加载数据失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 加载简化概览（核心指标专用）
+const loadSimpleOverview = async () => {
+  simpleOverview.value = await StatisticsApi.getSimpleOverview(simpleQueryParams.value)
+}
+
+// 加载总体概况
+const loadOverview = async () => {
+  overview.value = await StatisticsApi.getOverview(queryParams)
+}
+
+// 加载供应分布
+const loadSupplyDistribution = async () => {
+  supplyDistribution.value = await StatisticsApi.getSupplyDistribution(queryParams)
+}
+
+// 加载短缺详情
+const loadShortageDetails = async () => {
+  const params = {
+    ...queryParams,
+    pageNo: tablePageNo.value,
+    pageSize: tablePageSize.value
+  }
+  const data = await StatisticsApi.getShortageDetails(params)
+  shortageDetails.value = data.list || data
+  shortageTotal.value = data.total || data.length
+}
+
+// 加载剂型统计
+const loadDosageFormChart = async () => {
+  dosageFormData.value = await StatisticsApi.getDosageFormChart(queryParams)
+}
+
+// 加载周使用量趋势
+const loadWeeklyUsageTrend = async () => {
+  weeklyUsageTrend.value = await StatisticsApi.getWeeklyUsageTrend(queryParams)
+}
+
+// 加载库存分析
+const loadStockAnalysis = async () => {
+  stockAnalysis.value = await StatisticsApi.getStockAnalysis(queryParams)
+}
+
+// 加载机构排名
+const loadOrgRanking = async () => {
+  orgRanking.value = await StatisticsApi.getOrgRanking({ ...queryParams, pageSize: 10 })
+}
+
+// 加载短缺趋势
+const loadShortageTrend = async () => {
+  shortageTrend.value = await StatisticsApi.getDrugShortageTrend(queryParams)
+}
+
 // 加载专区列表
 const loadZoneList = async () => {
   try {
-    const data = await ReportZoneApi.getPage({ 
-      pageNo: 1, 
-      pageSize: 100, 
-      status: 1 
+    const data = await ReportZoneApi.getPage({
+      pageNo: 1,
+      pageSize: 100,
+      status: 1
     })
     zoneList.value = data.list
   } catch (error) {
@@ -267,38 +713,18 @@ const loadZoneList = async () => {
   }
 }
 
-// 加载统计数据
-const loadStatistics = async () => {
-  loading.value = true
-  try {
-    const data = await ReportRecordApi.getStatistics(queryParams)
-    statistics.value = data
-    
-    // 更新饼图
-    nextTick(() => {
-      updatePieChart()
-    })
-  } catch (error) {
-    console.error('加载统计数据失败:', error)
-    message.error('加载统计数据失败')
-  } finally {
-    loading.value = false
-  }
-}
-
 // 重置查询
 const resetQuery = () => {
-  queryParams.zoneId = undefined
+  queryParams.zoneId = null
   queryParams.reportWeek = getCurrentWeek()
-  queryParams.administrativeRegion = undefined
-  loadStatistics()
+  loadAllData()
 }
 
-// 导出数据
+// 导出报告
 const handleExport = async () => {
   exportLoading.value = true
   try {
-    await ReportRecordApi.exportReport(queryParams)
+    await StatisticsApi.exportReport(queryParams)
     message.success('导出成功')
   } catch (error) {
     console.error('导出失败:', error)
@@ -308,247 +734,541 @@ const handleExport = async () => {
   }
 }
 
-// 获取状态样式类
-const getStatusClass = (status: number): string => {
-  switch (status) {
-    case 1: return 'status-sufficient'
-    case 2: return 'status-relatively-sufficient'
-    case 3: return 'status-shortage'
-    case 4: return 'status-severe-shortage'
-    default: return ''
-  }
-}
-
-// 获取风险等级
-const getRiskLevel = (item: ShortageDetail) => {
-  if (item.severeShortageOrgCount >= 10) {
-    return { type: 'danger', label: '高风险' }
-  } else if (item.shortageOrgCount >= 10) {
-    return { type: 'warning', label: '中风险' }
-  } else {
-    return { type: 'info', label: '低风险' }
-  }
-}
-
 // 查看详情
 const detailDialogRef = ref()
-const viewDetail = (item: ShortageDetail) => {
+const viewDetail = (item: ShortageDetailVO) => {
   detailDialogRef.value?.open(item)
 }
 
-// 更新饼图
-const updatePieChart = () => {
-  if (!pieChartRef.value || !statistics.value) return
-  
-  if (!pieChart) {
-    pieChart = echarts.init(pieChartRef.value)
+// 更新所有图表
+const updateAllCharts = () => {
+  updateSupplyPieChart()
+  updateDosageFormChart()
+  updateStockAnalysisChart()
+  updateUsageTrendChart()
+  updateShortageTrendChart()
+}
+
+// 更新供应分布饼图
+const updateSupplyPieChart = () => {
+  if (!supplyPieChartRef.value || !supplyDistribution.value) return
+
+  if (!supplyPieChart) {
+    supplyPieChart = echarts.init(supplyPieChartRef.value)
   }
-  
+
   const option = {
     tooltip: {
       trigger: 'item',
-      formatter: '{a} <br/>{b}: {c} ({d}%)'
+      formatter: '{b}: {c} ({d}%)'
     },
-    legend: {
-      bottom: '10%',
-      left: 'center'
+    series: [{
+      type: 'pie',
+      radius: ['50%', '80%'],
+      avoidLabelOverlap: false,
+      label: { show: false },
+      emphasis: {
+        label: { show: true, fontSize: '12', fontWeight: 'bold' }
+      },
+      data: supplyDistribution.value.map(item => ({
+        value: item.count,
+        name: item.statusName,
+        itemStyle: { color: getStatusColor(item.supplyStatus) }
+      }))
+    }]
+  }
+
+  supplyPieChart.setOption(option)
+}
+
+// 更新剂型分类图
+const updateDosageFormChart = () => {
+  if (!dosageFormChartRef.value || !dosageFormData.value) return
+
+  if (!dosageFormChart) {
+    dosageFormChart = echarts.init(dosageFormChartRef.value)
+  }
+
+  const option = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' }
     },
+    grid: {
+      top: '10%',
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      data: dosageFormData.value.map(item => item.dosageForm),
+      axisTick: { alignWithLabel: true },
+      axisLabel: { rotate: 45, fontSize: 10 }
+    },
+    yAxis: { type: 'value', name: '数量' },
     series: [
       {
-        name: '供应状况',
-        type: 'pie',
-        radius: ['40%', '70%'],
-        center: ['50%', '45%'],
-        data: statistics.value.supplyDistribution.map(item => ({
-          value: item.count,
-          name: item.statusName,
-          itemStyle: {
-            color: getStatusColor(item.supplyStatus)
-          }
-        })),
-        emphasis: {
-          itemStyle: {
-            shadowBlur: 10,
-            shadowOffsetX: 0,
-            shadowColor: 'rgba(0, 0, 0, 0.5)'
-          }
-        }
+        name: '药品数',
+        type: 'bar',
+        data: dosageFormData.value.map(item => item.drugCount),
+        itemStyle: { color: '#409eff' }
+      },
+      {
+        name: '短缺数',
+        type: 'bar',
+        data: dosageFormData.value.map(item => item.shortageCount),
+        itemStyle: { color: '#f56c6c' }
       }
     ]
   }
-  
-  pieChart.setOption(option)
+
+  dosageFormChart.setOption(option)
 }
 
-// 获取状态颜色
-const getStatusColor = (status: number): string => {
-  switch (status) {
-    case 1: return '#67c23a'
-    case 2: return '#e6a23c'
-    case 3: return '#f56c6c'
-    case 4: return '#f56c6c'
-    default: return '#909399'
+// 更新库存分析图
+const updateStockAnalysisChart = () => {
+  if (!stockAnalysisChartRef.value || !stockAnalysis.value) return
+
+  if (!stockAnalysisChart) {
+    stockAnalysisChart = echarts.init(stockAnalysisChartRef.value)
   }
+
+  const option = {
+    tooltip: {
+      trigger: 'item',
+      formatter: '{b}: {c} ({d}%)'
+    },
+    series: [{
+      type: 'pie',
+      radius: '70%',
+      data: stockAnalysis.value.distributions.map(item => ({
+        value: item.count,
+        name: item.range,
+        itemStyle: {
+          color: item.range.includes('0-3') ? '#f56c6c' :
+            item.range.includes('4-7') ? '#e6a23c' :
+              item.range.includes('8-14') ? '#409eff' : '#67c23a'
+        }
+      })),
+      emphasis: {
+        itemStyle: {
+          shadowBlur: 10,
+          shadowOffsetX: 0,
+          shadowColor: 'rgba(0, 0, 0, 0.5)'
+        }
+      }
+    }]
+  }
+
+  stockAnalysisChart.setOption(option)
+}
+
+// 更新使用量趋势图
+const updateUsageTrendChart = () => {
+  if (!usageTrendChartRef.value || !weeklyUsageTrend.value) return
+
+  if (!usageTrendChart) {
+    usageTrendChart = echarts.init(usageTrendChartRef.value)
+  }
+
+  const option = {
+    tooltip: {
+      trigger: 'axis',
+      formatter: (params: any) => {
+        const weekIndex = params[0].dataIndex
+        const usage = params[0].value
+        const growth = weeklyUsageTrend.value!.growthRates[weekIndex]
+        return `${params[0].name}<br/>
+                使用量: ${formatNumber(usage)}<br/>
+                环比: ${growth > 0 ? '+' : ''}${growth.toFixed(1)}%`
+      }
+    },
+    grid: {
+      top: '10%',
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      data: weeklyUsageTrend.value.weeks,
+      axisTick: { alignWithLabel: true }
+    },
+    yAxis: {
+      type: 'value',
+      name: '使用量',
+      axisLabel: {
+        formatter: (value: number) => formatNumber(value)
+      }
+    },
+    series: [{
+      name: '使用量',
+      type: 'line',
+      smooth: true,
+      data: weeklyUsageTrend.value.usageData,
+      areaStyle: {
+        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: 'rgba(64, 158, 255, 0.3)' },
+          { offset: 1, color: 'rgba(64, 158, 255, 0.05)' }
+        ])
+      },
+      itemStyle: { color: '#409eff' },
+      markLine: {
+        data: [{
+          type: 'average',
+          name: '平均值',
+          label: { formatter: '均值: {c}' }
+        }],
+        lineStyle: { color: '#e6a23c' }
+      }
+    }]
+  }
+
+  usageTrendChart.setOption(option)
+}
+
+// 更新短缺趋势图
+const updateShortageTrendChart = () => {
+  if (!shortageTrendChartRef.value || !shortageTrend.value) return
+
+  if (!shortageTrendChart) {
+    shortageTrendChart = echarts.init(shortageTrendChartRef.value)
+  }
+
+  const option = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'cross' }
+    },
+    legend: {
+      data: ['短缺数', '严重短缺', '预测'],
+      bottom: 0
+    },
+    grid: {
+      top: '10%',
+      left: '3%',
+      right: '4%',
+      bottom: '12%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      data: [...shortageTrend.value.timeAxis, ...['预测1', '预测2', '预测3', '预测4']],
+      axisTick: { alignWithLabel: true }
+    },
+    yAxis: [
+      { type: 'value', name: '数量' },
+      { type: 'value', name: '短缺率(%)', position: 'right' }
+    ],
+    series: [
+      {
+        name: '短缺数',
+        type: 'line',
+        data: shortageTrend.value.shortageCountTrend,
+        itemStyle: { color: '#e6a23c' }
+      },
+      {
+        name: '严重短缺',
+        type: 'line',
+        data: shortageTrend.value.severeShortageCountTrend,
+        itemStyle: { color: '#f56c6c' }
+      },
+      {
+        name: '预测',
+        type: 'line',
+        data: [...new Array(shortageTrend.value.timeAxis.length).fill(null),
+          ...(shortageTrend.value.forecastData || [])],
+        lineStyle: { type: 'dashed' },
+        itemStyle: { color: '#909399' }
+      }
+    ]
+  }
+
+  shortageTrendChart.setOption(option)
 }
 
 // 初始化
 onMounted(() => {
   loadZoneList()
-  loadStatistics()
+  loadAllData()
+
+  // 监听窗口大小变化
+  window.addEventListener('resize', () => {
+    supplyPieChart?.resize()
+    dosageFormChart?.resize()
+    stockAnalysisChart?.resize()
+    usageTrendChart?.resize()
+    shortageTrendChart?.resize()
+  })
 })
 
-// 清理图表
+// 清理
 onUnmounted(() => {
-  if (pieChart) {
-    pieChart.dispose()
-    pieChart = null
-  }
+  supplyPieChart?.dispose()
+  dosageFormChart?.dispose()
+  stockAnalysisChart?.dispose()
+  usageTrendChart?.dispose()
+  shortageTrendChart?.dispose()
 })
 </script>
 
-<style scoped>
-.search-card,
-.overview-card,
-.distribution-card,
-.shortage-card {
-  margin-bottom: 20px;
+<style scoped lang="scss">
+.statistics-container {
+  padding: 8px;
 }
 
-.card-header {
+.search-form {
+  margin: 0;
+
+  .el-form-item {
+    margin-bottom: 0;
+  }
+}
+
+// 核心指标卡片样式
+.core-stats-cards {
+  margin: 20px 0;
+}
+
+.core-stat-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s;
   display: flex;
   align-items: center;
-  font-weight: 600;
+  height: 120px;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  }
+
+  .stat-icon-wrapper {
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 16px;
+    flex-shrink: 0;
+
+    .stat-icon {
+      font-size: 32px;
+    }
+  }
+
+  .stat-content {
+    flex: 1;
+    min-width: 0;
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 600;
+      color: #303133;
+      line-height: 1.2;
+      display: flex;
+      align-items: baseline;
+
+      .stat-suffix {
+        font-size: 14px;
+        font-weight: 400;
+        color: #909399;
+        margin-left: 4px;
+      }
+    }
+
+    .stat-label {
+      font-size: 14px;
+      color: #606266;
+      margin-top: 8px;
+    }
+
+    .stat-trend {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 6px;
+      font-size: 12px;
+      color: #909399;
+    }
+
+    .stat-progress {
+      margin-top: 8px;
+    }
+  }
 }
 
-.statistic-item {
-  text-align: center;
-  padding: 16px;
+// 其他指标
+.other-stats-cards {
+  margin: 20px 0;
 }
 
-.statistic-value {
-  font-size: 32px;
-  font-weight: 600;
-  line-height: 1;
-  margin-bottom: 8px;
+.chart-row {
+  margin-bottom: 16px;
 }
 
-.statistic-title {
+.chart-card {
+  height: 100%;
+  padding: 12px !important;
+}
+
+.card-header-compact {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 14px;
-  color: #666;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 12px;
+
+  .trend-tag {
+    margin-left: auto;
+  }
 }
 
-.text-red {
-  color: #f56c6c;
-}
-
-.text-green {
-  color: #67c23a;
-}
-
-.distribution-content {
+.supply-distribution-compact {
   display: flex;
-  gap: 40px;
-}
-
-.chart-container {
-  flex: 1;
-  min-height: 300px;
-}
-
-.pie-chart {
-  width: 100%;
-  height: 300px;
-}
-
-.distribution-list {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+  align-items: center;
   gap: 16px;
 }
 
-.distribution-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.compact-pie-chart {
+  width: 120px;
+  height: 120px;
+  flex-shrink: 0;
 }
 
-.item-indicator {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-}
-
-.status-sufficient {
-  background-color: #67c23a;
-}
-
-.status-relatively-sufficient {
-  background-color: #e6a23c;
-}
-
-.status-shortage {
-  background-color: #f56c6c;
-}
-
-.status-severe-shortage {
-  background-color: #f56c6c;
-}
-
-.item-content {
+.distribution-legend {
   flex: 1;
-  min-width: 0;
-}
-
-.item-label {
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 4px;
-}
-
-.item-stats {
   display: flex;
+  flex-direction: column;
   gap: 8px;
+}
+
+.legend-item-compact {
+  display: flex;
   align-items: center;
+  gap: 6px;
+  font-size: 12px;
 }
 
-.count {
-  font-size: 18px;
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legend-label {
+  flex: 1;
+  color: #606266;
+}
+
+.legend-value {
   font-weight: 600;
+  color: #303133;
 }
 
-.percentage {
-  font-size: 14px;
-  color: #666;
+.legend-trend {
+  font-size: 10px;
+  color: #909399;
 }
 
-.item-bar {
-  width: 100px;
-  height: 6px;
-  background-color: #f0f0f0;
-  border-radius: 3px;
-  overflow: hidden;
+.chart-container-compact {
+  height: 180px;
 }
 
-.bar-fill {
-  height: 100%;
-  transition: width 0.3s ease;
+.chart-container-medium {
+  height: 280px;
 }
 
-.bar-fill.status-sufficient {
-  background-color: #67c23a;
+.drug-name {
+  font-weight: 500;
+  color: #303133;
+  cursor: pointer;
+
+  &:hover {
+    color: #409eff;
+  }
 }
 
-.bar-fill.status-relatively-sufficient {
-  background-color: #e6a23c;
+.stock-days-text {
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 4px;
 }
 
-.bar-fill.status-shortage {
-  background-color: #f56c6c;
+.pagination-container {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
 }
 
-.bar-fill.status-severe-shortage {
-  background-color: #f56c6c;
+.rank-badge {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 12px;
+
+  &.rank-1 {
+    background: linear-gradient(135deg, #ffd700, #ffed4e);
+    color: #fff;
+  }
+
+  &.rank-2 {
+    background: linear-gradient(135deg, #c0c0c0, #e8e8e8);
+    color: #fff;
+  }
+
+  &.rank-3 {
+    background: linear-gradient(135deg, #cd7f32, #e6a865);
+    color: #fff;
+  }
+}
+
+// 响应式布局
+@media (max-width: 768px) {
+  .core-stat-card {
+    height: 100px;
+    padding: 16px;
+
+    .stat-icon-wrapper {
+      width: 48px;
+      height: 48px;
+
+      .stat-icon {
+        font-size: 24px;
+      }
+    }
+
+    .stat-content {
+      .stat-value {
+        font-size: 24px;
+      }
+
+      .stat-label {
+        font-size: 12px;
+      }
+    }
+  }
+
+  .supply-distribution-compact {
+    flex-direction: column;
+  }
+
+  .compact-pie-chart {
+    width: 100%;
+    height: 150px;
+  }
 }
 </style>

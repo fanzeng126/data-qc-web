@@ -36,25 +36,28 @@
               </template>
               <el-descriptions :column="2" border>
                 <el-descriptions-item label="任务编号">
-                  <el-tag type="primary">{{ taskDetail?.taskInfo?.taskNo || '未知' }}</el-tag>
+                  <el-tag type="primary">{{ taskDetail?.taskNo || '未知' }}</el-tag>
                 </el-descriptions-item>
                 <el-descriptions-item label="任务名称">
-                  {{ taskDetail?.taskInfo?.taskName || '未知' }}
+                  {{ taskDetail?.taskName || '未知' }}
                 </el-descriptions-item>
-                <el-descriptions-item label="文件名称">
-                  {{ taskDetail?.taskInfo?.fileName || '未知' }}
+                <el-descriptions-item label="文件路径">
+                  {{ taskDetail?.filePath || '未知' }}
                 </el-descriptions-item>
                 <el-descriptions-item label="文件大小">
-                  {{ formatFileSize(taskDetail?.taskInfo?.fileSize || 0) }}
+                  {{ formatFileSize(taskDetail?.fileSize || 0) }}
                 </el-descriptions-item>
                 <el-descriptions-item label="创建人">
-                  {{ taskDetail?.taskInfo?.creator || '未知' }}
+                  {{ taskDetail?.creator || '未知' }}
                 </el-descriptions-item>
                 <el-descriptions-item label="数据源">
-                  {{ getDataSourceText(taskDetail?.taskInfo?.dataSource) }}
+                  {{ getDataSourceText(taskDetail?.dataSource) }}
                 </el-descriptions-item>
                 <el-descriptions-item label="创建时间">
-                  {{ formatTime(taskDetail?.taskInfo?.createTime) }}
+                  {{ formatTime(taskDetail?.createTime) }}
+                </el-descriptions-item>
+                <el-descriptions-item label="执行模式" v-if="taskDetail?.executeMode">
+                  {{ getExecuteModeText(taskDetail.executeMode) }}
                 </el-descriptions-item>
               </el-descriptions>
             </el-card>
@@ -84,78 +87,60 @@
               <div class="stage-progress-section">
                 <el-steps :active="getActiveStep()" finish-status="success" align-center>
                   <el-step
-                    title="文件解压"
-                    :status="getStepStatus(taskDetail?.overallProgress?.stageStatus?.extractStatus)"
-                    :description="getStepDescription('extract')"
-                  />
-                  <el-step
-                    title="数据导入"
-                    :status="getStepStatus(taskDetail?.overallProgress?.stageStatus?.importStatus)"
-                    :description="getStepDescription('import')"
-                  />
-                  <el-step
-                    title="质控检查"
-                    :status="getStepStatus(taskDetail?.overallProgress?.stageStatus?.qcStatus)"
-                    :description="getStepDescription('qc')"
+                    v-for="(stage, index) in processStages"
+                    :key="stage.name || index"
+                    :title="stage.name"
+                    :status="getStepStatus(stage.status)"
+                    :description="stage.statusDescription"
                   />
                 </el-steps>
               </div>
 
               <!-- 整体进度 -->
               <div class="overall-progress-section">
-                <div class="progress-header">
-                  <span class="progress-label">整体完成度</span>
-                  <span class="progress-value"
-                    >{{ getValidProgress(taskDetail?.overallProgress?.overallProgress) }}%</span
-                  >
-                </div>
                 <el-progress
-                  :percentage="getValidProgress(taskDetail?.overallProgress?.overallProgress)"
+                  :percentage="taskDetail?.progressPercent || 0"
                   :stroke-width="16"
-                  :status="getProgressBarStatus()"
+                  :status="getProgressStatus(taskDetail?.status)"
                 />
                 <div class="progress-message">
-                  {{ taskDetail?.overallProgress?.currentMessage || '等待处理...' }}
+                  {{ taskDetail?.message || '等待处理...' }}
                 </div>
               </div>
 
               <!-- 时间信息 -->
               <div class="time-info-section">
                 <div class="time-grid">
-                  <div class="time-item" v-if="taskDetail?.overallProgress?.timeInfo?.startTime">
+                  <div class="time-item" v-if="taskDetail?.startTime">
                     <div class="time-label">开始时间</div>
                     <div class="time-value">{{
-                      formatTime(taskDetail.overallProgress.timeInfo.startTime)
+                      formatTime(taskDetail.startTime)
                     }}</div>
                   </div>
                   <div
                     class="time-item"
-                    v-if="taskDetail?.overallProgress?.timeInfo?.estimatedEndTime"
+                    v-if="taskDetail?.endTime"
                   >
-                    <div class="time-label">预计完成</div>
+                    <div class="time-label">结束时间</div>
                     <div class="time-value">{{
-                      formatTime(taskDetail.overallProgress.timeInfo.estimatedEndTime)
+                      formatTime(taskDetail.endTime)
                     }}</div>
                   </div>
                   <div
                     class="time-item"
-                    v-if="taskDetail?.overallProgress?.timeInfo?.elapsedSeconds"
+                    v-if="taskDetail?.durationMs"
                   >
-                    <div class="time-label">已用时间</div>
+                    <div class="time-label">处理耗时</div>
                     <div class="time-value">{{
-                      formatDuration(taskDetail.overallProgress.timeInfo.elapsedSeconds)
+                      formatDurationFromMs(taskDetail.durationMs)
                     }}</div>
                   </div>
                   <div
                     class="time-item"
-                    v-if="taskDetail?.overallProgress?.estimation?.estimatedRemainingSeconds"
+                    v-if="taskDetail?.avgRecordTime"
                   >
-                    <div class="time-label">预计剩余</div>
-                    <div class="time-value">{{
-                      formatDuration(
-                        taskDetail.overallProgress.estimation.estimatedRemainingSeconds
-                      )
-                    }}</div>
+                    <div class="time-label">平均记录时间</div>
+                    <div class="time-value">{{ taskDetail.avgRecordTime }}ms</div>
                   </div>
                 </div>
               </div>
@@ -175,26 +160,24 @@
                 <div class="stat-item">
                   <span class="stat-label">总文件数</span>
                   <span class="stat-value">{{
-                    taskDetail?.statistics?.fileStats?.totalFiles || 0
+                    taskDetail?.totalFiles || 0
                   }}</span>
                 </div>
                 <div class="stat-item success">
                   <span class="stat-label">成功文件</span>
                   <span class="stat-value">{{
-                    taskDetail?.statistics?.fileStats?.successFiles || 0
+                    taskDetail?.successFiles || 0
                   }}</span>
                 </div>
                 <div class="stat-item danger">
                   <span class="stat-label">失败文件</span>
                   <span class="stat-value">{{
-                    taskDetail?.statistics?.fileStats?.failedFiles || 0
+                    (taskDetail?.totalFiles || 0) - (taskDetail?.successFiles || 0)
                   }}</span>
                 </div>
                 <div class="stat-progress">
                   <el-progress
-                    :percentage="
-                      getValidProgress(taskDetail?.statistics?.fileStats?.fileSuccessRate)
-                    "
+                    :percentage="fileSuccessRate"
                     :stroke-width="8"
                     :show-text="false"
                     :status="getFileProgressStatus()"
@@ -214,26 +197,36 @@
                 <div class="stat-item">
                   <span class="stat-label">总记录数</span>
                   <span class="stat-value">{{
-                    formatNumber(taskDetail?.statistics?.recordStats?.totalRecords || 0)
+                    formatNumber(taskDetail?.totalRecords || 0)
                   }}</span>
                 </div>
                 <div class="stat-item success">
                   <span class="stat-label">成功记录</span>
                   <span class="stat-value">{{
-                    formatNumber(taskDetail?.statistics?.recordStats?.successRecords || 0)
+                    formatNumber(taskDetail?.successRecords || 0)
                   }}</span>
                 </div>
                 <div class="stat-item danger">
                   <span class="stat-label">失败记录</span>
                   <span class="stat-value">{{
-                    formatNumber(taskDetail?.statistics?.recordStats?.failedRecords || 0)
+                    formatNumber((taskDetail?.totalRecords || 0) - (taskDetail?.successRecords || 0))
+                  }}</span>
+                </div>
+                <div class="stat-item warning" v-if="taskDetail?.warningRecords && taskDetail.warningRecords > 0">
+                  <span class="stat-label">警告记录</span>
+                  <span class="stat-value">{{
+                    formatNumber(taskDetail.warningRecords)
+                  }}</span>
+                </div>
+                <div class="stat-item info" v-if="taskDetail?.anomalyRecords && taskDetail.anomalyRecords > 0">
+                  <span class="stat-label">异常记录</span>
+                  <span class="stat-value">{{
+                    formatNumber(taskDetail.anomalyRecords)
                   }}</span>
                 </div>
                 <div class="stat-progress">
                   <el-progress
-                    :percentage="
-                      getValidProgress(taskDetail?.statistics?.recordStats?.overallSuccessRate)
-                    "
+                    :percentage="recordSuccessRate"
                     :stroke-width="8"
                     :show-text="false"
                     :status="getRecordProgressStatus()"
@@ -252,37 +245,17 @@
               <div class="stat-content">
                 <div class="performance-item">
                   <span class="perf-label">处理速度</span>
-                  <span class="perf-value"
-                    >{{
-                      taskDetail?.statistics?.performanceStats?.averageProcessingSpeed || 0
-                    }}
-                    条/秒</span
-                  >
+                  <span class="perf-value">{{ getProcessingSpeed(taskDetail) }}</span>
                 </div>
                 <div class="performance-item">
                   <span class="perf-label">平均耗时</span>
                   <span class="perf-value">{{
-                    formatDuration(
-                      taskDetail?.statistics?.performanceStats?.averageProcessingTime || 0
-                    )
+                    formatDurationFromMs(taskDetail?.durationMs || 0) || '计算中...'
                   }}</span>
                 </div>
-                <div class="performance-item">
-                  <span class="perf-label">性能等级</span>
-                  <el-tag
-                    :type="
-                      getPerformanceLevelType(
-                        taskDetail?.statistics?.performanceStats?.performanceLevel
-                      )
-                    "
-                    size="small"
-                  >
-                    {{
-                      getPerformanceLevelText(
-                        taskDetail?.statistics?.performanceStats?.performanceLevel
-                      )
-                    }}
-                  </el-tag>
+                <div class="performance-item" v-if="taskDetail?.avgRecordTime">
+                  <span class="perf-label">单记录时间</span>
+                  <span class="perf-value">{{ taskDetail.avgRecordTime }}ms</span>
                 </div>
               </div>
             </el-card>
@@ -297,16 +270,25 @@
               <div class="stat-content">
                 <div class="quality-score-display">
                   <div class="score-value">{{
-                    taskDetail?.qualityReport?.scores?.overallQualityScore || 0
+                    taskDetail?.qualityScore || 0
                   }}</div>
                   <div class="score-label">总体评分</div>
-                  <div class="score-grade">
+                  <div class="score-grade" v-if="taskDetail?.qualityScore">
                     <el-tag
-                      :type="getQualityGradeType(taskDetail?.qualityReport?.scores?.overallGrade)"
+                      :type="getQualityGradeType(taskDetail.qualityScore)"
                       size="small"
                     >
-                      {{ taskDetail?.qualityReport?.scores?.overallGrade || 'N/A' }}
+                      {{ getQualityDescription(taskDetail.qualityScore) }}
                     </el-tag>
+                  </div>
+                  <!-- 评分明细 -->
+                  <div class="score-breakdown" v-if="taskDetail?.scoreDetail">
+                    <div class="breakdown-list">
+                      <div class="breakdown-item" v-for="(score, dimension) in getScoreBreakdown(taskDetail.scoreDetail)" :key="dimension">
+                        <span class="breakdown-label">{{ dimension }}:</span>
+                        <span class="breakdown-value">{{ score }}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -332,12 +314,12 @@
 
           <!-- 修复：确保在数据加载完成后才显示内容 -->
           <div
-            v-if="parsedTableProgress && parsedTableProgress.length > 0"
+            v-if="qcResultDetails && qcResultDetails.length > 0"
             class="table-details-list"
           >
             <div
-              v-for="table in parsedTableProgress"
-              :key="table.tableType"
+              v-for="detail in qcResultDetails"
+              :key="detail.tableType"
               class="table-detail-item"
             >
               <div class="table-item-header">
@@ -345,132 +327,143 @@
                   <div class="table-icon-wrapper">
                     <el-icon
                       class="table-icon"
-                      :color="getTableStatusColor(table.progressInfo?.status)"
+                      :color="getQcTableStatusColor(detail)"
                     >
                       <Document />
                     </el-icon>
                   </div>
                   <div class="table-meta">
-                    <div class="table-name">{{ table.tableType }}</div>
-                    <div class="file-name">{{ `${table.tableType}.xlsx` }}</div>
+                    <div class="table-name">{{ detail.tableName }}</div>
+                    <div class="file-name">{{ `${detail.tableType}.xlsx` }}</div>
                   </div>
                 </div>
                 <div class="table-status">
-                  <el-tag :type="getTableStatusTagType(table.status)" size="small">
-                    {{ getTableStatusText(table.status) }}
+                  <el-tag :type="getQcTableStatusTagType(detail)" size="small">
+                    {{ getQcTableStatusText(detail) }}
                   </el-tag>
                 </div>
               </div>
 
               <div class="table-progress">
                 <div class="progress-info">
-                  <span class="progress-label">处理进度</span>
+                  <span class="progress-label">质控通过率</span>
                   <span class="progress-percent"
-                    >{{ getValidProgress(table.progressPercent) }}%</span
+                    >{{ (detail.passRate || 0).toFixed(1) }}%</span
                   >
                 </div>
                 <el-progress
-                  :percentage="getValidProgress(table.progressPercent)"
+                  :percentage="detail.passRate || 0"
                   :stroke-width="6"
                   :show-text="false"
-                  :status="getTableProgressStatus(table.status)"
+                  :status="getQcProgressStatus(detail)"
                 />
-                <div class="progress-message">{{ getTableProcessingMessage(table) }}</div>
+                <div class="progress-message">{{ getQcProcessingMessage(detail) }}</div>
               </div>
 
               <div class="table-statistics">
                 <div class="stats-row">
                   <div class="stat-item">
-                    <span class="stat-label">总记录数:</span>
+                    <span class="stat-label">检查记录:</span>
                     <span class="stat-value">{{
-                      formatNumber(table.totalRecords || 0)
+                      formatNumber(detail.checkedRecords || 0)
                     }}</span>
                   </div>
                   <div class="stat-item">
-                    <span class="stat-label">已处理:</span>
+                    <span class="stat-label">执行规则:</span>
                     <span class="stat-value">{{
-                      formatNumber(table.processedRecords || 0)
+                      detail.totalRules || 0
                     }}</span>
                   </div>
                   <div class="stat-item success">
-                    <span class="stat-label">成功:</span>
+                    <span class="stat-label">通过规则:</span>
                     <span class="stat-value">{{
-                      formatNumber(table.successRecords || 0)
+                      detail.passedRules || 0
                     }}</span>
                   </div>
                   <div class="stat-item danger">
-                    <span class="stat-label">失败:</span>
+                    <span class="stat-label">失败规则:</span>
                     <span class="stat-value">{{
-                      formatNumber(table.failedRecords || 0)
+                      detail.failedRules || 0
                     }}</span>
                   </div>
                 </div>
 
                 <div class="stats-row">
-                  <div class="stat-item">
-                    <span class="stat-label">开始时间:</span>
+                  <div class="stat-item success">
+                    <span class="stat-label">正常记录:</span>
                     <span class="stat-value">{{
-                      table.startTime ? formatTime(table.startTime) : '未开始'
+                      formatNumber((detail.checkedRecords || 0) - (detail.errorRecords || 0))
                     }}</span>
                   </div>
-                  <div class="stat-item">
-                    <span class="stat-label">结束时间:</span>
+                  <div class="stat-item danger">
+                    <span class="stat-label">错误记录:</span>
                     <span class="stat-value">{{
-                      table.endTime ? formatTime(table.endTime) : '进行中'
+                      formatNumber(detail.errorRecords || 0)
                     }}</span>
                   </div>
-                  <div class="stat-item">
-                    <span class="stat-label">处理耗时:</span>
+                  <div class="stat-item warning">
+                    <span class="stat-label">警告记录:</span>
                     <span class="stat-value">{{
-                      getTableProcessingDuration(table)
+                      formatNumber(detail.warningRecords || 0)
+                    }}</span>
+                  </div>
+                  <div class="stat-item info">
+                    <span class="stat-label">异常记录:</span>
+                    <span class="stat-value">{{
+                      formatNumber(detail.anomalyRecords || 0)
                     }}</span>
                   </div>
                 </div>
               </div>
 
-              <!-- 错误信息显示 -->
-              <div v-if="table.errorMessage" class="table-error">
-                <el-alert
-                  :title="table.errorMessage"
-                  type="error"
-                  :closable="false"
-                  show-icon
-                  class="error-alert"
-                />
-              </div>
-
-              <div class="table-operations" v-if="table.operationInfo">
-                <div class="operation-info">
-                  <span v-if="table.operationInfo?.startTime" class="time-info">
-                    开始: {{ formatTime(table.operationInfo.startTime) }}
-                  </span>
-                  <span v-if="table.operationInfo?.endTime" class="time-info">
-                    结束: {{ formatTime(table.operationInfo.endTime) }}
-                  </span>
-                  <span v-if="table.operationInfo?.retryCount" class="retry-info">
-                    重试: {{ table.operationInfo.retryCount }}/{{
-                      table.operationInfo.maxRetryCount
-                    }}
-                  </span>
-                </div>
-                <div class="operation-actions" v-if="table.operationInfo?.canRetry">
-                  <el-button
-                    type="warning"
-                    size="small"
-                    @click="handleRetryTable(table.basicInfo?.tableType)"
-                  >
-                    重试此表
+              <!-- 规则详情展示 -->
+              <div v-if="detail.ruleDetails && detail.ruleDetails.length > 0" class="rule-details">
+                <div class="rule-details-header">
+                  <span class="rule-details-title">质控规则详情</span>
+                  <el-button link type="primary" size="small" @click="toggleRuleDetails(detail.tableType)">
+                    {{ expandedRules.has(detail.tableType) ? '收起' : '展开' }}
                   </el-button>
                 </div>
-              </div>
-
-              <div v-if="table.operationInfo?.errorMessage" class="table-error">
-                <el-alert
-                  :title="table.operationInfo.errorMessage"
-                  type="error"
-                  :closable="false"
-                  show-icon
-                />
+                
+                <div v-if="expandedRules.has(detail.tableType)" class="rule-details-content">
+                  <div
+                    v-for="rule in detail.ruleDetails"
+                    :key="rule.id"
+                    class="rule-item"
+                  >
+                    <div class="rule-header">
+                      <div class="rule-info">
+                        <span class="rule-name">{{ rule.ruleName }}</span>
+                        <el-tag :type="getRuleStatusTagType(rule.checkStatus)" size="small">
+                          {{ getRuleStatusText(rule.checkStatus) }}
+                        </el-tag>
+                      </div>
+                      <div class="rule-stats">
+                        <span class="rule-stat">检查: {{ formatNumber(rule.checkedCount) }}</span>
+                        <span class="rule-stat error" v-if="rule.errorCount">错误: {{ formatNumber(rule.errorCount) }}</span>
+                        <span class="rule-stat warning" v-if="rule.warningCount">警告: {{ formatNumber(rule.warningCount) }}</span>
+                      </div>
+                    </div>
+                    <div v-if="rule.errorMessage" class="rule-error">
+                      <el-alert
+                        :title="rule.errorMessage"
+                        type="error"
+                        :closable="false"
+                        show-icon
+                        size="small"
+                      />
+                    </div>
+                    <div v-if="rule.fixSuggestion" class="rule-suggestion">
+                      <el-alert
+                        :title="rule.fixSuggestion"
+                        type="info"
+                        :closable="false"
+                        show-icon
+                        size="small"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -478,7 +471,7 @@
           <!-- 修复：完善空状态处理 -->
           <div
             v-else-if="
-              taskDetail && (!parsedTableProgress || parsedTableProgress.length === 0)
+              taskDetail && (!qcResultDetails || qcResultDetails.length === 0)
             "
             class="empty-tables"
           >
@@ -520,90 +513,59 @@
           </template>
 
           <!-- 修复：确保在数据加载完成后才显示内容 -->
-          <div v-if="taskDetail?.qualityReport" class="quality-content">
+          <div v-if="taskDetail" class="quality-content">
             <!-- 质量评分 -->
             <div class="quality-scores">
               <div class="score-item">
                 <div class="score-label">总体评分</div>
                 <div class="score-value">{{
-                  taskDetail.qualityReport.scores?.overallQualityScore || 0
+                  taskDetail.qualityScore || 0
                 }}</div>
               </div>
-              <div class="score-item">
-                <div class="score-label">数据完整性</div>
-                <div class="score-value">{{
-                  taskDetail.qualityReport.scores?.dataIntegrityScore || 0
-                }}</div>
-              </div>
-              <div class="score-item">
-                <div class="score-label">一致性</div>
-                <div class="score-value">{{
-                  taskDetail.qualityReport.scores?.consistencyScore || 0
-                }}</div>
-              </div>
-              <div class="score-item">
-                <div class="score-label">完整性</div>
-                <div class="score-value">{{
-                  taskDetail.qualityReport.scores?.completenessScore || 0
-                }}</div>
-              </div>
-            </div>
-
-            <!-- 质量问题 -->
-            <div class="quality-issues" v-if="taskDetail.qualityReport.issues">
-              <h4>质量问题</h4>
-              <div class="issues-summary">
-                <el-tag type="danger" size="small">
-                  严重问题: {{ taskDetail.qualityReport.issues.criticalIssues?.length || 0 }}
-                </el-tag>
-                <el-tag type="warning" size="small">
-                  警告问题: {{ taskDetail.qualityReport.issues.warningIssues?.length || 0 }}
-                </el-tag>
-                <el-tag type="info" size="small">
-                  信息问题: {{ taskDetail.qualityReport.issues.infoIssues?.length || 0 }}
-                </el-tag>
-              </div>
-            </div>
-
-            <!-- 改进建议 -->
-            <div class="quality-recommendations" v-if="taskDetail.qualityReport.recommendations">
-              <h4>改进建议</h4>
-              <div class="recommendations-content">
-                <div
-                  class="recommendation-section"
-                  v-if="taskDetail.qualityReport.recommendations.immediateActions?.length"
-                >
-                  <h5>立即行动</h5>
-                  <ul>
-                    <li
-                      v-for="action in taskDetail.qualityReport.recommendations.immediateActions"
-                      :key="action"
-                    >
-                      {{ action }}
-                    </li>
-                  </ul>
+              <!-- 评分明细显示 -->
+              <div v-if="taskDetail.scoreDetail" class="score-breakdown-detail">
+                <div class="score-item" v-for="(score, dimension) in getScoreBreakdown(taskDetail.scoreDetail)" :key="dimension">
+                  <div class="score-label">{{ dimension }}</div>
+                  <div class="score-value">{{ score }}</div>
                 </div>
-                <div
-                  class="recommendation-section"
-                  v-if="taskDetail.qualityReport.recommendations.processImprovements?.length"
-                >
-                  <h5>流程改进</h5>
-                  <ul>
-                    <li
-                      v-for="improvement in taskDetail.qualityReport.recommendations
-                        .processImprovements"
-                      :key="improvement"
-                    >
-                      {{ improvement }}
-                    </li>
-                  </ul>
+              </div>
+            </div>
+
+            <!-- 质量问题简化显示 -->
+            <div class="quality-summary" v-if="taskDetail.warningRecords || taskDetail.anomalyRecords">
+              <h4>数据质量概况</h4>
+              <div class="quality-stats">
+                <el-tag type="warning" size="small" v-if="taskDetail.warningRecords && taskDetail.warningRecords > 0">
+                  警告记录: {{ formatNumber(taskDetail.warningRecords) }}
+                </el-tag>
+                <el-tag type="danger" size="small" v-if="taskDetail.anomalyRecords && taskDetail.anomalyRecords > 0">
+                  异常记录: {{ formatNumber(taskDetail.anomalyRecords) }}
+                </el-tag>
+              </div>
+            </div>
+
+            <!-- 质量建议 -->
+            <div class="quality-recommendations">
+              <h4>质量建议</h4>
+              <div class="recommendations-content">
+                <div class="recommendation-item" v-if="getQualityScore(taskDetail) < 80">
+                  <el-icon class="rec-icon warning"><WarningFilled /></el-icon>
+                  <span>数据质量较低，建议检查源数据格式和完整性</span>
+                </div>
+                <div class="recommendation-item" v-if="(taskDetail.totalRecords || 0) > (taskDetail.successRecords || 0)">
+                  <el-icon class="rec-icon info"><InfoFilled /></el-icon>
+                  <span>存在失败记录，可下载错误文件进行数据修正</span>
+                </div>
+                <div class="recommendation-item" v-if="getQualityScore(taskDetail) >= 90">
+                  <el-icon class="rec-icon success"><CircleCheckFilled /></el-icon>
+                  <span>数据质量优秀，可以进入下一步数据处理流程</span>
                 </div>
               </div>
             </div>
           </div>
 
           <!-- 修复：完善空状态处理 -->
-          <div v-else-if="taskDetail && !taskDetail.qualityReport" class="empty-quality">
+          <div v-if="taskDetail && !taskDetail.qualityScore" class="empty-quality">
             <el-empty :image-size="80" description="暂无质量报告数据">
               <template #image>
                 <el-icon class="empty-icon"><Medal /></el-icon>
@@ -640,11 +602,19 @@ import {
   Close,
   User, // 新增：用户图标
   Clock, // 新增：时钟图标
-  DocumentCopy // 新增：文档复制图标
+  DocumentCopy, // 新增：文档复制图标
+  WarningFilled,
+  CircleCheckFilled,
+  Box,
+  Upload,
+  CircleCheck,
+  Checked,
+  DocumentChecked,
+  Setting
 } from '@element-plus/icons-vue'
 import PageHeader from '@/components/PageHeader/index.vue'
 import TaskLogViewer from './components/TaskLogViewer.vue'
-import { DrugBatchImportApi, type ImportTaskDetailVO } from '@/api/drug/task'
+import { DrugBatchImportApi, type ImportTaskDetailVO, type QcResultDetailVO, TASK_STATUS } from '@/api/drug/task'
 import { DICT_TYPE, getDictLabel, getDictColorType } from '@/utils/dict'
 
 /** 页面组件名称 */
@@ -675,7 +645,9 @@ const taskId = computed(() => Number(route.params.id))
 const loading = ref(false)
 const refreshing = ref(false)
 const taskDetail = ref<ImportTaskDetailVO | null>(null)
+const qcResultDetails = ref<QcResultDetailVO[]>([])
 const activeTab = ref('overview')
+const expandedRules = ref(new Set<string>())
 
 let refreshTimer: NodeJS.Timeout | null = null
 const isComponentMounted = ref(false)
@@ -684,91 +656,102 @@ const isComponentMounted = ref(false)
 
 /** 解析分表进度JSON数据 */
 const parsedTableProgress = computed(() => {
-  if (!taskDetail.value?.tableProgress) {
-    return []
+  // 从质控结果详情中构建分表进度信息
+  return qcResultDetails.value.map(detail => ({
+    tableType: detail.tableName,
+    status: getTableStatusFromQcDetails(detail),
+    progressPercent: detail.passRate || 0,
+    totalRecords: detail.checkedRecords || 0,
+    processedRecords: detail.checkedRecords || 0,
+    successRecords: detail.checkedRecords - detail.errorRecords,
+    failedRecords: detail.errorRecords || 0,
+    warningRecords: detail.warningRecords || 0,
+    anomalyRecords: detail.anomalyRecords || 0,
+    startTime: null,
+    endTime: null,
+    errorMessage: detail.ruleDetails.find(r => r.checkStatus >= 1)?.errorMessage
+  }))
+})
+
+/** 从质控详情获取表状态 */
+const getTableStatusFromQcDetails = (detail: QcResultDetailVO) => {
+  if (detail.failedRules > 0) return 'FAILED'
+  if (detail.warningRules > 0) return 'WARNING'
+  if (detail.passedRules > 0) return 'SUCCESS'
+  return 'PENDING'
+}
+
+/** 解析处理阶段数据 */
+const processStages = computed(() => {
+  if (!taskDetail.value?.qcStages) {
+    return [
+      { name: '文件解析', status: 0, statusDescription: '待开始' },
+      { name: '基础验证', status: 0, statusDescription: '待开始' },
+      { name: '前置质控', status: 0, statusDescription: '待开始' },
+      { name: '数据导入', status: 0, statusDescription: '待开始' }
+    ]
   }
   
   try {
-    // 如果tableProgress是字符串，解析JSON；如果已经是对象，直接使用
-    const progressData = typeof taskDetail.value.tableProgress === 'string' 
-      ? JSON.parse(taskDetail.value.tableProgress)
-      : taskDetail.value.tableProgress
-    
-    // 转换为数组格式
-    if (Array.isArray(progressData)) {
-      return progressData
-    } else if (typeof progressData === 'object') {
-      // 将对象格式转换为数组格式
-      return Object.entries(progressData).map(([key, value]: [string, any]) => ({
-        tableType: value.tableType || key,
-        status: value.status || 'PENDING',
-        progressPercent: value.progressPercent || 0,
-        totalRecords: value.totalRecords || 0,
-        processedRecords: value.processedRecords || 0,
-        successRecords: value.successRecords || 0,
-        failedRecords: value.failedRecords || 0,
-        startTime: value.startTime,
-        endTime: value.endTime,
-        errorMessage: value.errorMessage
-      }))
-    }
-    
-    return []
+    const stages = typeof taskDetail.value.qcStages === 'string' 
+      ? JSON.parse(taskDetail.value.qcStages)
+      : taskDetail.value.qcStages
+    return Array.isArray(stages) ? stages : []
   } catch (error) {
-    console.error('解析分表进度数据失败:', error)
+    console.error('解析qc_stages失败:', error)
     return []
   }
 })
 
 const pageTitle = computed(() => {
-  return taskDetail.value?.taskInfo?.taskName || '任务详情'
+  return taskDetail.value?.taskName || '任务详情'
 })
 
 const pageDescription = computed(() => {
-  return `任务编号: ${taskDetail.value?.taskInfo?.taskNo || '未知'} | 文件: ${taskDetail.value?.taskInfo?.fileName || '未知'}`
+  return `任务编号: ${taskDetail.value?.taskNo || '未知'} | 文件: ${taskDetail.value?.fileName || taskDetail.value?.filePath || '未知'}`
 })
 
 // 修复：确保statusTag一定有返回值，并处理加载状态
 const statusTag = computed(() => {
-  if (!taskDetail.value?.taskInfo?.status) {
+  if (!taskDetail.value?.status) {
     return loading.value ? '加载中...' : '未知状态'
   }
   const label = getDictLabel(
     DICT_TYPE.DRUG_TASK_STATUS,
-    taskDetail.value.taskInfo.status.toString()
+    taskDetail.value.status.toString()
   )
   return label || '未知状态'
 })
 
 const statusTagType = computed(() => {
-  if (!taskDetail.value?.taskInfo?.status) {
+  if (!taskDetail.value?.status) {
     return loading.value ? 'warning' : 'info'
   }
   const type = getDictColorType(
     DICT_TYPE.DRUG_TASK_STATUS,
-    taskDetail.value.taskInfo.status.toString()
+    taskDetail.value.status.toString()
   )
   return type || 'info'
 })
 
 // 修复：Icon显示问题 - 使用实际的图标组件
 const metaInfo = computed(() => {
-  if (!taskDetail.value?.taskInfo) return []
+  if (!taskDetail.value) return []
 
   return [
     {
       label: '创建人',
-      value: taskDetail.value.taskInfo.creator || '未知',
+      value: taskDetail.value.creator || '未知',
       icon: User // 修复：使用实际的图标组件
     },
     {
       label: '创建时间',
-      value: formatTime(taskDetail.value.taskInfo.createTime) || '未知',
+      value: formatTime(taskDetail.value.createTime) || '未知',
       icon: Clock // 修复：使用实际的图标组件
     },
     {
       label: '文件大小',
-      value: formatFileSize(taskDetail.value.taskInfo.fileSize || 0),
+      value: formatFileSize(taskDetail.value.fileSize || 0),
       icon: DocumentCopy // 修复：使用实际的图标组件
     }
   ]
@@ -777,7 +760,8 @@ const metaInfo = computed(() => {
 const headerActions = computed((): HeaderAction[] => {
   const actions: HeaderAction[] = []
 
-  if (taskDetail.value?.operationOptions?.retryOps?.canRetry) {
+  // 根据任务状态和字段来决定显示哪些操作
+  if (taskDetail.value?.status && (taskDetail.value.status === TASK_STATUS.FAILED || taskDetail.value.status === TASK_STATUS.PARTIAL_SUCCESS)) {
     actions.push({
       key: 'retry',
       text: '重试任务',
@@ -786,7 +770,7 @@ const headerActions = computed((): HeaderAction[] => {
     })
   }
 
-  if (taskDetail.value?.operationOptions?.basicOps?.canCancel) {
+  if (taskDetail.value?.status && [TASK_STATUS.PENDING, TASK_STATUS.PARSING, TASK_STATUS.QC_PRE_CHECKING, TASK_STATUS.IMPORTING, TASK_STATUS.QC_POST_CHECKING].includes(taskDetail.value.status)) {
     actions.push({
       key: 'cancel',
       text: '取消任务',
@@ -795,7 +779,7 @@ const headerActions = computed((): HeaderAction[] => {
     })
   }
 
-  if (taskDetail.value?.operationOptions?.exportOps?.canDownloadReport) {
+  if (taskDetail.value?.status === TASK_STATUS.COMPLETED) {
     actions.push({
       key: 'download',
       text: '下载报告',
@@ -819,8 +803,19 @@ const tabList = computed((): TabItem[] => {
 })
 
 const isTaskRunning = computed(() => {
-  const status = taskDetail.value?.taskInfo?.status
-  return status === 1 || status === 2 || status === 3
+  const status = taskDetail.value?.status
+  return status === TASK_STATUS.PARSING || status === TASK_STATUS.QC_PRE_CHECKING || status === TASK_STATUS.IMPORTING || status === TASK_STATUS.QC_POST_CHECKING
+})
+
+// 计算属性
+const fileSuccessRate = computed(() => {
+  if (!taskDetail.value?.totalFiles || taskDetail.value.totalFiles === 0) return 0
+  return Math.round((taskDetail.value.successFiles / taskDetail.value.totalFiles) * 100)
+})
+
+const recordSuccessRate = computed(() => {
+  if (!taskDetail.value?.totalRecords || taskDetail.value.totalRecords === 0) return 0
+  return Math.round((taskDetail.value.successRecords / taskDetail.value.totalRecords) * 100)
 })
 
 // ========================= 监听器 =========================
@@ -875,9 +870,20 @@ const loadTaskDetail = async () => {
   loading.value = true
 
   try {
-    const response = await DrugBatchImportApi.getTaskDetail(taskId.value)
-    console.log('Task detail loaded successfully:', response)
-    taskDetail.value = response
+    // 并行加载任务详情和质控结果详情
+    const [taskDetailResponse, qcDetailsResponse] = await Promise.all([
+      DrugBatchImportApi.getTaskDetail(taskId.value),
+      DrugBatchImportApi.getQcResultDetails(taskId.value).catch(err => {
+        console.warn('Failed to load QC details, will continue without it:', err)
+        return []
+      })
+    ])
+    
+    console.log('Task detail loaded successfully:', taskDetailResponse)
+    console.log('QC details loaded:', qcDetailsResponse)
+    
+    taskDetail.value = taskDetailResponse
+    qcResultDetails.value = qcDetailsResponse || []
   } catch (error) {
     console.error('Failed to load task detail:', error)
     ElMessage.error('获取任务详情失败')
@@ -1029,22 +1035,97 @@ const handleExportLogs = () => {
   ElMessage.success('日志导出功能开发中')
 }
 
-// ========================= 工具方法 =========================
+// ========================= 质控详情相关方法 =========================
 
-const getValidProgress = (progress: number | undefined): number => {
-  if (typeof progress !== 'number' || isNaN(progress)) return 0
-  if (progress < 0) return 0
-  if (progress > 100) return 100
-  return progress
+/** 切换规则详情展示 */
+const toggleRuleDetails = (tableType: string) => {
+  if (expandedRules.value.has(tableType)) {
+    expandedRules.value.delete(tableType)
+  } else {
+    expandedRules.value.add(tableType)
+  }
 }
 
-const getActiveStep = () => {
-  if (!taskDetail.value?.overallProgress?.stageStatus) return 0
+/** 获取质控表状态颜色 */
+const getQcTableStatusColor = (detail: QcResultDetailVO) => {
+  if (detail.failedRules > 0) return '#F56C6C'
+  if (detail.warningRules > 0) return '#E6A23C'
+  if (detail.passedRules > 0) return '#67C23A'
+  return '#909399'
+}
 
-  const stages = taskDetail.value.overallProgress.stageStatus
-  if (stages.qcStatus >= 1) return 3
-  if (stages.importStatus >= 1) return 2
-  if (stages.extractStatus >= 1) return 1
+/** 获取质控表状态标签类型 */
+const getQcTableStatusTagType = (detail: QcResultDetailVO) => {
+  if (detail.failedRules > 0) return 'danger'
+  if (detail.warningRules > 0) return 'warning'
+  if (detail.passedRules > 0) return 'success'
+  return 'info'
+}
+
+/** 获取质控表状态文本 */
+const getQcTableStatusText = (detail: QcResultDetailVO) => {
+  if (detail.failedRules > 0) return '检查失败'
+  if (detail.warningRules > 0) return '检查警告'
+  if (detail.passedRules > 0) return '检查通过'
+  return '未检查'
+}
+
+/** 获取质控进度状态 */
+const getQcProgressStatus = (detail: QcResultDetailVO) => {
+  if (detail.failedRules > 0) return 'exception'
+  if (detail.passedRules === detail.totalRules && detail.totalRules > 0) return 'success'
+  return undefined
+}
+
+/** 获取质控处理消息 */
+const getQcProcessingMessage = (detail: QcResultDetailVO) => {
+  if (detail.failedRules > 0) {
+    return `检查完成 - 失败: ${detail.failedRules}条规则`
+  }
+  if (detail.warningRules > 0) {
+    return `检查完成 - 警告: ${detail.warningRules}条规则`
+  }
+  if (detail.passedRules > 0) {
+    return `检查完成 - 通过率: ${(detail.passRate || 0).toFixed(1)}%`
+  }
+  return '等待检查'
+}
+
+/** 获取规则状态标签类型 */
+const getRuleStatusTagType = (status: number) => {
+  switch (status) {
+    case 0: return 'success' // 通过
+    case 1: return 'danger' // 失败
+    case 2: return 'warning' // 警告
+    case 3: return 'danger' // 异常
+    case 4: return 'info' // 跳过
+    case 5: return 'danger' // 中断
+    default: return 'info'
+  }
+}
+
+/** 获取规则状态文本 */
+const getRuleStatusText = (status: number) => {
+  switch (status) {
+    case 0: return '通过'
+    case 1: return '失败'
+    case 2: return '警告'
+    case 3: return '异常'
+    case 4: return '跳过'
+    case 5: return '中断'
+    default: return '未知'
+  }
+}
+
+// ========================= 工具方法 =========================
+
+const getActiveStep = () => {
+  const stages = processStages.value
+  if (!stages.length) return 0
+  
+  for (let i = stages.length - 1; i >= 0; i--) {
+    if (stages[i].status >= 1) return i + 1
+  }
   return 0
 }
 
@@ -1082,22 +1163,23 @@ const getStepDescription = (step: string) => {
   return descriptions[step][status] || '未知状态'
 }
 
-const getProgressBarStatus = () => {
-  const status = taskDetail.value?.taskInfo?.status
-  if (status === 4) return 'success'
-  if (status === 5) return 'exception'
+/** 获取进度条状态 */
+const getProgressStatus = (status: number | undefined) => {
+  if (status === TASK_STATUS.COMPLETED) return 'success'
+  if (status === TASK_STATUS.FAILED) return 'exception'
+  if (status === TASK_STATUS.CANCELLED) return 'warning'
   return undefined
 }
 
 const getFileProgressStatus = () => {
-  const rate = taskDetail.value?.statistics?.fileStats?.fileSuccessRate || 0
+  const rate = fileSuccessRate.value
   if (rate === 100) return 'success'
   if (rate === 0) return 'exception'
   return undefined
 }
 
 const getRecordProgressStatus = () => {
-  const rate = taskDetail.value?.statistics?.recordStats?.overallSuccessRate || 0
+  const rate = recordSuccessRate.value
   if (rate >= 95) return 'success'
   if (rate < 80) return 'exception'
   return undefined
@@ -1235,6 +1317,90 @@ const getTableProcessingDuration = (table: any) => {
 const getDataSourceText = (dataSource: string | undefined) => {
   if (!dataSource) return '未知'
   return getDictLabel(DICT_TYPE.DRUG_DATA_SOURCE, dataSource) || dataSource
+}
+
+/** 获取执行模式文本 */
+const getExecuteModeText = (mode: number | undefined) => {
+  if (!mode) return '未知模式'
+  const modeMap = {
+    1: '仅前置质控',
+    2: '仅后置质控', 
+    3: '全部执行'
+  }
+  return modeMap[mode] || '未知模式'
+}
+
+/** 获取处理速度 */
+const getProcessingSpeed = (task: any) => {
+  if (!task?.startTime || !task?.totalRecords || !task?.durationMs) return '-'
+
+  const recordsPerSecond = task.successRecords / (task.durationMs / 1000)
+  if (recordsPerSecond < 1) {
+    return `${(recordsPerSecond * 60).toFixed(1)}条/分钟`
+  }
+  return `${recordsPerSecond.toFixed(1)}条/秒`
+}
+
+/** 获取质量描述 */
+const getQualityDescription = (score: number | undefined) => {
+  if (!score) return '未知'
+  if (score >= 95) return '优秀'
+  if (score >= 85) return '良好'
+  if (score >= 70) return '一般'
+  if (score >= 50) return '较差'
+  return '很差'
+}
+
+/** 获取质量评分 */
+const getQualityScore = (task: any) => {
+  return task?.qualityScore || 0
+}
+
+/** 获取评分明细 */
+const getScoreBreakdown = (scoreDetail: any) => {
+  if (!scoreDetail) return {}
+
+  let parsedDetail = scoreDetail
+  
+  if (typeof scoreDetail === 'string') {
+    try {
+      parsedDetail = JSON.parse(scoreDetail)
+    } catch {
+      return {}
+    }
+  }
+
+  const dimensionMap = {
+    file: '文件质量',
+    record: '记录质量',
+    rule: '规则检查'
+  }
+
+  const breakdown = {}
+  Object.keys(parsedDetail).forEach(key => {
+    const displayName = dimensionMap[key] || key
+    const value = parsedDetail[key]
+    breakdown[displayName] = typeof value === 'number' ? value.toFixed(2) : value
+  })
+
+  return breakdown
+}
+
+/** 格式化毫秒数为可读时间 */
+const formatDurationFromMs = (durationMs: number | undefined) => {
+  if (!durationMs || durationMs === 0) return null
+
+  const seconds = Math.floor(durationMs / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const hours = Math.floor(minutes / 60)
+
+  if (hours > 0) {
+    return `${hours}小时${minutes % 60}分钟`
+  } else if (minutes > 0) {
+    return `${minutes}分钟${seconds % 60}秒`
+  } else {
+    return `${seconds}秒`
+  }
 }
 
 // ========================= 格式化工具方法 =========================
@@ -1627,6 +1793,69 @@ document.addEventListener('visibilitychange', () => {
   border-radius: 8px;
 }
 
+.score-breakdown-detail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.score-breakdown-detail .score-item {
+  padding: 12px;
+  background: #fff;
+  border: 1px solid #ebeef5;
+  border-radius: 6px;
+}
+
+.quality-summary {
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #ebeef5;
+}
+
+.quality-stats {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.quality-recommendations {
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #ebeef5;
+}
+
+.recommendation-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px;
+  border-radius: 4px;
+  background: #f8f9fa;
+  font-size: 13px;
+}
+
+.rec-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.rec-icon.success {
+  color: #67c23a;
+}
+
+.rec-icon.warning {
+  color: #e6a23c;
+}
+
+.rec-icon.info {
+  color: #409eff;
+}
+
 .quality-issues {
   padding: 20px;
   background: #fff;
@@ -1680,6 +1909,84 @@ document.addEventListener('visibilitychange', () => {
 .empty-icon {
   font-size: 48px;
   color: #c0c4cc;
+}
+
+/* 规则详情样式 */
+.rule-details {
+  margin-top: 16px;
+  border-top: 1px solid #ebeef5;
+  padding-top: 16px;
+}
+
+.rule-details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.rule-details-title {
+  font-weight: 600;
+  color: #303133;
+  font-size: 14px;
+}
+
+.rule-details-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rule-item {
+  background: #fafafa;
+  border: 1px solid #ebeef5;
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.rule-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.rule-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rule-name {
+  font-weight: 500;
+  color: #303133;
+  font-size: 13px;
+}
+
+.rule-stats {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.rule-stat {
+  color: #606266;
+}
+
+.rule-stat.error {
+  color: #f56c6c;
+}
+
+.rule-stat.warning {
+  color: #e6a23c;
+}
+
+.rule-error {
+  margin-top: 8px;
+}
+
+.rule-suggestion {
+  margin-top: 8px;
 }
 
 /* 响应式设计 */

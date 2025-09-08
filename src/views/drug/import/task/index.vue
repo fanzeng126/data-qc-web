@@ -4,18 +4,7 @@
     <PageHeader
       title="药品数据导入管理"
       content="支持批量导入药品相关数据，提供完整的进度监控和任务管理功能"
-    >
-<!--      <template #extra>
-        <el-button type="primary" @click="openBatchImport">
-          <el-icon><Upload /></el-icon>
-          批量导入
-        </el-button>
-        <el-button @click="downloadTemplate">
-          <el-icon><Download /></el-icon>
-          下载模板
-        </el-button>
-      </template>-->
-    </PageHeader>
+    />
 
     <!-- 统计概览卡片 -->
     <div class="stats-overview">
@@ -174,16 +163,22 @@
               <div class="stat-row">
                 <span class="stat-label">记录:</span>
                 <span class="stat-value"
-                  >{{ formatNumber(row.successRecords) }}/{{ formatNumber(row.totalRecords) }}</span
+                >{{ formatNumber(row.successRecords) }}/{{ formatNumber(row.totalRecords) }}</span
                 >
+              </div>
+              <div class="stat-row" v-if="row.qualityScore">
+                <span class="stat-label">质量分:</span>
+                <span class="stat-value quality-score" :class="getQualityScoreClass(row.qualityScore)">
+                  {{ row.qualityScore }}
+                </span>
               </div>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column prop="duration" label="耗时" width="80" align="center">
+        <el-table-column prop="durationMs" label="耗时" width="100" align="center">
           <template #default="{ row }">
-            <span>{{ getDuration(row) || '-' }}</span>
+            <span>{{ formatDurationFromMs(row.durationMs) || '-' }}</span>
           </template>
         </el-table-column>
 
@@ -235,6 +230,9 @@
                     <el-dropdown-item command="download" v-if="isTaskCompleted(row.status)">
                       下载报告
                     </el-dropdown-item>
+                    <el-dropdown-item command="errorFile" v-if="row.hasErrorFile">
+                      下载错误文件
+                    </el-dropdown-item>
                     <el-dropdown-item command="delete" divided> 删除任务 </el-dropdown-item>
                   </el-dropdown-menu>
                 </template>
@@ -284,7 +282,7 @@ import {
   DrugBatchImportApi,
   type ImportTaskRespVO,
   type ImportTaskPageReqVO,
-  type ImportStatisticsVO
+  type ImportStatisticsVO, TASK_STATUS
 } from '@/api/drug/task'
 import { DICT_TYPE, getDictLabel, getDictColorType, getIntDictOptions } from '@/utils/dict'
 
@@ -412,12 +410,6 @@ const handleRefresh = async () => {
   }
 }
 
-/** 排序变化处理 */
-const handleSortChange = ({ column, prop, order }) => {
-  // 实现排序逻辑
-  console.log('排序变化:', { column, prop, order })
-}
-
 /** 导出数据 */
 const handleExport = async () => {
   try {
@@ -531,6 +523,19 @@ const handleMoreAction = async (command: string, task: ImportTaskRespVO) => {
       }
       break
 
+    case 'errorFile':
+      try {
+        if (task.errorFilePath) {
+          // 实现错误文件下载逻辑
+          ElMessage.success('错误文件下载已开始')
+        } else {
+          ElMessage.warning('未找到错误文件')
+        }
+      } catch (error) {
+        ElMessage.error('下载错误文件失败')
+      }
+      break
+
     case 'delete':
       await handleDeleteTask(task)
       break
@@ -575,66 +580,79 @@ const downloadTemplate = () => {
 }
 
 // ========================= 工具方法 =========================
+
 /** 格式化平均处理时间 - 智能选择合适的单位 */
-const formatAverageProcessingTime = (seconds: number) => {
-  if (!seconds || seconds === 0) {
+const formatAverageProcessingTime = (milliseconds: number) => {
+  if (!milliseconds || milliseconds === 0) {
     return { value: 0, unit: '秒' }
   }
 
+  // 小于1秒，显示毫秒
+  if (milliseconds < 1000) {
+    return { value: Math.round(milliseconds), unit: '毫秒' }
+  }
+
   // 小于60秒，显示秒
+  const seconds = milliseconds / 1000
   if (seconds < 60) {
-    return { value: Math.round(seconds), unit: '秒' }
+    return { value: Math.round(seconds * 10) / 10, unit: '秒' }
   }
 
   // 小于3600秒（1小时），显示分钟
   if (seconds < 3600) {
     const minutes = seconds / 60
-    return { value: Math.round(minutes * 10) / 10, unit: '分钟' } // 保留1位小数
+    return { value: Math.round(minutes * 10) / 10, unit: '分钟' }
   }
 
   // 大于等于1小时，显示小时
   const hours = seconds / 3600
   return { value: Math.round(hours * 10) / 10, unit: '小时' }
 }
-/** 获取持续时间 */
-const getDuration = (task: ImportTaskRespVO) => {
-  if (!task.startTime) return null
 
-  const endTime = task.endTime || new Date().toISOString()
-  const start = new Date(task.startTime).getTime()
-  const end = new Date(endTime).getTime()
-  const duration = Math.floor((end - start) / 1000)
+/** 格式化毫秒数为可读时间 */
+const formatDurationFromMs = (durationMs: number) => {
+  if (!durationMs || durationMs === 0) return null
 
-  if (duration < 60) return `${duration}秒`
-  if (duration < 3600) return `${Math.floor(duration / 60)}分${duration % 60}秒`
-  return `${Math.floor(duration / 3600)}小时${Math.floor((duration % 3600) / 60)}分`
+  const seconds = Math.floor(durationMs / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const hours = Math.floor(minutes / 60)
+
+  if (hours > 0) {
+    return `${hours}小时${minutes % 60}分钟`
+  } else if (minutes > 0) {
+    return `${minutes}分钟${seconds % 60}秒`
+  } else {
+    return `${seconds}秒`
+  }
 }
+
 /** 获取进度条状态 */
 const getProgressStatus = (status: number) => {
-  // 完成状态：值为4
-  if (status === 4) return 'success'
-  // 失败状态：值为5
-  if (status === 5) return 'exception'
+  if (status === TASK_STATUS.COMPLETED) return 'success'
+  if (status === TASK_STATUS.FAILED) return 'exception'
+  if (status === TASK_STATUS.CANCELLED) return 'warning'
   return undefined
 }
 
 /** 判断任务是否已完成 */
 const isTaskCompleted = (status: number) => {
-  // 完成状态：值为4
-  return status === 4
+  // 完成状态：值为5
+  return status === 5
+}
+
+/** 获取质量评分样式类 */
+const getQualityScoreClass = (score: number) => {
+  if (score >= 90) return 'excellent'
+  if (score >= 80) return 'good'
+  if (score >= 70) return 'average'
+  if (score >= 60) return 'poor'
+  return 'very-poor'
 }
 
 /** 格式化数字 */
 const formatNumber = (num: number) => {
   if (!num) return '0'
   return num.toLocaleString()
-}
-
-/** 格式化持续时间 */
-const formatDuration = (seconds: number) => {
-  if (seconds < 60) return `${seconds}s`
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`
-  return `${Math.floor(seconds / 3600)}h`
 }
 </script>
 
@@ -706,6 +724,30 @@ const formatDuration = (seconds: number) => {
 .stat-value {
   color: #303133;
   font-weight: 500;
+}
+
+.quality-score {
+  font-weight: 600;
+}
+
+.quality-score.excellent {
+  color: #67c23a;
+}
+
+.quality-score.good {
+  color: #409eff;
+}
+
+.quality-score.average {
+  color: #e6a23c;
+}
+
+.quality-score.poor {
+  color: #f56c6c;
+}
+
+.quality-score.very-poor {
+  color: #909399;
 }
 
 .action-buttons {

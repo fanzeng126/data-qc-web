@@ -34,6 +34,7 @@ export interface ImportProgressVO {
   qcEndTime?: string // 新增：质控完成时间
   endTime?: string // 新增：任务结束时间
   totalFiles: number
+  warningFiles: number
   successFiles: number
   failedFiles: number
   totalRecords: number
@@ -89,68 +90,117 @@ export interface ImportRetryResult {
   retryBatchNo: string
 }
 
-/** 任务详情 */
+/** 任务详情 - 适配新数据结构 */
 export interface ImportTaskDetailVO {
+  // 基本信息（来自drug_import_task表）
   id: number
   taskNo: string
   taskName: string
   fileName: string
   filePath: string
   fileSize: number
-  extractedFiles?: any
+  executeMode: number
   status: number
-  statusDisplay: string
-  extractStatus: number
-  importStatus: number
-  qcStatus: number
+  currentStage?: string
+  message?: string
+  qcStages?: any // JSON格式的质控阶段详情
+  
+  // 文件统计
   totalFiles: number
   successFiles: number
+  warningFiles: number
   failedFiles: number
+  
+  // 记录统计
   totalRecords: number
   successRecords: number
   failedRecords: number
+  warningRecords: number
+  anomalyRecords: number
+  
+  // 规则相关
+  totalRules: number
+  executedRules: number
+  passedRules: number
+  failedRules: number
+  
+  // 进度和质量
   progressPercent: number
-  tableProgress?: any
+  qualityScore?: number
+  scoreDetail?: any // JSON格式的评分明细
+  
+  // 时间相关
   startTime?: string
-  extractEndTime?: string
-  importEndTime?: string
-  qcEndTime?: string
   endTime?: string
+  durationMs?: number
+  avgRecordTime?: number
+  
+  // 错误处理
+  hasErrorFile: boolean
+  errorFilePath?: string
   errorMessage?: string
   errorDetail?: any
+  
+  // 其他字段
+  dataSource?: string
+  description?: string
   createTime: string
   updateTime: string
   creator: string
-  canRetry: boolean
-  taskDetails: ImportTaskDetailItemVO[]
+  
+  // 已移除的字段（不再需要）
+  // taskDetails: ImportTaskDetailItemVO[]
 }
 
-/** 任务明细项 */
-export interface ImportTaskDetailItemVO {
+/** 质控结果详情 - 按表分组 */
+export interface QcResultDetailVO {
+  taskId: number
+  taskNo: string
+  tableType: string
+  tableName: string
+  ruleDetails: QcRuleDetailVO[]
+  // 统计汇总
+  totalRules: number
+  passedRules: number
+  failedRules: number
+  warningRules: number
+  checkedRecords: number
+  errorRecords: number
+  warningRecords: number
+  anomalyRecords: number
+  passRate: number
+}
+
+/** 质控规则详情 */
+export interface QcRuleDetailVO {
   id: number
   taskId: number
-  fileType: string
-  fileName: string
-  targetTable: string
-  tableType: number
+  taskNo: string
+  ruleId: number
+  ruleCode: string
+  ruleName: string
+  ruleType: number // 1-前置,2-后置
+  rulePriority: number
+  checkDimension: string
+  tableType: string
   tableName: string
-  status: number
-  statusDisplay: string
-  parseStatus: number
-  importStatus: number
-  qcStatus: number
-  totalRows: number
-  validRows: number
-  successRows: number
-  failedRows: number
-  qcPassedRows: number
-  qcFailedRows: number
-  progressPercent: number
-  startTime?: string
-  endTime?: string
+  checkStatus: number // 0-通过,1-失败,2-警告,3-异常,4-跳过,5-中断
+  checkedCount: number
+  errorCount: number
+  warningCount: number
+  anomalyCount: number
+  passRate: number
   errorMessage?: string
-  retryCount: number
-  maxRetryCount: number
+  errorSamples?: any
+  errorRecordIds?: any
+  errorFileLines?: any
+  fixSuggestion?: string
+  autoFixable: boolean
+  fixedCount: number
+  isThreeSigma: boolean
+  sigmaStatistics?: any
+  interruptMessage?: string
+  createTime: string
 }
 
 /** 任务列表响应 */
@@ -370,6 +420,16 @@ export const DrugBatchImportApi = {
       params
     })
   },
+  /**
+   * 获取任务质控详情（按表分组）
+   * @param taskId 任务ID
+   */
+  getQcResultDetails: async (taskId: number): Promise<QcResultDetailVO[]> => {
+    return await request.get({
+      url: `/drug/qc-result-detail/by-task/${taskId}`
+    })
+  },
+
   /**
    * 获取任务执行日志
    * @param taskId 任务ID

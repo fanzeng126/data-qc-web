@@ -117,9 +117,9 @@ export interface ReportRecordVO {
 }
 
 export interface ReportStatisticsReqVO {
-  zoneId?: number
+  zoneId?: number | null
   reportWeek?: string
-  administrativeRegion?: string
+  administrativeRegion?: string | null
 }
 
 export interface OverviewData {
@@ -127,6 +127,11 @@ export interface OverviewData {
   reportDrugCount: number
   shortageDrugCount: number
   completionRate: number
+  // 新增趋势数据
+  orgTrend?: number
+  drugTrend?: number
+  shortageTrend?: number
+  completionTrend?: number
 }
 
 export interface SupplyStatusDistribution {
@@ -148,6 +153,11 @@ export interface ReportStatisticsRespVO {
   overview: OverviewData
   supplyDistribution: SupplyStatusDistribution[]
   shortageDetails: ShortageDetail[]
+  // 新增指标数据
+  dosageFormCount?: number         // 剂型分类统计
+  weeklyUsage?: number            // 本周使用量
+  currentStock?: number           // 当日实时库存
+  stockAlertCount?: number        // 库存预警数量
 }
 
 export const ReportRecordApi = {

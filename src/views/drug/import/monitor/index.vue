@@ -83,35 +83,90 @@
 
         <!-- 统计数据网格 -->
         <div class="stats-grid">
-          <div class="stat-item">
-            <div class="stat-value">{{ progressData.totalFiles || 0 }}</div>
-            <div class="stat-label">文件总数</div>
-            <div class="stat-icon">📁</div>
+          <!-- 文件统计 -->
+          <div class="stat-section">
+            <div class="section-title">文件统计</div>
+            <div class="section-stats">
+              <div class="stat-item">
+                <div class="stat-value">{{ progressData.totalFiles || 0 }}</div>
+                <div class="stat-label">文件总数</div>
+                <div class="stat-icon">📁</div>
+              </div>
+              <div class="stat-item success">
+                <div class="stat-value">{{ progressData.successFiles || 0 }}</div>
+                <div class="stat-label">成功文件</div>
+                <div class="stat-icon">✅</div>
+              </div>
+              <div class="stat-item warning">
+                <div class="stat-value">{{ formatNumber(progressData.warningFiles) }}</div>
+                <div class="stat-label">警告文件</div>
+                <div class="stat-icon">⚠️</div>
+              </div>
+              <div class="stat-item danger">
+                <div class="stat-value">{{ progressData.failedFiles || 0 }}</div>
+                <div class="stat-label">失败文件</div>
+                <div class="stat-icon">❌</div>
+              </div>
+            </div>
           </div>
-          <div class="stat-item success">
-            <div class="stat-value">{{ progressData.successFiles || 0 }}</div>
-            <div class="stat-label">成功文件</div>
-            <div class="stat-icon">✅</div>
+
+          <!-- 记录统计 -->
+          <div class="stat-section">
+            <div class="section-title">记录统计</div>
+            <div class="section-stats">
+              <div class="stat-item">
+                <div class="stat-value">{{ formatNumber(progressData.totalRecords) }}</div>
+                <div class="stat-label">总记录数</div>
+                <div class="stat-icon">📊</div>
+              </div>
+              <div class="stat-item success">
+                <div class="stat-value">{{ formatNumber(progressData.successRecords) }}</div>
+                <div class="stat-label">成功记录</div>
+                <div class="stat-icon">✅</div>
+              </div>
+              <div class="stat-item danger">
+                <div class="stat-value">{{ formatNumber(progressData.failedRecords) }}</div>
+                <div class="stat-label">失败记录</div>
+                <div class="stat-icon">❌</div>
+              </div>
+              <div class="stat-item warning">
+                <div class="stat-value">{{ formatNumber(progressData.warningRecords) }}</div>
+                <div class="stat-label">警告记录</div>
+                <div class="stat-icon">⚠️</div>
+              </div>
+              <div class="stat-item anomaly">
+                <div class="stat-value">{{ formatNumber(progressData.anomalyRecords) }}</div>
+                <div class="stat-label">异常记录</div>
+                <div class="stat-icon">🔍</div>
+              </div>
+            </div>
           </div>
-          <div class="stat-item danger">
-            <div class="stat-value">{{ progressData.failedFiles || 0 }}</div>
-            <div class="stat-label">失败文件</div>
-            <div class="stat-icon">❌</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">{{ formatNumber(progressData.totalRecords) }}</div>
-            <div class="stat-label">总记录数</div>
-            <div class="stat-icon">📊</div>
-          </div>
-          <div class="stat-item success">
-            <div class="stat-value">{{ formatNumber(progressData.successRecords) }}</div>
-            <div class="stat-label">成功记录</div>
-            <div class="stat-icon">✅</div>
-          </div>
-          <div class="stat-item danger">
-            <div class="stat-value">{{ formatNumber(progressData.failedRecords) }}</div>
-            <div class="stat-label">失败记录</div>
-            <div class="stat-icon">❌</div>
+
+          <!-- 规则统计 -->
+          <div class="stat-section">
+            <div class="section-title">规则统计</div>
+            <div class="section-stats">
+              <div class="stat-item">
+                <div class="stat-value">{{ progressData.totalRules || 0 }}</div>
+                <div class="stat-label">总规则数</div>
+                <div class="stat-icon">📋</div>
+              </div>
+              <div class="stat-item processing">
+                <div class="stat-value">{{ progressData.executedRules || 0 }}</div>
+                <div class="stat-label">已执行规则</div>
+                <div class="stat-icon">⚡</div>
+              </div>
+              <div class="stat-item success">
+                <div class="stat-value">{{ progressData.passedRules || 0 }}</div>
+                <div class="stat-label">通过规则</div>
+                <div class="stat-icon">✅</div>
+              </div>
+              <div class="stat-item danger">
+                <div class="stat-value">{{ progressData.failedRules || 0 }}</div>
+                <div class="stat-label">失败规则</div>
+                <div class="stat-icon">❌</div>
+              </div>
+            </div>
           </div>
         </div>
       </el-card>
@@ -190,10 +245,17 @@ const progressData = reactive<ImportProgressVO>({
   currentStage: '',
   totalFiles: 0,
   successFiles: 0,
+  warningFiles: 0,
   failedFiles: 0,
   totalRecords: 0,
   successRecords: 0,
   failedRecords: 0,
+  warningRecords: 0,
+  anomalyRecords: 0,
+  totalRules: 0,
+  executedRules: 0,
+  passedRules: 0,
+  failedRules: 0,
   tableProgress: [],
   canRetry: false
 })
@@ -422,29 +484,29 @@ const getCurrentStageText = (currentStage: string) => {
     'CREATING_QC': '正在创建质控记录',
     'PARSING': '正在解析数据',
     'IMPORTING_TO_PRE_TABLES': '正在导入数据到临时表',
-    
+
     // 前置质控相关
     'GLOBAL_PRE_QC': '正在执行前置质控',
     'PRE_QC': '正在执行前置质控规则检查',
     'PRE_QC_COMPLETED': '前置质控完成',
     'PRE_QC_SQL': '正在执行前置质控规则检查',
     'PRE_QC_SQL_COMPLETED': '前置质控完成',
-    
+
     // 导入阶段
     'IMPORTING': '正在导入数据',
     'IMPORTING_FROM_PRE_TABLES': '正在从临时表导入到正式表',
-    
+
     // 后置质控相关
     'POST_QC': '正在执行后置质控',
     'POST_QC_SQL': '正在执行后置质控规则检查',
     'POST_QC_COMPLETED': '后置质控完成',
     'POST_QC_SQL_COMPLETED': '后置质控完成',
-    
+
     // 完成状态
     'COMPLETED': '任务处理完成',
     'CANCELLED': '任务已取消'
   }
-  
+
   return stageMapping[currentStage] || currentStage || '准备中'
 }
 
@@ -452,6 +514,7 @@ const getCurrentStageText = (currentStage: string) => {
 const getProgressStatus = (status: number) => {
   if (status === TASK_STATUS.COMPLETED) return 'success'
   if (status === TASK_STATUS.FAILED) return 'exception'
+  if (status === TASK_STATUS.CANCELLED) return 'warning'
   return undefined
 }
 
@@ -608,22 +671,45 @@ const formatDuration = (seconds: number) => {
   gap: 6px;
 }
 
+/* 统计数据网格样式 */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
   margin-top: 20px;
   position: relative;
   z-index: 1;
 }
 
-.stat-item {
-  text-align: center;
-  padding: 16px;
+.stat-section {
   background: rgba(255, 255, 255, 0.8);
   border: 1px solid rgba(102, 126, 234, 0.15);
   border-radius: 12px;
+  padding: 16px;
   backdrop-filter: blur(10px);
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(102, 126, 234, 0.15);
+}
+
+.section-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
   position: relative;
   transition: all 0.3s ease;
 }
@@ -631,29 +717,31 @@ const formatDuration = (seconds: number) => {
 .stat-item:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.9);
 }
 
 .stat-value {
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 600;
   margin-bottom: 4px;
   color: #303133;
 }
 
 .stat-label {
-  font-size: 12px;
+  font-size: 11px;
   color: #909399;
+  line-height: 1.2;
 }
 
 .stat-icon {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  font-size: 16px;
+  top: 6px;
+  right: 6px;
+  font-size: 12px;
   opacity: 0.6;
 }
 
+/* 不同类型的统计项颜色 */
 .stat-item.success .stat-value {
   color: #67c23a;
 }
@@ -662,13 +750,39 @@ const formatDuration = (seconds: number) => {
   color: #f56c6c;
 }
 
+.stat-item.warning .stat-value {
+  color: #e6a23c;
+}
+
+.stat-item.anomaly .stat-value {
+  color: #909399;
+}
+
+.stat-item.processing .stat-value {
+  color: #409eff;
+}
+
 /* 响应式设计 */
+@media (max-width: 1200px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .section-stats {
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  }
+}
+
 @media (max-width: 768px) {
   .drug-import-progress-page {
     padding: 10px;
   }
 
   .stats-grid {
+    gap: 12px;
+  }
+
+  .section-stats {
     grid-template-columns: repeat(2, 1fr);
   }
 }
