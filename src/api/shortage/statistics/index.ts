@@ -123,6 +123,52 @@ export interface DrugShortageTrendVO {
   forecastData?: number[]
 }
 
+// ========== 库存可用周数统计 ==========
+export interface StockWeeksStatisticsVO {
+  drugCategory: string
+  hospitalStock: number
+  enterpriseStock: number
+  totalStock: number
+  weeklyUsage: number
+  availableWeeks: number
+}
+
+// ========== 药品使用量统计 ==========
+export interface UsageStatisticsVO {
+  drugCategory: string
+  usageAmount: number
+  usageUnit: string
+  orgCount: number
+}
+
+// ========== 使用量环比变化 ==========
+export interface UsageChangeVO {
+  drugCategory: string
+  currentUsage: number
+  lastUsage: number
+  changeRate: number
+}
+
+// ========== 时间趋势分析 ==========
+export interface TrendAnalysisVO {
+  drugCategory: string
+  dataPoints: TrendDataPoint[]
+}
+
+export interface TrendDataPoint {
+  week: string
+  usage: number
+}
+
+// ========== 地域统计 ==========
+export interface RegionStatisticsVO {
+  regionName: string
+  drugCategory: string
+  usageAmount: number
+  stockAmount: number
+  reportingOrganizations: number
+}
+
 // ========== API 接口定义 ==========
 export const StatisticsApi = {
   // 获取简化概览（专用于指标卡片）
@@ -192,6 +238,48 @@ export const StatisticsApi = {
   exportReport: (params: StatisticsQueryVO) =>
     request.download({
       url: '/shortage/statistics/export-report',
+      params
+    }),
+
+  // 获取库存可用周数统计
+  getStockWeeks: (params: StatisticsQueryVO) =>
+    request.get<StockWeeksStatisticsVO[]>({
+      url: '/shortage/statistics/stock-weeks',
+      params
+    }),
+
+  // 获取药品使用量统计
+  getDrugUsage: (params: StatisticsQueryVO) =>
+    request.get<UsageStatisticsVO[]>({
+      url: '/shortage/statistics/drug-usage',
+      params
+    }),
+
+  // 获取使用量环比变化
+  getUsageChange: (params: StatisticsQueryVO) =>
+    request.get<UsageChangeVO[]>({
+      url: '/shortage/statistics/usage-change',
+      params
+    }),
+
+  // 获取时间趋势分析
+  getTrendAnalysis: (params: StatisticsQueryVO) =>
+    request.get<TrendAnalysisVO[]>({
+      url: '/shortage/statistics/trend-analysis',
+      params
+    }),
+
+  // 获取地域分布统计
+  getRegionStatistics: (params: StatisticsQueryVO) =>
+    request.get<RegionStatisticsVO[]>({
+      url: '/shortage/statistics/region-statistics',
+      params
+    }),
+
+  // 导出周报
+  exportWeeklyReport: (params: StatisticsQueryVO) =>
+    request.download({
+      url: '/shortage/statistics/export-weekly-report',
       params
     })
 }

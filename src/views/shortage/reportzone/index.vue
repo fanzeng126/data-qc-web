@@ -1,4 +1,5 @@
 <template>
+  <doc-alert title="站内信配置" url="https://doc.iocoder.cn/notify/" />
   <ContentWrap>
     <!-- 搜索工作栏 -->
     <el-form
@@ -24,20 +25,30 @@
           clearable
           class="!w-240px"
         >
-          <el-option label="启用" :value="1" />
-          <el-option label="停用" :value="0" />
+          <el-option
+            v-for="dict in getIntDictOptions(DICT_TYPE.COMMON_STATUS)"
+            :key="dict.value"
+            :label="dict.label"
+            :value="dict.value"
+          />
         </el-select>
       </el-form-item>
       <el-form-item>
-        <el-button @click="handleQuery"><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button>
-        <el-button @click="resetQuery"><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button>
+        <el-button @click="handleQuery">
+          <Icon icon="ep:search" class="mr-5px" />
+          搜索
+        </el-button>
+        <el-button @click="resetQuery">
+          <Icon icon="ep:refresh" class="mr-5px" />
+          重置
+        </el-button>
         <el-button
           type="primary"
-          plain
           @click="openForm('create')"
           v-hasPermi="['shortage:report-zone:create']"
         >
-          <Icon icon="ep:plus" class="mr-5px" /> 新增专区
+          <Icon icon="ep:plus" class="mr-5px" />
+          新增专区
         </el-button>
       </el-form-item>
     </el-form>
@@ -45,14 +56,28 @@
 
   <!-- 列表 -->
   <ContentWrap>
-    <el-table v-loading="loading" :data="list" :stripe="true" :show-overflow-tooltip="true">
+    <el-table v-loading="loading" :data="list" :show-overflow-tooltip="true">
       <el-table-column label="专区编码" align="center" prop="zoneCode" width="120px" />
       <el-table-column label="专区名称" align="center" prop="zoneName" width="180px" />
       <el-table-column label="状态" align="center" prop="status" width="100px">
         <template #default="scope">
-          <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'">
-            {{ scope.row.status === 1 ? '启用' : '停用' }}
-          </el-tag>
+          <el-switch
+            v-model="scope.row.status"
+            :active-value="0"
+            :inactive-value="1"
+            @change="handleStatusChange(scope.row)"
+            :disabled="!checkPermi(['shortage:report-zone:update'])"
+          />
+        </template>
+      </el-table-column>
+      <el-table-column label="药品数" align="center" prop="drugCount" width="100px">
+        <template #default="scope">
+          <el-tag>{{ scope.row.drugCount || 0 }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="填报次数" align="center" prop="reportCount" width="100px">
+        <template #default="scope">
+          <el-tag>{{ scope.row.reportCount || 0 }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column label="备注" align="center" prop="remark" show-overflow-tooltip />
@@ -63,7 +88,7 @@
         :formatter="dateFormatter"
         width="180px"
       />
-      <el-table-column label="操作" align="center" width="200px">
+      <el-table-column label="操作" align="center" width="280px">
         <template #default="scope">
           <el-button
             link
@@ -72,6 +97,14 @@
             v-hasPermi="['shortage:drug-config:query']"
           >
             药品配置
+          </el-button>
+          <el-button
+            link
+            type="primary"
+            @click="openTimeConfigForm(scope.row)"
+            v-hasPermi="['shortage:report-zone:update']"
+          >
+            时间配置
           </el-button>
           <el-button
             link
@@ -103,17 +136,25 @@
 
   <!-- 表单弹窗：添加/修改 -->
   <ReportZoneForm ref="formRef" @success="getList" />
+  
+  <!-- 时间配置弹窗 -->
+  <TimeConfigForm ref="timeConfigFormRef" @success="getList" />
 </template>
 
 <script setup lang="ts">
+import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
+import { checkPermi } from '@/utils/permission'
 import { dateFormatter } from '@/utils/formatTime'
+import { CommonStatusEnum } from '@/utils/constants'
 import { ReportZoneApi, type ReportZoneVO } from '@/api/shortage'
 import ReportZoneForm from './ReportZoneForm.vue'
+import TimeConfigForm from './TimeConfigForm.vue'
 
 /** 短缺药品填报专区 列表 */
 defineOptions({ name: 'ShortageReportZone' })
 
 const message = useMessage() // 消息弹窗
+const { t } = useI18n() // 国际化
 const router = useRouter()
 const loading = ref(true) // 列表的加载中
 const list = ref<ReportZoneVO[]>([]) // 列表的数据
@@ -146,9 +187,26 @@ const handleQuery = () => {
 
 /** 重置按钮操作 */
 const resetQuery = () => {
-  queryParams.zoneName = ''
-  queryParams.status = undefined
+  queryFormRef.value?.resetFields()
   handleQuery()
+}
+
+/** 修改专区状态 */
+const handleStatusChange = async (row: ReportZoneVO) => {
+  try {
+    // 修改状态的二次确认
+    const text = row.status === CommonStatusEnum.ENABLE ? '启用' : '停用'
+    await message.confirm('确认要"' + text + '""' + row.zoneName + '"专区吗?')
+    // 发起修改状态
+    await ReportZoneApi.updateStatus(row.id, row.status)
+    message.success('修改成功')
+    // 刷新列表
+    await getList()
+  } catch {
+    // 取消后，进行恢复按钮
+    row.status =
+      row.status === CommonStatusEnum.ENABLE ? CommonStatusEnum.DISABLE : CommonStatusEnum.ENABLE
+  }
 }
 
 /** 添加/修改操作 */
@@ -157,14 +215,20 @@ const openForm = (type: string, id?: number) => {
   formRef.value.open(type, id)
 }
 
+/** 时间配置操作 */
+const timeConfigFormRef = ref()
+const openTimeConfigForm = (row: ReportZoneVO) => {
+  timeConfigFormRef.value.open(row)
+}
+
 /** 药品配置操作 */
 const handleConfig = (row: ReportZoneVO) => {
-  router.push({ 
-    path: '/shortage/drug-config', 
-    query: { 
+  router.push({
+    path: '/shortage/drug-config',
+    query: {
       zoneId: row.id,
-      zoneName: row.zoneName 
-    } 
+      zoneName: row.zoneName
+    }
   })
 }
 
@@ -173,7 +237,7 @@ const handleDelete = async (id: number) => {
   try {
     await message.delConfirm()
     await ReportZoneApi.delete(id)
-    message.success('删除成功')
+    message.success(t('common.delSuccess'))
     await getList()
   } catch {}
 }

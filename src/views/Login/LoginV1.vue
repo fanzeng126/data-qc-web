@@ -4,7 +4,7 @@
       <!-- 左侧内容区 -->
       <div class="login-left">
         <div class="logo-section">
-          <img alt="" class="logo-img" src="@/assets/imgs/logo.webp" />
+          <img alt="" class="logo-img" src="@/assets/imgs/logo.png" />
           <h1 class="system-title">{{ underlineToHump(appStore.getTitle) }}</h1>
         </div>
         <p class="system-description">

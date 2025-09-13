@@ -103,14 +103,18 @@
                 accept=".zip,.rar"
               >
                 <div v-if="!uploadForm.file" class="upload-content">
-                  <el-icon class="upload-icon"><UploadFilled /></el-icon>
+                  <el-icon class="upload-icon">
+                    <UploadFilled />
+                  </el-icon>
                   <div class="upload-text">
                     <p>拖拽文件到此处，或<em>点击上传</em></p>
                     <p class="upload-hint">仅支持 .zip 或 .rar 格式，文件大小不超过 100MB</p>
                   </div>
                 </div>
                 <div v-else class="file-info">
-                  <el-icon class="file-icon"><Document /></el-icon>
+                  <el-icon class="file-icon">
+                    <Document />
+                  </el-icon>
                   <div class="file-details">
                     <div class="file-name">{{ uploadForm.file.name }}</div>
                     <div class="file-size">{{ formatFileSize(uploadForm.file.size) }}</div>
@@ -122,7 +126,9 @@
                     @click="removeFile"
                     class="remove-btn"
                   >
-                    <el-icon><Close /></el-icon>
+                    <el-icon>
+                      <Close />
+                    </el-icon>
                   </el-button>
                 </div>
               </el-upload>
@@ -139,10 +145,14 @@
                   <h3 class="requirements-title">压缩包必须包含以下5个Excel文件</h3>
                   <p class="requirements-subtitle">请确保文件名称和内容格式完全符合要求</p>
                 </div>
-
                 <div class="file-list-container">
                   <div class="file-grid">
-                    <div v-for="(table, key) in tableDefinitions" :key="key" class="file-card" @click="previewTemplate(table.id)">
+                    <div
+                      v-for="(table, key) in tableDefinitions"
+                      :key="key"
+                      class="file-card"
+                      @click="previewTemplate(table.id)"
+                    >
                       <div class="file-card-header">
                         <el-icon class="file-card-icon" :style="{ color: table.color }">
                           <Files />
@@ -166,29 +176,39 @@
 
                 <div class="template-download-section">
                   <div class="download-info">
-                    <el-icon class="download-icon"><Download /></el-icon>
+                    <el-icon class="download-icon">
+                      <Download />
+                    </el-icon>
                     <div class="download-text">
                       <h4>获取标准模板压缩包</h4>
                       <p>下载包含所有必要文件和示例数据的标准模板</p>
                     </div>
                   </div>
                   <el-button type="primary" @click="downloadTemplate" class="download-btn">
-                    <el-icon><Download /></el-icon>
+                    <el-icon>
+                      <Download />
+                    </el-icon>
                     下载标准模板压缩包
                   </el-button>
                 </div>
 
                 <div class="requirements-tips">
                   <div class="tip-item">
-                    <el-icon class="tip-icon success"><CircleCheck /></el-icon>
+                    <el-icon class="tip-icon success">
+                      <CircleCheck />
+                    </el-icon>
                     <span>文件格式：Excel (.xlsx) 文件，UTF-8编码</span>
                   </div>
                   <div class="tip-item">
-                    <el-icon class="tip-icon warning"><Warning /></el-icon>
+                    <el-icon class="tip-icon warning">
+                      <Warning />
+                    </el-icon>
                     <span>字段要求：必填字段不能为空，可选字段可为空</span>
                   </div>
                   <div class="tip-item">
-                    <el-icon class="tip-icon info"><InfoFilled /></el-icon>
+                    <el-icon class="tip-icon info">
+                      <InfoFilled />
+                    </el-icon>
                     <span>数据质量：建议数据完整性超过90%以获得最佳导入效果</span>
                   </div>
                 </div>
@@ -210,15 +230,15 @@
               <template #extra>
                 <div v-if="validationResult.valid" class="validation-success">
                   <el-descriptions title="文件信息" :column="2" border>
-                    <el-descriptions-item label="文件名称">{{
-                      validationResult.fileName
-                    }}</el-descriptions-item>
-                    <el-descriptions-item label="文件大小">{{
-                      formatFileSize(validationResult.fileSize)
-                    }}</el-descriptions-item>
-                    <el-descriptions-item label="解压文件数">{{
-                      validationResult.extractedFiles?.length || 0
-                    }}</el-descriptions-item>
+                    <el-descriptions-item label="文件名称"
+                      >{{ validationResult.fileName }}
+                    </el-descriptions-item>
+                    <el-descriptions-item label="文件大小"
+                      >{{ formatFileSize(validationResult.fileSize) }}
+                    </el-descriptions-item>
+                    <el-descriptions-item label="解压文件数"
+                      >{{ validationResult.extractedFiles?.length || 0 }}
+                    </el-descriptions-item>
                     <el-descriptions-item label="验证状态">
                       <el-tag type="success">全部通过</el-tag>
                     </el-descriptions-item>
@@ -285,22 +305,22 @@
         <div class="import-confirmation">
           <el-descriptions title="任务信息确认" :column="2" border>
             <el-descriptions-item label="任务名称">{{ uploadForm.taskName }}</el-descriptions-item>
-            <el-descriptions-item label="数据来源">{{
-              uploadForm.dataSource ? getDataSourceText(uploadForm.dataSource) : '未选择'
-            }}</el-descriptions-item>
-            <el-descriptions-item label="执行模式">{{
-              getExecuteModeText(uploadForm.executeMode)
-            }}</el-descriptions-item>
-            <el-descriptions-item label="文件名称">{{
-              uploadForm.file?.name
-            }}</el-descriptions-item>
-            <el-descriptions-item label="文件大小">{{
-              formatFileSize(uploadForm.file?.size || 0)
-            }}</el-descriptions-item>
+            <el-descriptions-item label="数据来源"
+              >{{ uploadForm.dataSource ? getDataSourceText(uploadForm.dataSource) : '未选择' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="执行模式"
+              >{{ getExecuteModeText(uploadForm.executeMode) }}
+            </el-descriptions-item>
+            <el-descriptions-item label="文件名称"
+              >{{ uploadForm.file?.name }}
+            </el-descriptions-item>
+            <el-descriptions-item label="文件大小"
+              >{{ formatFileSize(uploadForm.file?.size || 0) }}
+            </el-descriptions-item>
             <el-descriptions-item label="预计处理时间" span="2">约 5-15 分钟</el-descriptions-item>
-            <el-descriptions-item label="创建时间" span="2">{{
-              new Date().toLocaleString()
-            }}</el-descriptions-item>
+            <el-descriptions-item label="创建时间" span="2"
+              >{{ new Date().toLocaleString() }}
+            </el-descriptions-item>
           </el-descriptions>
 
           <!-- 数据表和字段信息展示 -->
@@ -343,8 +363,9 @@
                         <el-icon
                           v-if="isRequiredField(fileInfo.tableType, field)"
                           style="margin-left: 4px"
-                          ><Star
-                        /></el-icon>
+                        >
+                          <Star />
+                        </el-icon>
                       </el-tag>
                     </div>
 
@@ -423,15 +444,15 @@
                   <!-- 数据质量说明 -->
                   <div class="data-quality-info" style="margin-top: 16px">
                     <el-descriptions :column="3" size="small" border>
-                      <el-descriptions-item label="总行数">{{
-                        fileInfo.rowCount
-                      }}</el-descriptions-item>
-                      <el-descriptions-item label="有效行数">{{
-                        fileInfo.validRowCount || fileInfo.rowCount
-                      }}</el-descriptions-item>
-                      <el-descriptions-item label="空行数">{{
-                        fileInfo.rowCount - (fileInfo.validRowCount || fileInfo.rowCount)
-                      }}</el-descriptions-item>
+                      <el-descriptions-item label="总行数"
+                        >{{ fileInfo.rowCount }}
+                      </el-descriptions-item>
+                      <el-descriptions-item label="有效行数"
+                        >{{ fileInfo.validRowCount || fileInfo.rowCount }}
+                      </el-descriptions-item>
+                      <el-descriptions-item label="空行数"
+                        >{{ fileInfo.rowCount - (fileInfo.validRowCount || fileInfo.rowCount) }}
+                      </el-descriptions-item>
                       <el-descriptions-item label="字段完整率">
                         <el-tag
                           :type="getCompletenessType(fileInfo.tableType, fileInfo.actualFields)"
@@ -454,9 +475,9 @@
                           {{ getDataQualityText(fileInfo.dataQuality) }}
                         </el-tag>
                       </el-descriptions-item>
-                      <el-descriptions-item label="编码格式">{{
-                        fileInfo.encoding || 'UTF-8'
-                      }}</el-descriptions-item>
+                      <el-descriptions-item label="编码格式"
+                        >{{ fileInfo.encoding || 'UTF-8' }}
+                      </el-descriptions-item>
                     </el-descriptions>
                   </div>
                 </div>
@@ -498,7 +519,7 @@
         开始导入
       </el-button>
     </div>
-    
+
     <!-- 模板预览弹窗 -->
     <TemplatePreviewDialog ref="templatePreviewRef" />
   </div>
@@ -527,6 +548,7 @@ import { ImportTemplateApi } from '@/api/drug/task/template'
 import PageHeader from '@/components/PageHeader/index.vue'
 import TemplatePreviewDialog from '@/views/drug/import/template/components/TemplatePreviewDialog.vue'
 import { getDictLabel, DICT_TYPE, getDictOptions } from '@/utils/dict'
+
 /** 组件名称定义 */
 defineOptions({ name: 'DrugBatchImportPage' })
 
@@ -550,7 +572,7 @@ const uploadForm = reactive({
   taskName: '',
   description: '',
   dataSource: '',
-  executeMode: '3', // 默认全部执行
+  executeMode: '1',
   file: null as File | null
 })
 
@@ -589,20 +611,20 @@ const canNextStep = computed(() => {
 const loadTemplateDefinitions = async () => {
   try {
     loadingTemplates.value = true
-    
+
     // 获取TABLE_TYPE=1（前置质控）的模板列表
     const templates = await ImportTemplateApi.getImportTemplateListByTableType(1)
-    
+
     // 为每个模板获取字段统计信息
     const templatePromises = templates.map(async (template: any) => {
       try {
         // 获取模板字段信息来统计必填字段数量
-        const fields = await import('@/api/drug/task/template').then(m => 
+        const fields = await import('@/api/drug/task/template').then((m) =>
           m.TemplateFieldApi.getTemplateFieldListByTemplateId(template.id)
         )
-        
+
         const requiredFields = fields.filter((field: any) => field.isRequired)
-        
+
         return {
           id: template.id,
           name: template.templateName,
@@ -618,7 +640,7 @@ const loadTemplateDefinitions = async () => {
         return {
           id: template.id,
           name: template.templateName,
-          fileName: template.templateCode + '.xlsx', 
+          fileName: template.templateCode + '.xlsx',
           description: template.titleText || '数据导入模板',
           fieldCount: template.fieldCount || 0,
           downloadCount: template.downloadCount || 0,
@@ -627,21 +649,20 @@ const loadTemplateDefinitions = async () => {
         }
       }
     })
-    
+
     const templateData = await Promise.all(templatePromises)
-    
+
     // 转换为原有的数据结构格式，使用模板ID作为key
     const definitions: any = {}
-    templateData.forEach(template => {
+    templateData.forEach((template) => {
       definitions[template.id] = template
     })
-    
+
     tableDefinitions.value = definitions
-    
   } catch (error) {
     console.error('加载模板定义失败:', error)
     ElMessage.error('加载模板信息失败，将使用默认配置')
-    
+
     // 失败时使用默认配置
     tableDefinitions.value = {
       default: {
@@ -659,7 +680,6 @@ const loadTemplateDefinitions = async () => {
     loadingTemplates.value = false
   }
 }
-
 
 /** 预览模板 */
 const previewTemplate = (templateId: number) => {
@@ -992,13 +1012,14 @@ const getDataQualityText = (quality: string): string => {
   border: none;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   width: 100%;
+  overflow: hidden;
 }
 
 .requirements-content {
   text-align: center;
   padding: 20px;
-  max-width: 100%;
-  margin: 0 auto; /* 确保内容居中 */
+  width: 100%;
+  margin: 0 auto;
 }
 
 .requirements-header {
@@ -1019,17 +1040,27 @@ const getDataQualityText = (quality: string): string => {
 }
 
 .file-list-container {
-  margin: 24px 0;
+  margin: 24px -20px; /* 使用负边距让滚动区域延伸到父容器边缘 */
+  padding: 0 20px 8px 20px; /* 内边距保持内容位置 */
+  overflow-x: auto; /* 横向滚动 */
+  overflow-y: hidden; /* 隐藏纵向滚动条 */
+}
+
+.file-list-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.file-list-container::-webkit-scrollbar-thumb {
+  background: #c0c4cc;
+  border-radius: 4px;
 }
 
 .file-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  display: flex; /* 改为flex布局以支持横向滚动 */
   gap: 16px;
-  justify-items: center; /* 让卡片在网格中居中 */
-  width: 100%;
-  max-width: 1600px; /* 限制网格的最大宽度 */
-  margin: 0 auto; /* 让整个网格居中 */
+  width: max-content; /* 让内容决定宽度 */
+  min-width: 100%; /* 至少占满容器宽度 */
+  padding: 0 16px; /* 左右留一点边距 */
 }
 
 .file-card {
@@ -1037,8 +1068,8 @@ const getDataQualityText = (quality: string): string => {
   border: 1px solid #e4e7ed;
   border-radius: 8px;
   padding: 20px;
-  width: 100%;
-  max-width: 320px; /* 保持卡片的最大宽度限制 */
+  width: 280px; /* 固定宽度以支持横向滚动 */
+  flex-shrink: 0; /* 防止卡片被压缩 */
   transition: all 0.3s ease;
   cursor: pointer;
 }
@@ -1118,11 +1149,12 @@ const getDataQualityText = (quality: string): string => {
   align-items: center;
   justify-content: center;
   gap: 20px;
-  margin: 32px 0 24px 0;
-  padding: 24px;
+  margin: 24px auto; /* 添加auto实现居中 */
+  padding: 20px; /* 减小padding */
   background: #f8fafc;
   border-radius: 8px;
   border: 1px dashed #d9ecff;
+  max-width: 600px; /* 限制最大宽度 */
 }
 
 .download-info {
@@ -1337,19 +1369,24 @@ const getDataQualityText = (quality: string): string => {
     padding: 16px;
   }
 
+  .file-list-container {
+    margin: 16px -16px; /* 负边距让滚动区域占满容器宽度 */
+    padding: 0 16px 8px 16px;
+  }
+
   .file-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 16px;
-    justify-items: stretch; /* 改为拉伸，让卡片填满可用空间 */
-    width: 100%; /* 占满容器宽度 */
+    padding: 0; /* 小屏幕下去掉额外的左右padding */
+  }
+
+  .file-card {
+    width: 260px; /* 小屏幕下稍微减小卡片宽度 */
   }
 
   .template-download-section {
     flex-direction: column;
-    justify-content: center; /* 小屏幕下恢复居中 */
     gap: 16px;
-    text-align: center;
+    margin: 16px auto;
+    max-width: none; /* 小屏幕下取消宽度限制 */
   }
 
   .download-text h4,
@@ -1359,8 +1396,8 @@ const getDataQualityText = (quality: string): string => {
 }
 
 @media (min-width: 1200px) {
-  .file-grid {
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); /* 大屏幕下稍微增大最小宽度 */
+  .file-card {
+    width: 300px; /* 大屏幕下增大卡片宽度 */
   }
 }
 
@@ -1403,5 +1440,15 @@ const getDataQualityText = (quality: string): string => {
 
 :deep(.el-alert--info .el-alert__title) {
   color: #303133;
+}
+
+:deep(.el-alert__content) {
+  width: 100%;
+  overflow: visible;
+}
+
+:deep(.el-alert__description) {
+  width: 100%;
+  overflow: visible;
 }
 </style>

@@ -1,14 +1,18 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch, onUnmounted } from 'vue'
 import * as echarts from 'echarts'
-import { ElCard, ElRow, ElCol, ElStatistic, ElButton, ElTooltip } from 'element-plus'
+import { ElCard, ElRow, ElCol, ElStatistic, ElButton, ElTooltip, ElDivider, ElIcon } from 'element-plus'
+import PageHeader from '@/components/PageHeader/index.vue'
+import { Calendar, DataAnalysis, TrendCharts, Warning, QuestionFilled, Download, Refresh } from '@element-plus/icons-vue'
 import type { ECharts } from 'echarts'
-import { getInstitutionReportStats, type InstitutionReportStatsVO } from '@/api/drug/statistics'
+import { getInstitutionReportStats, exportInstitutionReport, type InstitutionReportStatsVO } from '@/api/drug/statistics'
+import { formatDate } from '@/utils/formatTime'
 
 // 数据
 const reportStats = ref<InstitutionReportStatsVO | null>(null)
 const loading = ref(false)
-const currentYear = ref('2021')
+const currentYear = ref(new Date().getFullYear().toString())
+const selectedArea = ref<string>('')  // 选中的区域
 
 // 图表实例
 const progressChart = ref<HTMLElement | null>(null)
@@ -20,45 +24,70 @@ let cityDetailEchart: ECharts | null = null
 
 // 计算属性
 const basicStats = computed(() => reportStats.value?.basicStats || {
-  totalInstitutions: 2734,
-  reportRate: 83,
-  openTime: '2022-04-22',
-  deadlineTime: '2022-05-05',
-  reportedInstitutions: 871,
-  unreportedInstitutions: 1863,
-  unregisteredInstitutions: 212
+  totalInstitutions: 0,
+  reportedInstitutions: 0,
+  unreportedInstitutions: 0,
+  unregisteredInstitutions: 0,
+  reportRate: 0,
+  currentYear: currentYear.value,
+  reportStatus: 'pending' as const,
+  openTime: undefined,
+  deadlineTime: undefined
+})
+
+// 上报状态文本和样式
+const reportStatusInfo = computed(() => {
+  const status = basicStats.value.reportStatus
+  switch (status) {
+    case 'open':
+      return { text: '上报进行中', type: 'success' }
+    case 'closed':
+      return { text: '上报已结束', type: 'info' }
+    default:
+      return { text: '待开放', type: 'warning' }
+  }
 })
 
 const levelStats = computed(() => reportStats.value?.levelStats || {
-  level3: { count: 75, rate: 75 },
-  level2: { count: 65, rate: 65 },
-  baseLevel: { count: 69, rate: 69 }
+  level3: { total: 0, reported: 0, preReported: 0, postReported: 0, rate: 0 },
+  level2: { total: 0, reported: 0, preReported: 0, postReported: 0, rate: 0 },
+  baseLevel: { total: 0, reported: 0, preReported: 0, postReported: 0, rate: 0 }
 })
 
-const cityReports = computed(() => reportStats.value?.cityReports || [
-  { cityName: '枣庄市', reportRate: 80, formula: '0/33/33', level3Stats: { reported: 0, total: 33 }, level2Stats: { reported: 2, total: 71 }, baseStats: { reported: 0, total: 11 } },
-  { cityName: '潍坊市', reportRate: 100, formula: '0/0/0', level3Stats: { reported: 0, total: 0 }, level2Stats: { reported: 0, total: 0 }, baseStats: { reported: 0, total: 0 } },
-  { cityName: '烟台市', reportRate: 90, formula: '0/0/0', level3Stats: { reported: 0, total: 0 }, level2Stats: { reported: 0, total: 0 }, baseStats: { reported: 0, total: 0 } },
-  { cityName: '威海市', reportRate: 10, formula: '0/0/0', level3Stats: { reported: 0, total: 0 }, level2Stats: { reported: 0, total: 0 }, baseStats: { reported: 0, total: 0 } },
-  { cityName: '东营市', reportRate: 20, formula: '0/0/0', level3Stats: { reported: 0, total: 0 }, level2Stats: { reported: 0, total: 0 }, baseStats: { reported: 0, total: 0 } },
-  { cityName: '菏泽市', reportRate: 30, formula: '0/0/0', level3Stats: { reported: 0, total: 0 }, level2Stats: { reported: 0, total: 0 }, baseStats: { reported: 0, total: 0 } },
-  { cityName: '青岛市', reportRate: 90, formula: '0/0/0', level3Stats: { reported: 0, total: 0 }, level2Stats: { reported: 0, total: 0 }, baseStats: { reported: 0, total: 0 } }
-])
+const areaStats = computed(() => reportStats.value?.areaStats || [])
 
-const detailCards = computed(() => reportStats.value?.detailCards || {
-  totalInstitutions: 2734,
-  reportedCount: 871,
-  unreportedCount: 1863,
-  unregisteredCount: 212,
-  internalAuditCount: 24,
-  managedUsers: 5
+// 获取城市级别数据
+const cityStats = computed(() => {
+  return areaStats.value.filter(area => area.areaLevel === 'city')
+})
+
+// 任务统计
+const taskStats = computed(() => reportStats.value?.taskStats || {
+  totalTasks: 0,
+  successTasks: 0,
+  failedTasks: 0,
+  partialSuccessTasks: 0,
+  cancelledTasks: 0,
+  preOnlyTasks: 0,
+  postOnlyTasks: 0,
+  fullTasks: 0
+})
+
+// 选中区域的详细数据
+const selectedAreaDetail = computed(() => {
+  if (!selectedArea.value) return null
+  return areaStats.value.find(area => area.areaCode === selectedArea.value)
 })
 
 // 获取数据
 const fetchData = async () => {
   loading.value = true
   try {
-    const result = await getInstitutionReportStats(currentYear.value)
+    const params = {
+      year: currentYear.value,
+      areaCode: selectedArea.value || undefined
+    }
+    const result = await getInstitutionReportStats(params)
     reportStats.value = result
   } catch (error) {
     console.error('获取机构填报统计失败:', error)
@@ -66,6 +95,11 @@ const fetchData = async () => {
     loading.value = false
   }
 }
+
+// 监听年份和区域变化
+watch([currentYear, selectedArea], () => {
+  fetchData()
+})
 
 // 初始化进度圆环图表
 const initProgressCharts = () => {
@@ -75,6 +109,21 @@ const initProgressCharts = () => {
   
   const option = {
     backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'item',
+      formatter: (params: any) => {
+        const level = params.seriesName
+        const stats = level === '三级' ? levelStats.value.level3 :
+                     level === '二级' ? levelStats.value.level2 : 
+                     levelStats.value.baseLevel
+        return `${level}医院<br/>
+                总数: ${stats.total}家<br/>
+                已上报: ${stats.reported}家<br/>
+                前置: ${stats.preReported}家<br/>
+                后置: ${stats.postReported}家<br/>
+                上报率: ${stats.rate.toFixed(1)}%`
+      }
+    },
     series: [
       {
         name: '三级',
@@ -193,11 +242,13 @@ const initProgressCharts = () => {
   progressEchart.setOption(option)
 }
 
-// 初始化全省概览柱状图
+// 初始化区域概览柱状图
 const initProvinceChart = () => {
   if (!provinceChart.value) return
   
   provinceEchart = echarts.init(provinceChart.value)
+  
+  const chartData = cityStats.value.sort((a, b) => b.reportRate - a.reportRate)
   
   const option = {
     backgroundColor: 'transparent',
@@ -208,11 +259,16 @@ const initProvinceChart = () => {
       },
       formatter: function(params: any) {
         const item = params[0]
-        const cityData = cityReports.value.find(city => city.cityName === item.name)
+        const cityData = cityStats.value.find(city => city.areaName === item.name)
+        if (!cityData) return ''
         return `
           ${item.name}<br/>
-          <span style="color:#4A90E2;">上报率: ${item.value}%</span><br/>
-          级别: ${cityData?.formula || ''}
+          <span style="color:#4A90E2;">上报率: ${item.value.toFixed(1)}%</span><br/>
+          总机构: ${cityData.totalInstitutions}家<br/>
+          已上报: ${cityData.reportedCount}家<br/>
+          三级: ${cityData.levelBreakdown.level3.reported}/${cityData.levelBreakdown.level3.total}<br/>
+          二级: ${cityData.levelBreakdown.level2.reported}/${cityData.levelBreakdown.level2.total}<br/>
+          基层: ${cityData.levelBreakdown.baseLevel.reported}/${cityData.levelBreakdown.baseLevel.total}
         `
       }
     },
@@ -225,10 +281,10 @@ const initProvinceChart = () => {
     },
     xAxis: {
       type: 'category',
-      data: cityReports.value.map(item => item.cityName),
+      data: chartData.map(item => item.areaName),
       axisLabel: {
         interval: 0,
-        rotate: 0,
+        rotate: 45,
         fontSize: 11,
         color: '#666'
       }
@@ -250,10 +306,11 @@ const initProvinceChart = () => {
     series: [
       {
         type: 'bar',
-        data: cityReports.value.map(item => ({
+        data: chartData.map(item => ({
           value: item.reportRate,
           itemStyle: {
-            color: item.reportRate >= 80 ? '#4A90E2' : '#F39800'
+            color: item.reportRate >= 80 ? '#52c41a' : 
+                   item.reportRate >= 60 ? '#faad14' : '#ff4d4f'
           }
         })),
         barWidth: '60%',
@@ -267,22 +324,23 @@ const initProvinceChart = () => {
   provinceEchart.setOption(option)
 }
 
-// 初始化市级详情图表
+// 初始化趋势图表
 const initCityDetailChart = () => {
   if (!cityDetailChart.value) return
   
   cityDetailEchart = echarts.init(cityDetailChart.value)
   
-  // 以淄博市数据为例
+  const trendData = reportStats.value?.trendData || []
+  
   const option = {
     backgroundColor: 'transparent',
     tooltip: {
-      trigger: 'axis'
-    },
-    legend: {
-      data: ['三级', '二级', '基层'],
-      textStyle: {
-        color: '#666'
+      trigger: 'axis',
+      formatter: (params: any) => {
+        const item = params[0]
+        return `${item.name}<br/>
+                上报数: ${item.value}家<br/>
+                上报率: ${item.data?.rate?.toFixed(1) || 0}%`
       }
     },
     grid: {
@@ -293,48 +351,65 @@ const initCityDetailChart = () => {
     },
     xAxis: {
       type: 'category',
-      data: ['已上报', '未上报', '未注册'],
+      data: trendData.map(item => item.date),
       axisLabel: {
-        color: '#666'
+        color: '#666',
+        rotate: 45
       }
     },
-    yAxis: {
-      type: 'value',
-      axisLabel: {
-        color: '#666'
+    yAxis: [
+      {
+        type: 'value',
+        name: '上报机构数',
+        axisLabel: {
+          color: '#666'
+        },
+        splitLine: {
+          lineStyle: {
+            color: '#f0f0f0'
+          }
+        }
       },
-      splitLine: {
-        lineStyle: {
-          color: '#f0f0f0'
+      {
+        type: 'value',
+        name: '上报率(%)',
+        max: 100,
+        axisLabel: {
+          color: '#666',
+          formatter: '{value}%'
         }
       }
-    },
+    ],
     series: [
       {
-        name: '三级',
+        name: '当日上报',
         type: 'bar',
-        stack: 'total',
-        data: [30, 35, 27],
+        data: trendData.map(item => item.reportedCount),
         itemStyle: {
           color: '#4A90E2'
         }
       },
       {
-        name: '二级', 
-        type: 'bar',
-        stack: 'total',
-        data: [35, 27, 0],
+        name: '累计上报率',
+        type: 'line',
+        yAxisIndex: 1,
+        smooth: true,
+        data: trendData.map(item => ({ value: item.reportRate, rate: item.reportRate })),
         itemStyle: {
-          color: '#7ED321'
-        }
-      },
-      {
-        name: '基层',
-        type: 'bar',
-        stack: 'total', 
-        data: [27, 0, 0],
-        itemStyle: {
-          color: '#F5A623'
+          color: '#52c41a'
+        },
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(82, 196, 26, 0.3)' },
+              { offset: 1, color: 'rgba(82, 196, 26, 0.05)' }
+            ]
+          }
         }
       }
     ]
@@ -351,41 +426,66 @@ onMounted(async () => {
     initProvinceChart()
     initCityDetailChart()
   }, 100)
+  
+  // 添加窗口大小监听
+  window.addEventListener('resize', handleResize)
 })
 
-// 返回全省界面（模拟功能）
-const backToProvince = () => {
-  console.log('返回全省界面')
+// 组件卸载时移除监听
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+})
+
+// 处理区域点击
+const handleAreaClick = (areaCode: string) => {
+  selectedArea.value = areaCode
+}
+
+// 返回上级
+const handleBack = () => {
+  selectedArea.value = ''
+}
+
+// 窗口大小变化时重绘图表
+const handleResize = () => {
+  progressEchart?.resize()
+  provinceEchart?.resize()
+  cityDetailEchart?.resize()
+}
+
+// 导出报告
+const exportReport = async () => {
+  try {
+    await exportInstitutionReport({ year: currentYear.value, format: 'excel' })
+  } catch (error) {
+    console.error('导出失败:', error)
+  }
 }
 </script>
 
 <template>
-  <div class="institution-progress-container">
-    <!-- 页面标题 -->
-    <div class="page-header">
-      <div class="header-content">
-        <h1 class="page-title">{{ currentYear }}年上报数据</h1>
-        <div class="header-info">
-          <div class="basic-info">
-            <span class="info-item">
-              <strong>{{ basicStats.totalInstitutions }}家</strong>
-              应监测机构数
-            </span>
-            <span class="info-item">
-              <strong class="report-rate">{{ basicStats.reportRate }}%</strong>
-              上报率
-            </span>
-            <span class="info-item">
-              开放时间: {{ basicStats.openTime }}
-            </span>
-            <span class="info-item">
-              截止时间: {{ basicStats.deadlineTime }}
-            </span>
-            <span class="status-badge">上报任务已完成</span>
-          </div>
-        </div>
-      </div>
-    </div>
+  <div class="institution-progress-container" v-loading="loading">
+    <!-- 使用 PageHeader 组件 -->
+    <PageHeader
+      :title="`${currentYear}年机构上报统计`"
+      :content="`全省医疗机构药品数据上报情况统计分析`"
+      :icon="DataAnalysis"
+      :tag="reportStatusInfo.text"
+      :tag-type="reportStatusInfo.type"
+      :meta="[
+        { label: '应监测机构', value: `${basicStats.totalInstitutions}家` },
+        { label: '总体上报率', value: `${basicStats.reportRate.toFixed(1)}%` },
+        { label: '开放时间', value: basicStats.openTime ? formatDate(basicStats.openTime) : '--' },
+        { label: '截止时间', value: basicStats.deadlineTime ? formatDate(basicStats.deadlineTime) : '--' }
+      ]"
+      :actions="[
+        { key: 'export', text: '导出报告', type: 'primary', icon: 'Download', handler: exportReport },
+        { key: 'refresh', text: '刷新', icon: 'Refresh', handler: fetchData }
+      ]"
+      :show-back-button="!!selectedArea"
+      back-button-text="返回全省"
+      @back-click="handleBack"
+    />
 
     <!-- 统计内容区域 -->
     <div class="content-section">
@@ -394,65 +494,83 @@ const backToProvince = () => {
         <el-col :span="16">
           <!-- 进度环形图 -->
           <el-card class="progress-card" shadow="never">
+            <template #header>
+              <div class="card-header">
+                <span class="card-title">
+                  <el-icon><TrendCharts /></el-icon>
+                  各级别医院上报进度
+                </span>
+              </div>
+            </template>
             <div class="progress-section">
               <div class="progress-charts" ref="progressChart"></div>
               <div class="progress-labels">
                 <div class="progress-item">
-                  <div class="progress-percentage" style="color: #4A90E2;">{{ levelStats.level3.rate }}%</div>
-                  <div class="progress-name">三级</div>
-                  <div class="progress-range">0% - 100%</div>
+                  <div class="progress-percentage" style="color: #4A90E2;">{{ levelStats.level3.rate.toFixed(1) }}%</div>
+                  <div class="progress-name">三级医院</div>
+                  <div class="progress-detail">
+                    <span>总数: {{ levelStats.level3.total }}</span>
+                    <span>已上报: {{ levelStats.level3.reported }}</span>
+                  </div>
                 </div>
                 <div class="progress-item">
-                  <div class="progress-percentage" style="color: #7ED321;">{{ levelStats.level2.rate }}%</div>
-                  <div class="progress-name">二级</div>
-                  <div class="progress-range">0% - 100%</div>
+                  <div class="progress-percentage" style="color: #7ED321;">{{ levelStats.level2.rate.toFixed(1) }}%</div>
+                  <div class="progress-name">二级医院</div>
+                  <div class="progress-detail">
+                    <span>总数: {{ levelStats.level2.total }}</span>
+                    <span>已上报: {{ levelStats.level2.reported }}</span>
+                  </div>
                 </div>
                 <div class="progress-item">
-                  <div class="progress-percentage" style="color: #F5A623;">{{ levelStats.baseLevel.rate }}%</div>
-                  <div class="progress-name">基层</div>
-                  <div class="progress-range">0% - 100%</div>
+                  <div class="progress-percentage" style="color: #F5A623;">{{ levelStats.baseLevel.rate.toFixed(1) }}%</div>
+                  <div class="progress-name">基层医疗</div>
+                  <div class="progress-detail">
+                    <span>总数: {{ levelStats.baseLevel.total }}</span>
+                    <span>已上报: {{ levelStats.baseLevel.reported }}</span>
+                  </div>
                 </div>
               </div>
             </div>
           </el-card>
 
-          <!-- 全省概览 -->
+          <!-- 区域概览 -->
           <el-card class="province-card" shadow="never">
             <template #header>
               <div class="card-header">
-                <span class="card-title">全省概览</span>
-                <el-tooltip content="查看各区域可查看信息" placement="top">
-                  <i class="el-icon-question"></i>
+                <span class="card-title">
+                  <el-icon><DataAnalysis /></el-icon>
+                  {{ selectedArea ? '区域详情' : '各市上报情况' }}
+                </span>
+                <el-tooltip content="点击柱状图查看详情" placement="top">
+                  <el-icon class="info-icon"><QuestionFilled /></el-icon>
                 </el-tooltip>
               </div>
             </template>
             <div class="province-chart" ref="provinceChart"></div>
             <div class="legend-info">
               <span class="legend-item">
-                <span class="legend-color" style="background: #4A90E2;"></span>
-                已上报
+                <span class="legend-color" style="background: #52c41a;"></span>
+                优秀(≥ 80%)
               </span>
               <span class="legend-item">
-                <span class="legend-color" style="background: #F39800;"></span>
-                未上报
+                <span class="legend-color" style="background: #faad14;"></span>
+                良好(60-80%)
+              </span>
+              <span class="legend-item">
+                <span class="legend-color" style="background: #ff4d4f;"></span>
+                待提升(&lt; 60%)
               </span>
             </div>
           </el-card>
 
-          <!-- 淄博市医疗机构上报情况 -->
+          <!-- 上报趋势 -->
           <el-card class="city-detail-card" shadow="never">
             <template #header>
               <div class="card-header">
-                <span class="card-title">淄博市医疗机构上报情况</span>
-                <el-button 
-                  type="text" 
-                  size="small" 
-                  @click="backToProvince"
-                  class="back-btn"
-                >
-                  <i class="el-icon-back"></i>
-                  返回全省界面
-                </el-button>
+                <span class="card-title">
+                  <el-icon><Calendar /></el-icon>
+                  上报趋势分析
+                </span>
               </div>
             </template>
             <div class="city-detail-chart" ref="cityDetailChart"></div>
@@ -462,46 +580,108 @@ const backToProvince = () => {
         <!-- 右侧统计信息 -->
         <el-col :span="8">
           <div class="stats-sidebar">
-            <!-- 统计卡片 -->
-            <el-card class="stat-item" shadow="never">
-              <div class="stat-content">
-                <div class="stat-number">{{ detailCards.totalInstitutions }}家</div>
-                <div class="stat-label">应监测机构数</div>
+            <!-- 基本统计卡片 -->
+            <el-card class="stat-card primary-card" shadow="hover">
+              <el-statistic :value="basicStats.totalInstitutions">
+                <template #title>
+                  <span class="stat-title">应监测机构数</span>
+                </template>
+                <template #suffix>家</template>
+              </el-statistic>
+            </el-card>
+
+            <el-card class="stat-card success-card" shadow="hover">
+              <el-statistic :value="basicStats.reportedInstitutions">
+                <template #title>
+                  <span class="stat-title">已上报机构数</span>
+                </template>
+                <template #suffix>家</template>
+              </el-statistic>
+              <div class="stat-sub-info">
+                <span class="sub-item">前置: {{ taskStats.preOnlyTasks }}</span>
+                <span class="sub-item">后置: {{ taskStats.postOnlyTasks }}</span>
               </div>
             </el-card>
 
-            <el-card class="stat-item" shadow="never">
-              <div class="stat-content">
-                <div class="stat-number primary">{{ detailCards.reportedCount }}家</div>
-                <div class="stat-label">已上报数</div>
+            <el-card class="stat-card warning-card" shadow="hover">
+              <el-statistic :value="basicStats.unreportedInstitutions">
+                <template #title>
+                  <span class="stat-title">未上报机构数</span>
+                </template>
+                <template #suffix>家</template>
+              </el-statistic>
+            </el-card>
+
+            <el-card class="stat-card danger-card" shadow="hover">
+              <el-statistic :value="basicStats.unregisteredInstitutions">
+                <template #title>
+                  <span class="stat-title">未注册机构数</span>
+                </template>
+                <template #suffix>家</template>
+              </el-statistic>
+            </el-card>
+
+            <!-- 任务执行统计 -->
+            <el-card class="task-stats-card" shadow="hover">
+              <template #header>
+                <div class="card-header">
+                  <span class="card-title">
+                    <el-icon><Warning /></el-icon>
+                    任务执行统计
+                  </span>
+                </div>
+              </template>
+              <div class="task-stats">
+                <div class="task-item">
+                  <span class="task-label">总任务数:</span>
+                  <span class="task-value">{{ taskStats.totalTasks }}</span>
+                </div>
+                <div class="task-item success">
+                  <span class="task-label">成功:</span>
+                  <span class="task-value">{{ taskStats.successTasks }}</span>
+                </div>
+                <div class="task-item danger">
+                  <span class="task-label">失败:</span>
+                  <span class="task-value">{{ taskStats.failedTasks }}</span>
+                </div>
+                <div class="task-item warning">
+                  <span class="task-label">部分成功:</span>
+                  <span class="task-value">{{ taskStats.partialSuccessTasks }}</span>
+                </div>
               </div>
             </el-card>
 
-            <el-card class="stat-item" shadow="never">
-              <div class="stat-content">
-                <div class="stat-number warning">{{ detailCards.unreportedCount }}家</div>
-                <div class="stat-label">未上报数</div>
-              </div>
-            </el-card>
-
-            <el-card class="stat-item" shadow="never">
-              <div class="stat-content">
-                <div class="stat-number danger">{{ detailCards.unregisteredCount }}家</div>
-                <div class="stat-label">未注册数</div>
-              </div>
-            </el-card>
-
-            <el-card class="stat-item" shadow="never">
-              <div class="stat-content">
-                <div class="stat-number">{{ detailCards.internalAuditCount }}家</div>
-                <div class="stat-label">监管外上报</div>
-              </div>
-            </el-card>
-
-            <el-card class="stat-item" shadow="never">
-              <div class="stat-content">
-                <div class="stat-number">{{ detailCards.managedUsers }}</div>
-                <div class="stat-label">管理用户数</div>
+            <!-- 区域详情（选中时显示） -->
+            <el-card v-if="selectedAreaDetail" class="area-detail-card" shadow="hover">
+              <template #header>
+                <div class="card-header">
+                  <span class="card-title">{{ selectedAreaDetail.areaName }}详情</span>
+                </div>
+              </template>
+              <div class="area-detail">
+                <div class="detail-item">
+                  <span>总机构:</span>
+                  <strong>{{ selectedAreaDetail.totalInstitutions }}</strong>
+                </div>
+                <div class="detail-item">
+                  <span>上报率:</span>
+                  <strong>{{ selectedAreaDetail.reportRate.toFixed(1) }}%</strong>
+                </div>
+                <el-divider />
+                <div class="level-breakdown">
+                  <div class="level-item">
+                    <span>三级:</span>
+                    <span>{{ selectedAreaDetail.levelBreakdown.level3.reported }}/{{ selectedAreaDetail.levelBreakdown.level3.total }}</span>
+                  </div>
+                  <div class="level-item">
+                    <span>二级:</span>
+                    <span>{{ selectedAreaDetail.levelBreakdown.level2.reported }}/{{ selectedAreaDetail.levelBreakdown.level2.total }}</span>
+                  </div>
+                  <div class="level-item">
+                    <span>基层:</span>
+                    <span>{{ selectedAreaDetail.levelBreakdown.baseLevel.reported }}/{{ selectedAreaDetail.levelBreakdown.baseLevel.total }}</span>
+                  </div>
+                </div>
               </div>
             </el-card>
           </div>

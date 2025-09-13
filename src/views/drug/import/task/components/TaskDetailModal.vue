@@ -341,9 +341,9 @@
     <template #footer>
       <div class="dialog-footer">
         <el-button @click="handleClose">关闭</el-button>
-        <el-button v-if="taskDetail?.canRetry" type="warning" @click="handleRetry">
+<!--        <el-button v-if="taskDetail?.canRetry" type="warning" @click="handleRetry">
           重试任务
-        </el-button>
+        </el-button>-->
         <el-button type="primary" @click="openProgressMonitor"> 查看进度 </el-button>
       </div>
     </template>

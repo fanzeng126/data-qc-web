@@ -65,7 +65,6 @@
             <el-button @click="resetQuery"><Icon icon="ep:refresh" />重置</el-button>
             <el-button
               type="primary"
-              plain
               @click="openForm('create')"
               v-hasPermi="['system:user:create']"
             >
@@ -73,7 +72,6 @@
             </el-button>
             <el-button
               type="warning"
-              plain
               @click="handleImport"
               v-hasPermi="['system:user:import']"
             >
@@ -81,7 +79,6 @@
             </el-button>
             <el-button
               type="success"
-              plain
               @click="handleExport"
               :loading="exportLoading"
               v-hasPermi="['system:user:export']"

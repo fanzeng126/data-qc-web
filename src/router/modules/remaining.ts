@@ -499,6 +499,29 @@ const remainingRouter: AppRouteRecordRaw[] = [
     ]
   },
   {
+    path: '/drug/qc-result',
+    component: Layout,
+    name: 'DrugQcResultCenter',
+    meta: {
+      hidden: true
+    },
+    children: [
+      {
+        path: 'detail/:id',
+        name: 'QcResultDetail',
+        component: () => import('@/views/drug/qc/result/detail.vue'),
+        meta: {
+          title: '质控结果详情',
+          icon: 'ep:view',
+          noCache: true,
+          canTo: true,
+          hidden: true,
+          activeMenu: '/drug/qc-result'
+        }
+      }
+    ]
+  },
+  {
     path: '/shortage',
     component: Layout,
     name: 'ShortageCenter',

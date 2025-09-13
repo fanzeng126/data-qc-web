@@ -247,9 +247,9 @@
     <template #footer>
       <div class="dialog-footer">
         <el-button @click="handleClose">关闭</el-button>
-        <el-button v-if="progressData.canRetry" type="warning" @click="handleRetry">
+<!--        <el-button v-if="progressData.canRetry" type="warning" @click="handleRetry">
           重试任务
-        </el-button>
+        </el-button>-->
         <el-button type="primary" @click="refreshProgress" :loading="refreshing">
           刷新进度
         </el-button>

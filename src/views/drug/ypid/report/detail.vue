@@ -324,7 +324,7 @@ const handleFilterChange = () => {
 
 // 返回按钮点击
 const handleBackClick = () => {
-  router.push('/drug/ypid/report')
+  router.push('/monitoring/drug-ypid/report')
 }
 
 // 头部操作点击

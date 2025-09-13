@@ -4197,7 +4197,7 @@ const parseExpressionJson = (expressionJson) => {
 
 // 头部事件处理
 const handleBack = () => {
-  router.push('/drug-qc/rule')
+  router.push('/monitoring/drug-qc/rule')
 }
 
 const handleHeaderAction = (action: any) => {
@@ -4705,7 +4705,7 @@ const handleSave = async () => {
       ElMessage.success('规则创建成功')
     }
 
-    router.push('/drug-qc/rule')
+    router.push('/monitoring/drug-qc/rule')
   } catch (error) {
     console.error('保存失败:', error)
     ElMessage.error('保存失败: ' + (error.message || '未知错误'))

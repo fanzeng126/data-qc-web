@@ -8,7 +8,7 @@
           <div class="stat-description" v-if="description">{{ description }}</div>
         </div>
         <div class="stat-icon" :style="{ backgroundColor: color }">
-          <el-icon :size="24">
+          <el-icon :size="20">
             <component :is="iconComponent" />
           </el-icon>
         </div>
@@ -23,7 +23,7 @@
 
         <!-- 趋势显示 -->
         <div class="stat-trend" v-if="trend !== undefined && !loading">
-          <el-icon :class="trendClass" :size="14">
+          <el-icon :class="trendClass" :size="12">
             <ArrowUp v-if="trend > 0" />
             <ArrowDown v-if="trend < 0" />
             <Minus v-if="trend === 0" />
@@ -110,14 +110,14 @@ const trendClass = computed(() => {
 .stat-card {
   position: relative;
   border: none;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
   transition: all 0.3s ease;
   overflow: hidden;
 
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   }
 
   &.is-loading {
@@ -125,20 +125,20 @@ const trendClass = computed(() => {
   }
 
   :deep(.el-card__body) {
-    padding: 20px;
+    padding: 12px;
   }
 }
 
 .stat-content {
   position: relative;
-  min-height: 100px;
+  min-height: 70px;
 }
 
 .stat-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .stat-info {
@@ -146,23 +146,23 @@ const trendClass = computed(() => {
 }
 
 .stat-title {
-  font-size: 14px;
+  font-size: 13px;
   color: #666666;
   font-weight: 500;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   line-height: 1.2;
 }
 
 .stat-description {
-  font-size: 12px;
+  font-size: 11px;
   color: #999999;
   line-height: 1.2;
 }
 
 .stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -175,7 +175,7 @@ const trendClass = computed(() => {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 6px;
 }
 
 .stat-value {
@@ -183,16 +183,16 @@ const trendClass = computed(() => {
   align-items: baseline;
 
   .value {
-    font-size: 28px;
+    font-size: 22px;
     font-weight: 600;
     color: #303133;
     line-height: 1;
   }
 
   .suffix {
-    font-size: 16px;
+    font-size: 13px;
     color: #606266;
-    margin-left: 4px;
+    margin-left: 3px;
     font-weight: 500;
   }
 }
@@ -200,8 +200,8 @@ const trendClass = computed(() => {
 .stat-trend {
   display: flex;
   align-items: center;
-  gap: 2px;
-  font-size: 12px;
+  gap: 1px;
+  font-size: 11px;
   font-weight: 500;
 
   &.trend-up {
@@ -221,7 +221,7 @@ const trendClass = computed(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 12px;
+  font-size: 11px;
   color: #909399;
 }
 
@@ -243,10 +243,10 @@ const trendClass = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: 6px;
 
   .is-loading {
-    font-size: 24px;
+    font-size: 20px;
     color: #409eff;
     animation: rotating 2s linear infinite;
   }
@@ -264,28 +264,28 @@ const trendClass = computed(() => {
 /* 响应式设计 */
 @media (max-width: 768px) {
   .stat-card {
-    margin-bottom: 12px;
+    margin-bottom: 8px;
 
     :deep(.el-card__body) {
-      padding: 16px;
+      padding: 10px;
     }
   }
 
   .stat-header {
-    margin-bottom: 12px;
+    margin-bottom: 6px;
   }
 
   .stat-icon {
-    width: 40px;
-    height: 40px;
+    width: 32px;
+    height: 32px;
   }
 
   .stat-value .value {
-    font-size: 24px;
+    font-size: 20px;
   }
 
   .stat-value .suffix {
-    font-size: 14px;
+    font-size: 12px;
   }
 }
 

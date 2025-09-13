@@ -6,39 +6,47 @@ export interface ReportZoneVO {
   zoneName: string // 专区名称
   zoneCode: string // 专区编码
   noticeContent: string // 填报通知内容(富文本)
-  status: number // 状态: 0-停用 1-启用
+  status: number // 状态: 0-开启 1-停用
   remark: string // 备注说明
+  reportableOrgs: string // 可填报的机构
+  drugCount?: number // 药品数
+  reportCount?: number // 填报次数
 }
 
 // 短缺药品填报专区 API
 export const ReportZoneApi = {
   // 查询短缺药品填报专区分页
-  getReportZonePage: async (params: any) => {
+  getPage: async (params: any) => {
     return await request.get({ url: `/shortage/report-zone/page`, params })
   },
 
   // 查询短缺药品填报专区详情
-  getReportZone: async (id: number) => {
+  get: async (id: number) => {
     return await request.get({ url: `/shortage/report-zone/get?id=` + id })
   },
 
   // 新增短缺药品填报专区
-  createReportZone: async (data: ReportZoneVO) => {
+  create: async (data: ReportZoneVO) => {
     return await request.post({ url: `/shortage/report-zone/create`, data })
   },
 
   // 修改短缺药品填报专区
-  updateReportZone: async (data: ReportZoneVO) => {
+  update: async (data: ReportZoneVO) => {
     return await request.put({ url: `/shortage/report-zone/update`, data })
   },
 
   // 删除短缺药品填报专区
-  deleteReportZone: async (id: number) => {
+  delete: async (id: number) => {
     return await request.delete({ url: `/shortage/report-zone/delete?id=` + id })
   },
 
+  // 修改短缺药品填报专区状态
+  updateStatus: async (id: number, status: number) => {
+    return await request.put({ url: `/shortage/report-zone/update-status`, data: { id, status } })
+  },
+
   // 导出短缺药品填报专区 Excel
-  exportReportZone: async (params) => {
+  exportExcel: async (params) => {
     return await request.download({ url: `/shortage/report-zone/export-excel`, params })
   },
-}
+}

@@ -21,10 +21,10 @@
           <el-icon><Refresh /></el-icon>
           刷新进度
         </el-button>
-        <el-button v-if="progressData.canRetry" type="warning" @click="handleRetry">
+<!--        <el-button v-if="progressData.canRetry" type="warning" @click="handleRetry">
           <el-icon><RefreshRight /></el-icon>
           重试任务
-        </el-button>
+        </el-button>-->
       </template>
     </PageHeader>
 
@@ -81,94 +81,207 @@
           </div>
         </div>
 
-        <!-- 统计数据网格 -->
-        <div class="stats-grid">
-          <!-- 文件统计 -->
-          <div class="stat-section">
-            <div class="section-title">文件统计</div>
-            <div class="section-stats">
-              <div class="stat-item">
-                <div class="stat-value">{{ progressData.totalFiles || 0 }}</div>
-                <div class="stat-label">文件总数</div>
-                <div class="stat-icon">📁</div>
+        <!-- 统计信息网格 - 统一设计 -->
+<!--
+        <div class="statistics-grid">
+          &lt;!&ndash; 文件统计卡片 &ndash;&gt;
+          <el-card class="stat-card" shadow="hover">
+            <div class="stat-header">
+              <div class="stat-title-wrapper">
+                <el-icon class="stat-icon"><Folder /></el-icon>
+                <span class="stat-title">文件统计</span>
               </div>
-              <div class="stat-item success">
-                <div class="stat-value">{{ progressData.successFiles || 0 }}</div>
-                <div class="stat-label">成功文件</div>
-                <div class="stat-icon">✅</div>
+              <el-tag
+                :type="
+                  fileSuccessRate === 100
+                    ? 'success'
+                    : fileSuccessRate >= 80
+                      ? 'primary'
+                      : 'danger'
+                "
+                size="small"
+              >
+                {{ fileSuccessRate }}%
+              </el-tag>
+            </div>
+            <div class="stat-content">
+              <div class="stat-main">
+                <span class="stat-value">{{ progressData.successFiles || 0 }}</span>
+                <span class="stat-total">/ {{ progressData.totalFiles || 0 }}</span>
               </div>
-              <div class="stat-item warning">
-                <div class="stat-value">{{ formatNumber(progressData.warningFiles) }}</div>
-                <div class="stat-label">警告文件</div>
-                <div class="stat-icon">⚠️</div>
+              <div class="stat-breakdown">
+                <div class="breakdown-item">
+                  <span class="breakdown-label">成功:</span>
+                  <span class="breakdown-value success">{{ progressData.successFiles || 0 }}</span>
+                </div>
+                <div class="breakdown-item" v-if="progressData.warningFiles && progressData.warningFiles > 0">
+                  <span class="breakdown-label">警告:</span>
+                  <span class="breakdown-value warning">{{ progressData.warningFiles }}</span>
+                </div>
+                <div class="breakdown-item">
+                  <span class="breakdown-label">失败:</span>
+                  <span class="breakdown-value error">{{ progressData.failedFiles || 0 }}</span>
+                </div>
               </div>
-              <div class="stat-item danger">
-                <div class="stat-value">{{ progressData.failedFiles || 0 }}</div>
-                <div class="stat-label">失败文件</div>
-                <div class="stat-icon">❌</div>
+              <div class="stat-label">文件处理情况</div>
+              <div class="stat-progress">
+                <el-progress
+                  :percentage="fileSuccessRate"
+                  :stroke-width="6"
+                  :show-text="false"
+                  :status="
+                    fileSuccessRate === 100
+                      ? 'success'
+                      : fileSuccessRate >= 80
+                        ? undefined
+                        : 'exception'
+                  "
+                />
               </div>
             </div>
-          </div>
+          </el-card>
 
-          <!-- 记录统计 -->
-          <div class="stat-section">
-            <div class="section-title">记录统计</div>
-            <div class="section-stats">
-              <div class="stat-item">
-                <div class="stat-value">{{ formatNumber(progressData.totalRecords) }}</div>
-                <div class="stat-label">总记录数</div>
-                <div class="stat-icon">📊</div>
+          &lt;!&ndash; 记录统计卡片 &ndash;&gt;
+          <el-card class="stat-card" shadow="hover">
+            <div class="stat-header">
+              <div class="stat-title-wrapper">
+                <el-icon class="stat-icon"><TrendCharts /></el-icon>
+                <span class="stat-title">记录统计</span>
               </div>
-              <div class="stat-item success">
-                <div class="stat-value">{{ formatNumber(progressData.successRecords) }}</div>
-                <div class="stat-label">成功记录</div>
-                <div class="stat-icon">✅</div>
+              <el-tag
+                :type="
+                  recordSuccessRate >= 95
+                    ? 'success'
+                    : recordSuccessRate >= 80
+                      ? 'primary'
+                      : 'danger'
+                "
+                size="small"
+              >
+                {{ recordSuccessRate }}%
+              </el-tag>
+            </div>
+            <div class="stat-content">
+              <div class="stat-main">
+                <span class="stat-value">{{ formatNumber(progressData.successRecords || 0) }}</span>
+                <span class="stat-total">/ {{ formatNumber(progressData.totalRecords || 0) }}</span>
               </div>
-              <div class="stat-item danger">
-                <div class="stat-value">{{ formatNumber(progressData.failedRecords) }}</div>
-                <div class="stat-label">失败记录</div>
-                <div class="stat-icon">❌</div>
+              <div class="stat-breakdown">
+                <div class="breakdown-item">
+                  <span class="breakdown-label">成功:</span>
+                  <span class="breakdown-value success">{{ formatNumber(progressData.successRecords || 0) }}</span>
+                </div>
+                <div class="breakdown-item" v-if="progressData.warningRecords && progressData.warningRecords > 0">
+                  <span class="breakdown-label">警告:</span>
+                  <span class="breakdown-value warning">{{ formatNumber(progressData.warningRecords) }}</span>
+                </div>
+                <div class="breakdown-item">
+                  <span class="breakdown-label">失败:</span>
+                  <span class="breakdown-value error">{{ formatNumber(progressData.failedRecords || 0) }}</span>
+                </div>
+                <div class="breakdown-item" v-if="progressData.anomalyRecords && progressData.anomalyRecords > 0">
+                  <span class="breakdown-label">异常:</span>
+                  <span class="breakdown-value anomaly">{{ formatNumber(progressData.anomalyRecords) }}</span>
+                </div>
               </div>
-              <div class="stat-item warning">
-                <div class="stat-value">{{ formatNumber(progressData.warningRecords) }}</div>
-                <div class="stat-label">警告记录</div>
-                <div class="stat-icon">⚠️</div>
-              </div>
-              <div class="stat-item anomaly">
-                <div class="stat-value">{{ formatNumber(progressData.anomalyRecords) }}</div>
-                <div class="stat-label">异常记录</div>
-                <div class="stat-icon">🔍</div>
+              <div class="stat-label">记录处理情况</div>
+              <div class="stat-progress">
+                <el-progress
+                  :percentage="recordSuccessRate"
+                  :stroke-width="6"
+                  :show-text="false"
+                  :status="
+                    recordSuccessRate >= 95
+                      ? 'success'
+                      : recordSuccessRate >= 80
+                        ? undefined
+                        : 'exception'
+                  "
+                />
               </div>
             </div>
-          </div>
+          </el-card>
 
-          <!-- 规则统计 -->
-          <div class="stat-section">
-            <div class="section-title">规则统计</div>
-            <div class="section-stats">
-              <div class="stat-item">
-                <div class="stat-value">{{ progressData.totalRules || 0 }}</div>
-                <div class="stat-label">总规则数</div>
-                <div class="stat-icon">📋</div>
+          &lt;!&ndash; 规则统计卡片 &ndash;&gt;
+          <el-card class="stat-card" shadow="hover" v-if="progressData.totalRules && progressData.totalRules > 0">
+            <div class="stat-header">
+              <div class="stat-title-wrapper">
+                <el-icon class="stat-icon"><Document /></el-icon>
+                <span class="stat-title">规则检查</span>
               </div>
-              <div class="stat-item processing">
-                <div class="stat-value">{{ progressData.executedRules || 0 }}</div>
-                <div class="stat-label">已执行规则</div>
-                <div class="stat-icon">⚡</div>
+              <el-tag
+                :type="
+                  rulePassRate >= 90 ? 'success' : rulePassRate >= 70 ? 'primary' : 'warning'
+                "
+                size="small"
+              >
+                {{ rulePassRate }}%
+              </el-tag>
+            </div>
+            <div class="stat-content">
+              <div class="stat-main">
+                <span class="stat-value">{{ progressData.passedRules || 0 }}</span>
+                <span class="stat-total">/ {{ progressData.totalRules || 0 }}</span>
               </div>
-              <div class="stat-item success">
-                <div class="stat-value">{{ progressData.passedRules || 0 }}</div>
-                <div class="stat-label">通过规则</div>
-                <div class="stat-icon">✅</div>
+              <div class="stat-breakdown">
+                <div class="breakdown-item">
+                  <span class="breakdown-label">通过:</span>
+                  <span class="breakdown-value success">{{ progressData.passedRules || 0 }}</span>
+                </div>
+                <div class="breakdown-item">
+                  <span class="breakdown-label">已执行:</span>
+                  <span class="breakdown-value processing">{{ progressData.executedRules || 0 }}</span>
+                </div>
+                <div class="breakdown-item">
+                  <span class="breakdown-label">失败:</span>
+                  <span class="breakdown-value error">{{ progressData.failedRules || 0 }}</span>
+                </div>
               </div>
-              <div class="stat-item danger">
-                <div class="stat-value">{{ progressData.failedRules || 0 }}</div>
-                <div class="stat-label">失败规则</div>
-                <div class="stat-icon">❌</div>
+              <div class="stat-label">规则通过情况</div>
+              <div class="stat-progress">
+                <el-progress
+                  :percentage="rulePassRate"
+                  :stroke-width="6"
+                  :show-text="false"
+                  :status="
+                    rulePassRate >= 90 ? 'success' : rulePassRate >= 70 ? undefined : 'warning'
+                  "
+                />
               </div>
             </div>
-          </div>
+          </el-card>
+
+          &lt;!&ndash; 性能指标卡片 &ndash;&gt;
+          <el-card class="stat-card" shadow="hover">
+            <div class="stat-header">
+              <div class="stat-title-wrapper">
+                <el-icon class="stat-icon"><Operation /></el-icon>
+                <span class="stat-title">性能指标</span>
+              </div>
+            </div>
+            <div class="stat-content">
+              <div class="performance-metrics">
+                <div class="metric-item">
+                  <span class="metric-label">处理速度:</span>
+                  <span class="metric-value">{{ getProcessingSpeed() }}</span>
+                </div>
+                <div class="metric-item">
+                  <span class="metric-label">处理耗时:</span>
+                  <span class="metric-value">{{ formatDuration(progressData.estimatedRemainingTime) }}</span>
+                </div>
+                <div class="metric-item" v-if="progressData.totalRecords">
+                  <span class="metric-label">吞吐量:</span>
+                  <span class="metric-value">{{ getThroughput() }}</span>
+                </div>
+                <div class="metric-item">
+                  <span class="metric-label">当前阶段:</span>
+                  <span class="metric-value">{{ getCurrentStageText(progressData.currentStage) }}</span>
+                </div>
+              </div>
+            </div>
+          </el-card>
         </div>
+-->
       </el-card>
 
       <!-- 执行日志组件 -->
@@ -200,7 +313,13 @@ import {
   Refresh,
   Clock,
   Operation,
-  RefreshRight
+  RefreshRight,
+  Folder,
+  CircleCheck,
+  Warning,
+  CircleClose,
+  TrendCharts,
+  Document
 } from '@element-plus/icons-vue'
 import {
   DrugBatchImportApi,
@@ -275,6 +394,24 @@ const pageDescription = computed(() => {
   return `任务状态：${status} | 完成进度：${progress}% | 最后更新：${formatTime(new Date().toISOString())}`
 })
 
+/** 文件成功率 */
+const fileSuccessRate = computed(() => {
+  if (!progressData.totalFiles || progressData.totalFiles === 0) return 0
+  return Math.round(((progressData.successFiles || 0) / progressData.totalFiles) * 100)
+})
+
+/** 记录成功率 */
+const recordSuccessRate = computed(() => {
+  if (!progressData.totalRecords || progressData.totalRecords === 0) return 0
+  return Math.round(((progressData.successRecords || 0) / progressData.totalRecords) * 100)
+})
+
+/** 规则通过率 */
+const rulePassRate = computed(() => {
+  if (!progressData.totalRules || progressData.totalRules === 0) return 0
+  return Math.round(((progressData.passedRules || 0) / progressData.totalRules) * 100)
+})
+
 // ========================= 监听器 =========================
 
 watch(
@@ -325,15 +462,10 @@ const loadProgress = async () => {
     const data = await DrugBatchImportApi.getTaskProgress(taskId.value)
     Object.assign(progressData, data)
 
-    // 如果任务已完成（状态 >= 5），停止自动刷新 - 避免不必要的网络请求
-    // 状态说明：5=成功, 6=失败, 7=部分成功, 8=已取消
+    // 检测任务是否真正结束：任务状态完成 且 日志包含"任务执行结束"
     if (data.overallStatus >= 5) {
-      stopAutoRefresh()
-      // 如果自动刷新开关是开启的，将其关闭
-      if (autoRefresh.value) {
-        autoRefresh.value = false
-        ElMessage.info('任务已结束，自动刷新已停止')
-      }
+      // 检查日志是否包含任务结束标识
+      await checkTaskCompletionInLogs(data.overallStatus)
     }
 
     // 构建当前任务信息（用于重试对话框）
@@ -451,7 +583,7 @@ const handleExportLogs = () => {
 
 /** 返回列表 */
 const handleBack = () => {
-  router.push('/drug-import/task')
+  router.push('/monitoring/drug-import/task')
 }
 
 // ========================= 状态处理方法 =========================
@@ -520,10 +652,59 @@ const getProgressStatus = (status: number) => {
 
 // ========================= 工具方法 =========================
 
+/** 检查任务日志中是否包含结束标识 */
+const checkTaskCompletionInLogs = async (taskStatus: number) => {
+  try {
+    const logResponse = await DrugBatchImportApi.getTaskLogs(taskId.value, 'ALL')
+    if (logResponse.logs) {
+      // 检查日志是否包含任务结束的关键字
+      const completionKeywords = ['任务执行结束', '导入流程完成', 'IMPORT_TASK_COMPLETED']
+      const hasCompletionLog = completionKeywords.some(keyword => 
+        logResponse.logs.includes(keyword)
+      )
+      
+      if (hasCompletionLog) {
+        console.log('找到任务结束日志')
+        // 找到结束日志，停止自动刷新
+        stopAutoRefresh()
+        if (autoRefresh.value) {
+          autoRefresh.value = false
+          ElMessage.info('任务已结束，自动刷新已停止')
+        }
+      }
+      // 如果没有找到结束日志，继续刷新等待日志完整
+    }
+  } catch (error) {
+    // 获取日志失败时，根据任务状态决定是否停止刷新
+    console.warn('获取任务日志失败，使用状态判断:', error)
+    // 如果任务状态是失败或取消，直接停止刷新
+    if (taskStatus === 6 || taskStatus === 8) {
+      stopAutoRefresh()
+      if (autoRefresh.value) {
+        autoRefresh.value = false
+        ElMessage.info('任务已结束，自动刷新已停止')
+      }
+    }
+  }
+}
+
 /** 格式化数字 - 提供千分位分隔符 */
 const formatNumber = (num: number) => {
   if (!num || typeof num !== 'number') return '0'
   return num.toLocaleString()
+}
+
+/** 获取处理速度 */
+const getProcessingSpeed = () => {
+  if (!progressData.totalRecords || !progressData.successRecords) return '-'
+  // 这里可以根据实际情况计算速度
+  return `${Math.round(progressData.successRecords / 60)}条/分钟`
+}
+
+/** 获取吞吐量 */
+const getThroughput = () => {
+  if (!progressData.totalRecords) return '-'
+  return `${Math.round(progressData.totalRecords / 3600)}条/小时`
 }
 
 /** 格式化时间 - 统一时间显示格式 */
@@ -586,39 +767,9 @@ const formatDuration = (seconds: number) => {
   font-weight: 600;
 }
 
-/* 任务概览卡片样式 - 改为更淡的背景色 */
+/* 任务概览卡片样式 - 移除背景色 */
 .task-overview-card {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-  border: 1px solid rgba(102, 126, 234, 0.2);
-  position: relative;
-  overflow: hidden;
-}
-
-/* 添加一个装饰性的背景元素 */
-.task-overview-card::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  right: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(102, 126, 234, 0.05) 0%, transparent 70%);
-  pointer-events: none;
-}
-
-.task-overview-card :deep(.el-card__header) {
-  background: rgba(255, 255, 255, 0.5);
-  border-bottom: 1px solid rgba(102, 126, 234, 0.15);
-  backdrop-filter: blur(10px);
-}
-
-/* 调整文字颜色为深色，提高可读性 */
-.task-overview-card .header-title {
-  color: #303133;
-}
-
-.task-overview-card .header-icon {
-  color: #667eea;
+  /* 移除背景色和边框样式，使用默认样式 */
 }
 
 .overall-progress-section {
@@ -671,105 +822,155 @@ const formatDuration = (seconds: number) => {
   gap: 6px;
 }
 
-/* 统计数据网格样式 */
-.stats-grid {
+/* 统计卡片网格样式 - 统一设计 */
+.statistics-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 20px;
   margin-top: 20px;
-  position: relative;
-  z-index: 1;
 }
 
-.stat-section {
-  background: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(102, 126, 234, 0.15);
-  border-radius: 12px;
-  padding: 16px;
-  backdrop-filter: blur(10px);
-}
-
-.section-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #303133;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(102, 126, 234, 0.15);
-}
-
-.section-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 12px;
-}
-
-.stat-item {
-  text-align: center;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 8px;
-  position: relative;
+.stat-card {
   transition: all 0.3s ease;
+  border-radius: 8px;
+  border: 1px solid #ebeef5;
 }
 
-.stat-item:hover {
+.stat-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
-  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.stat-value {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 4px;
-  color: #303133;
+.stat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid #ebeef5;
+  margin-bottom: 16px;
 }
 
-.stat-label {
-  font-size: 11px;
-  color: #909399;
-  line-height: 1.2;
+.stat-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .stat-icon {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  font-size: 12px;
-  opacity: 0.6;
+  font-size: 18px;
+  color: #409eff;
 }
 
-/* 不同类型的统计项颜色 */
-.stat-item.success .stat-value {
-  color: #67c23a;
+.stat-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
 }
 
-.stat-item.danger .stat-value {
-  color: #f56c6c;
+.stat-content {
+  padding: 0 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.stat-item.warning .stat-value {
-  color: #e6a23c;
+.stat-main {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 8px;
 }
 
-.stat-item.anomaly .stat-value {
+.stat-value {
+  font-size: 24px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.stat-total {
+  font-size: 16px;
   color: #909399;
 }
 
-.stat-item.processing .stat-value {
+.stat-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.breakdown-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.breakdown-label {
+  color: #606266;
+}
+
+.breakdown-value {
+  font-weight: 500;
+}
+
+.breakdown-value.success {
+  color: #67c23a;
+}
+
+.breakdown-value.warning {
+  color: #e6a23c;
+}
+
+.breakdown-value.error {
+  color: #f56c6c;
+}
+
+.breakdown-value.anomaly {
+  color: #909399;
+}
+
+.breakdown-value.processing {
   color: #409eff;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #606266;
+  margin-bottom: 4px;
+}
+
+.stat-progress {
+  margin-top: 4px;
+}
+
+/* 性能指标样式 */
+.performance-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.metric-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+}
+
+.metric-label {
+  color: #606266;
+}
+
+.metric-value {
+  color: #303133;
+  font-weight: 500;
 }
 
 /* 响应式设计 */
 @media (max-width: 1200px) {
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .section-stats {
-    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  .statistics-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
   }
 }
 
@@ -778,12 +979,34 @@ const formatDuration = (seconds: number) => {
     padding: 10px;
   }
 
-  .stats-grid {
+  .statistics-grid {
+    grid-template-columns: 1fr;
     gap: 12px;
   }
 
-  .section-stats {
-    grid-template-columns: repeat(2, 1fr);
+  .stat-card {
+    margin-bottom: 12px;
+  }
+
+  .stat-header {
+    padding: 12px 16px 8px;
+    margin-bottom: 12px;
+  }
+
+  .stat-content {
+    padding: 0 16px 16px;
+  }
+
+  .stat-value {
+    font-size: 20px;
+  }
+
+  .performance-metrics {
+    gap: 8px;
+  }
+
+  .metric-item {
+    font-size: 13px;
   }
 }
 </style>

@@ -753,7 +753,7 @@ const handleManualConfirm = async () => {
 
 // 返回按钮点击
 const handleBackClick = () => {
-  router.push('/drug-ypid/ypid-match-task')
+  router.push('/monitoring/drug-ypid/ypid-match-task')
 }
 
 // 标签页切换

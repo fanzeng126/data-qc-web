@@ -8,9 +8,14 @@
         :class="`${prefixCls}__left flex-1 bg-gray-500 bg-opacity-20 relative p-30px lt-xl:hidden overflow-x-hidden overflow-y-auto`"
       >
         <!-- 左上角的 logo + 系统标题 -->
-        <div class="relative flex items-center text-white">
-          <img alt="" class="mr-10px h-48px w-48px" src="@/assets/imgs/logo.webp" />
-          <span class="text-20px font-bold">{{ underlineToHump(appStore.getTitle) }}</span>
+        <div class="relative text-white">
+          <div class="flex items-center">
+            <img alt="" class="mr-10px h-48px w-48px" src="@/assets/imgs/logo.png" />
+            <div class="flex flex-col">
+              <span class="text-20px font-bold leading-tight">{{ underlineToHump(appStore.getTitle) }}</span>
+              <span class="text-14px opacity-80 mt-1">{{ appStore.getTitleEn }}</span>
+            </div>
+          </div>
         </div>
         <!-- 左边的背景图 + 欢迎语 -->
         <div class="h-[calc(100%-60px)] flex items-center justify-center">
@@ -21,25 +26,35 @@
             class="w-full flex flex-col items-center justify-center"
           >
             <img key="1" alt="" class="w-350px mb-8" src="@/assets/imgs/logo-box-bg.png" />
-            <p key="2" class="system-description text-white text-center mb-8">
-              基于智能规则处理的病案首页质量控制平台，帮助医疗机构提高数据质量，支持精确决策。
-            </p>
+            <div key="2" class="system-description-wrapper">
+<!--              <p class="system-description text-white text-center mb-8">
+                基于智能规则处理的病案首页质量控制平台，帮助医疗机构提高数据质量，支持精确决策<br />
+              </p>-->
+            </div>
             <div key="3" class="login-features w-full max-w-400px">
               <div class="feature-item">
-                <div class="feature-icon">✓</div>
+                <div class="feature-icon">
+                  <el-icon><Check /></el-icon>
+                </div>
                 <span>智能规则配置，灵活管理质控标准</span>
               </div>
               <div class="feature-item">
-                <div class="feature-icon">✓</div>
+                <div class="feature-icon">
+                  <el-icon><Check /></el-icon>
+                </div>
                 <span>数据自动处理，提高质控效率</span>
               </div>
               <div class="feature-item">
-                <div class="feature-icon">✓</div>
+                <div class="feature-icon">
+                  <el-icon><Check /></el-icon>
+                </div>
                 <span>多维度分析，全面把控质量问题</span>
               </div>
               <div class="feature-item">
-                <div class="feature-icon">✓</div>
-                <span>全流程管理，事前事中事后全覆盖</span>
+                <div class="feature-icon">
+                  <el-icon><Check /></el-icon>
+                </div>
+                <span>全流程管理，前置后置后全覆盖</span>
               </div>
             </div>
           </TransitionGroup>
@@ -54,7 +69,7 @@
           style="color: var(--el-text-color-primary)"
         >
           <div class="flex items-center at-2xl:hidden at-xl:hidden">
-            <img alt="" class="mr-10px h-48px w-48px" src="@/assets/imgs/logo.webp" />
+            <img alt="" class="mr-10px h-48px w-48px" src="@/assets/imgs/logo.png" />
             <span class="text-20px font-bold">{{ underlineToHump(appStore.getTitle) }}</span>
           </div>
           <div class="flex items-center justify-end space-x-10px h-48px">
@@ -87,11 +102,12 @@
 </template>
 <script lang="ts" setup>
 import { underlineToHump } from '@/utils'
-
+import { useI18n } from '@/hooks/web/useI18n'
 import { useDesign } from '@/hooks/web/useDesign'
 import { useAppStore } from '@/store/modules/app'
 import { ThemeSwitch } from '@/layout/components/ThemeSwitch'
 import { LocaleDropdown } from '@/layout/components/LocaleDropdown'
+import { Check } from '@element-plus/icons-vue'
 
 import {
   LoginForm,
@@ -133,19 +149,39 @@ $prefix-cls: #{$namespace}-login;
 }
 
 // 系统描述样式
+.system-description-wrapper {
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+  }
+}
+
 .system-description {
-  font-size: 14px;
-  line-height: 1.6;
-  opacity: 0.9;
-  max-width: 400px;
+  font-size: 16px;
+  line-height: 1.8;
+  opacity: 0.95;
+  max-width: 450px;
   margin: 0 auto;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 // 功能特性列表样式
 .login-features {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .feature-item {
@@ -154,19 +190,33 @@ $prefix-cls: #{$namespace}-login;
   font-size: 14px;
   color: white;
   opacity: 0.95;
+  padding: 8px 0;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    opacity: 1;
+    transform: translateX(5px);
+  }
 
   .feature-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
-    margin-right: 12px;
-    background-color: rgba(255, 255, 255, 0.2);
+    width: 28px;
+    height: 28px;
+    margin-right: 14px;
+    background: rgba(255, 255, 255, 0.15);
     border-radius: 50%;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: bold;
     flex-shrink: 0;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    
+    .el-icon {
+      color: white;
+      font-size: 16px;
+    }
   }
 
   span {
@@ -178,7 +228,8 @@ $prefix-cls: #{$namespace}-login;
 // 响应式适配
 @media (max-height: 800px) {
   .system-description {
-    font-size: 13px;
+    font-size: 15px;
+    padding: 16px;
     margin-bottom: 1.5rem !important;
   }
 
@@ -188,20 +239,25 @@ $prefix-cls: #{$namespace}-login;
 
   .feature-item {
     font-size: 13px;
+    padding: 6px 0;
 
     .feature-icon {
-      width: 20px;
-      height: 20px;
-      margin-right: 8px;
-      font-size: 10px;
+      width: 24px;
+      height: 24px;
+      margin-right: 10px;
+      
+      .el-icon {
+        font-size: 14px;
+      }
     }
   }
 }
 
 @media (max-height: 700px) {
   .system-description {
-    font-size: 12px;
-    line-height: 1.5;
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 14px;
     margin-bottom: 1rem !important;
   }
 
@@ -211,12 +267,16 @@ $prefix-cls: #{$namespace}-login;
 
   .feature-item {
     font-size: 12px;
+    padding: 4px 0;
 
     .feature-icon {
-      width: 18px;
-      height: 18px;
-      margin-right: 6px;
-      font-size: 9px;
+      width: 22px;
+      height: 22px;
+      margin-right: 8px;
+      
+      .el-icon {
+        font-size: 12px;
+      }
     }
   }
 }

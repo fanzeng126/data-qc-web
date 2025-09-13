@@ -90,20 +90,21 @@ export interface ImportRetryResult {
   retryBatchNo: string
 }
 
-/** 任务详情 - 适配新数据结构 */
+/** 任务详情 - 匹配drug_import_task表结构 */
 export interface ImportTaskDetailVO {
-  // 基本信息（来自drug_import_task表）
+  // 基本信息
   id: number
   taskNo: string
   taskName: string
   fileName: string
   filePath: string
   fileSize: number
+  extractedFiles?: string // JSON字符串
   executeMode: number
   status: number
   currentStage?: string
   message?: string
-  qcStages?: any // JSON格式的质控阶段详情
+  qcStages?: string // JSON字符串
   
   // 文件统计
   totalFiles: number
@@ -127,7 +128,7 @@ export interface ImportTaskDetailVO {
   // 进度和质量
   progressPercent: number
   qualityScore?: number
-  scoreDetail?: any // JSON格式的评分明细
+  scoreDetail?: string // JSON字符串
   
   // 时间相关
   startTime?: string
@@ -139,17 +140,17 @@ export interface ImportTaskDetailVO {
   hasErrorFile: boolean
   errorFilePath?: string
   errorMessage?: string
-  errorDetail?: any
+  errorDetail?: string // JSON字符串
   
   // 其他字段
   dataSource?: string
   description?: string
+  deptId?: number
   createTime: string
   updateTime: string
   creator: string
-  
-  // 已移除的字段（不再需要）
-  // taskDetails: ImportTaskDetailItemVO[]
+  updater: string
+  tenantId: number
 }
 
 /** 质控结果详情 - 按表分组 */

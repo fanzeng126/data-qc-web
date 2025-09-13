@@ -206,43 +206,133 @@ export interface InstitutionReportStatsVO {
   // 基本统计
   basicStats: {
     totalInstitutions: number    // 应监测机构数
-    reportRate: number           // 上报率
-    openTime: string            // 开放时间
-    deadlineTime: string        // 截止时间
-    reportedInstitutions: number // 已上报数
-    unreportedInstitutions: number // 未上报数  
-    unregisteredInstitutions: number // 未注册数
+    reportedInstitutions: number // 已上报机构数
+    unreportedInstitutions: number // 未上报机构数  
+    unregisteredInstitutions: number // 未注册机构数
+    reportRate: number           // 总体上报率
+    currentYear: string          // 当前年份
+    reportStatus: 'open' | 'closed' | 'pending' // 上报状态
+    openTime?: string            // 开放时间
+    deadlineTime?: string        // 截止时间
   }
-  // 三级医院等级统计
+  
+  // 按医院等级统计
   levelStats: {
-    level3: { count: number; rate: number }    // 三级医院
-    level2: { count: number; rate: number }    // 二级医院
-    baseLevel: { count: number; rate: number } // 基层医院
+    level3: {
+      total: number              // 三级医院总数
+      reported: number           // 已上报数
+      preReported: number        // 前置上报数
+      postReported: number       // 后置上报数
+      rate: number              // 上报率
+    }
+    level2: {
+      total: number              // 二级医院总数
+      reported: number           // 已上报数
+      preReported: number        // 前置上报数
+      postReported: number       // 后置上报数
+      rate: number              // 上报率
+    }
+    baseLevel: {
+      total: number              // 基层医院总数
+      reported: number           // 已上报数
+      preReported: number        // 前置上报数
+      postReported: number       // 后置上报数
+      rate: number              // 上报率
+    }
   }
-  // 各市填报情况
-  cityReports: Array<{
-    cityName: string
-    reportRate: number
-    formula: string           // 级别：未注册数/未上报数/应监测机构数
-    level3Stats: { reported: number; total: number }
-    level2Stats: { reported: number; total: number } 
-    baseStats: { reported: number; total: number }
+  
+  // 按区域统计（省级/市级）
+  areaStats: Array<{
+    areaCode: string             // 行政区划代码
+    areaName: string             // 区域名称
+    areaLevel: 'province' | 'city' | 'district' // 区域级别
+    totalInstitutions: number    // 总机构数
+    reportedCount: number        // 已上报数
+    preReportedCount: number     // 前置上报数
+    postReportedCount: number    // 后置上报数
+    failedCount: number          // 失败数
+    partialSuccessCount: number  // 部分成功数
+    reportRate: number           // 上报率
+    // 按医院等级细分
+    levelBreakdown: {
+      level3: { total: number; reported: number; rate: number }
+      level2: { total: number; reported: number; rate: number }
+      baseLevel: { total: number; reported: number; rate: number }
+    }
   }>
-  // 详细统计卡片
-  detailCards: {
-    totalInstitutions: number
-    reportedCount: number
-    unreportedCount: number
-    unregisteredCount: number
-    internalAuditCount: number
-    managedUsers: number
+  
+  // 上报任务执行统计
+  taskStats: {
+    totalTasks: number           // 总任务数
+    successTasks: number         // 成功任务数
+    failedTasks: number          // 失败任务数
+    partialSuccessTasks: number  // 部分成功任务数
+    cancelledTasks: number       // 已取消任务数
+    preOnlyTasks: number         // 仅前置任务数
+    postOnlyTasks: number        // 仅后置任务数
+    fullTasks: number            // 完整执行任务数
+  }
+  
+  // 时间趋势数据
+  trendData: Array<{
+    date: string                 // 日期
+    reportedCount: number        // 当日上报数
+    cumulativeCount: number      // 累计上报数
+    reportRate: number           // 累计上报率
+  }>
+  
+  // 问题机构列表
+  problemInstitutions: {
+    unreported: Array<{          // 未上报机构
+      deptId: number
+      deptName: string
+      areaName: string
+      hospitalLevel: string
+      contactInfo?: string
+    }>
+    failed: Array<{              // 上报失败机构
+      deptId: number
+      deptName: string
+      areaName: string
+      hospitalLevel: string
+      failReason?: string
+      lastAttemptTime?: string
+    }>
+    unregistered: Array<{        // 未注册机构
+      deptId: number
+      deptName: string
+      areaName: string
+      hospitalLevel: string
+    }>
   }
 }
 
 // 获取机构填报统计
-export const getInstitutionReportStats = (year?: string) => {
+export const getInstitutionReportStats = (params?: {
+  year?: string
+  areaCode?: string              // 筛选特定区域
+  hospitalLevel?: string         // 筛选医院等级
+}) => {
   return request.get<InstitutionReportStatsVO>({
-    url: '/dataqc/statistics/institution-report',
-    params: year ? { year } : {}
+    url: '/drug/statistics/institution-report',
+    params
+  })
+}
+
+// 导出机构填报统计报告
+export const exportInstitutionReport = (params?: {
+  year?: string
+  format?: 'excel' | 'pdf'
+}) => {
+  return request.download({
+    url: '/drug/statistics/institution-report/export',
+    params
+  })
+}
+
+// 获取机构详细信息
+export const getInstitutionDetail = (deptId: number) => {
+  return request.get({
+    url: `/drug/statistics/institution/${deptId}/detail`
   })
 }

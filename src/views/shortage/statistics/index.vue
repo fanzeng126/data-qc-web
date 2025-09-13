@@ -42,13 +42,21 @@
             </el-select>
           </el-form-item>
           <el-form-item>
-            <el-button 
-              type="primary" 
+            <el-button
+              type="primary"
               @click="loadAllData"
             >
               <el-icon v-if="!loading"><Refresh /></el-icon>
               <el-icon v-else><Loading /></el-icon>
               刷新
+            </el-button>
+            <el-button
+              type="success"
+              @click="handleExportWeeklyReport"
+              :loading="exportLoading"
+            >
+              <el-icon><Download /></el-icon>
+              导出周报
             </el-button>
           </el-form-item>
         </el-form>
@@ -304,6 +312,43 @@
       </el-col>
     </el-row>
 
+    <!-- 新增：库存可用周数和使用量环比图表 -->
+    <el-row :gutter="16" class="chart-row">
+      <el-col :xs="24" :md="12">
+        <StockWeeksChart
+          :zone-id="queryParams.zoneId"
+          :report-week="queryParams.reportWeek"
+          @loaded="handleChartLoaded"
+        />
+      </el-col>
+      <el-col :xs="24" :md="12">
+        <UsageChangeChart
+          :zone-id="queryParams.zoneId"
+          :report-week="queryParams.reportWeek"
+          @loaded="handleChartLoaded"
+        />
+      </el-col>
+    </el-row>
+
+    <!-- 新增：时间趋势分析和地域分布图表 -->
+    <el-row :gutter="16" class="chart-row">
+      <el-col :xs="24" :md="12">
+        <TrendAnalysisChart
+          :zone-id="queryParams.zoneId"
+          :start-week="trendStartWeek"
+          :end-week="queryParams.reportWeek"
+          @loaded="handleChartLoaded"
+        />
+      </el-col>
+      <el-col :xs="24" :md="12">
+        <RegionStatisticsChart
+          :zone-id="queryParams.zoneId"
+          :report-week="queryParams.reportWeek"
+          @loaded="handleChartLoaded"
+        />
+      </el-col>
+    </el-row>
+
     <!-- 短缺药品详情表格 -->
     <ContentWrap>
       <div class="card-header-compact" style="margin-bottom: 16px">
@@ -452,6 +497,11 @@ import {
 import * as echarts from 'echarts'
 import DetailDialog from './components/DetailDialog.vue'
 import PageHeader from '@/components/PageHeader/index.vue'
+// 导入新的图表组件
+import StockWeeksChart from './components/StockWeeksChart.vue'
+import UsageChangeChart from './components/UsageChangeChart.vue'
+import TrendAnalysisChart from './components/TrendAnalysisChart.vue'
+import RegionStatisticsChart from './components/RegionStatisticsChart.vue'
 
 defineOptions({ name: 'ShortageStatisticsEnhanced' })
 
@@ -564,6 +614,34 @@ function getWeekNumber(date: Date): number {
   d.setUTCDate(d.getUTCDate() + 4 - dayNum)
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
   return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
+}
+
+// 计算趋势分析的起始周
+const trendStartWeek = computed(() => {
+  if (!queryParams.reportWeek) return ''
+  const [year, week] = queryParams.reportWeek.split('-')
+  const weekNum = parseInt(week)
+  const startWeek = Math.max(1, weekNum - 11) // 显示12周的数据
+  return `${year}-${String(startWeek).padStart(2, '0')}`
+})
+
+// 处理图表加载完成
+const handleChartLoaded = () => {
+  // 可以在这里添加加载完成后的逻辑
+}
+
+// 导出周报
+const handleExportWeeklyReport = async () => {
+  exportLoading.value = true
+  try {
+    await StatisticsApi.exportWeeklyReport(queryParams)
+    message.success('周报导出成功')
+  } catch (error) {
+    console.error('导出周报失败:', error)
+    message.error('导出周报失败')
+  } finally {
+    exportLoading.value = false
+  }
 }
 
 // 处理头部操作
@@ -1018,6 +1096,8 @@ onUnmounted(() => {
 <style scoped lang="scss">
 .statistics-container {
   padding: 8px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #f0f2f5 100%);
+  min-height: calc(100vh - 84px);
 }
 
 .search-form {
@@ -1034,29 +1114,32 @@ onUnmounted(() => {
 }
 
 .core-stat-card {
-  background: #fff;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s;
+  background: linear-gradient(135deg, #ffffff 0%, #fafbfc 100%);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   height: 120px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
 
   &:hover {
     transform: translateY(-4px);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    border-color: transparent;
   }
 
   .stat-icon-wrapper {
     width: 64px;
     height: 64px;
-    border-radius: 12px;
+    border-radius: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-right: 16px;
+    margin-right: 20px;
     flex-shrink: 0;
+    backdrop-filter: blur(10px);
 
     .stat-icon {
       font-size: 32px;
@@ -1068,18 +1151,22 @@ onUnmounted(() => {
     min-width: 0;
 
     .stat-value {
-      font-size: 28px;
-      font-weight: 600;
+      font-size: 32px;
+      font-weight: 700;
       color: #303133;
       line-height: 1.2;
       display: flex;
       align-items: baseline;
+      background: linear-gradient(135deg, #303133 0%, #606266 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
 
       .stat-suffix {
         font-size: 14px;
         font-weight: 400;
         color: #909399;
         margin-left: 4px;
+        -webkit-text-fill-color: #909399;
       }
     }
 
@@ -1087,6 +1174,7 @@ onUnmounted(() => {
       font-size: 14px;
       color: #606266;
       margin-top: 8px;
+      font-weight: 500;
     }
 
     .stat-trend {
@@ -1110,22 +1198,32 @@ onUnmounted(() => {
 }
 
 .chart-row {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .chart-card {
   height: 100%;
-  padding: 12px !important;
+  padding: 16px !important;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s;
+
+  &:hover {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  }
 }
 
 .card-header-compact {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 14px;
+  gap: 8px;
+  font-size: 15px;
   font-weight: 600;
   color: #303133;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #f0f2f5;
 
   .trend-tag {
     margin-left: auto;
@@ -1135,12 +1233,12 @@ onUnmounted(() => {
 .supply-distribution-compact {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 20px;
 }
 
 .compact-pie-chart {
-  width: 120px;
-  height: 120px;
+  width: 140px;
+  height: 140px;
   flex-shrink: 0;
 }
 
@@ -1148,66 +1246,127 @@ onUnmounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .legend-item-compact {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: 8px;
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background-color 0.3s;
+
+  &:hover {
+    background-color: #f5f7fa;
+  }
 }
 
 .legend-dot {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .legend-label {
   flex: 1;
   color: #606266;
+  font-weight: 500;
 }
 
 .legend-value {
-  font-weight: 600;
+  font-weight: 700;
   color: #303133;
+  font-size: 14px;
 }
 
 .legend-trend {
-  font-size: 10px;
+  font-size: 11px;
   color: #909399;
+  display: flex;
+  align-items: center;
 }
 
 .chart-container-compact {
-  height: 180px;
+  height: 200px;
 }
 
 .chart-container-medium {
-  height: 280px;
+  height: 320px;
 }
 
 .drug-name {
-  font-weight: 500;
+  font-weight: 600;
   color: #303133;
   cursor: pointer;
+  transition: all 0.3s;
 
   &:hover {
     color: #409eff;
+    text-decoration: underline;
   }
 }
 
 .stock-days-text {
-  font-size: 12px;
-  font-weight: 600;
-  margin-left: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  margin-left: 6px;
 }
 
 .pagination-container {
-  margin-top: 16px;
+  margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+// 增强动画效果
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.core-stat-card,
+.chart-card {
+  animation: fadeIn 0.5s ease-out;
+}
+
+// 响应式布局优化
+@media (max-width: 768px) {
+  .core-stat-card {
+    height: auto;
+    min-height: 100px;
+    padding: 16px;
+
+    .stat-icon-wrapper {
+      width: 48px;
+      height: 48px;
+
+      .stat-icon {
+        font-size: 24px;
+      }
+    }
+
+    .stat-value {
+      font-size: 24px;
+    }
+  }
+
+  .chart-container-compact {
+    height: 160px;
+  }
+
+  .chart-container-medium {
+    height: 240px;
+  }
 }
 
 .rank-badge {

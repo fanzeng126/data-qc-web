@@ -5,7 +5,7 @@
       title="药品使用监测质量控制平台"
       content="实时监控药品数据导入、质控状态和数据质量，确保医疗机构药品使用数据的准确性和完整性"
     >
-      <template #extra>
+<!--      <template #extra>
         <el-button type="primary" @click="handleQuickImport">
           <el-icon>
             <Upload />
@@ -18,7 +18,7 @@
           </el-icon>
           查看报告
         </el-button>
-      </template>
+      </template>-->
     </PageHeader>
 
     <!-- 概览 统计 -->
@@ -114,7 +114,7 @@
             <el-table-column prop="fileName" label="文件名" min-width="120" show-overflow-tooltip />
             <el-table-column prop="status" label="状态" width="100" align="center">
               <template #default="{ row }">
-                <el-tag :type="getTaskStatusType(row.status)" size="small">
+                <el-tag :type="getTaskStatusType(row.status)" size="small" effect="dark">
                   {{ getTaskStatusLabel(row.status) }}
                 </el-tag>
               </template>
@@ -601,19 +601,19 @@ const stopAutoRefresh = () => {
 
 // 事件处理程序
 const handleQuickImport = () => {
-  router.push('/drug-import/batch')
+  router.push('/monitoring/drug-import/batch')
 }
 
 const handleViewReports = () => {
-  router.push('/drug-qc/result')
+  router.push('/monitoring/drug-qc/result')
 }
 
 const handleViewAllTasks = () => {
-  router.push('/drug-import/task')
+  router.push('/monitoring/drug-import/task')
 }
 
 const handleViewTask = (task) => {
-  router.push(`/drug-import/detail/${task.id}`)
+  router.push(`/monitoring/drug-import/detail/${task.id}`)
 }
 
 const handleChartPeriodChange = () => {
@@ -827,7 +827,10 @@ const getAlertColor = (type) => {
   justify-content: space-between;
   align-items: center;
 }
-
+.header-icon {
+  font-size: 18px;
+  color: #409eff;
+}
 .header-title {
   display: flex;
   align-items: center;
@@ -994,7 +997,11 @@ const getAlertColor = (type) => {
   font-weight: 600;
   color: #303133;
 }
-
+:deep(.el-card__header) {
+  padding: 16px 20px;
+  background-color: #fafafa;  /* 浅灰色背景 */
+  border-bottom: 1px solid #ebeef5;
+}
 /* Table styles */
 :deep(.el-table) {
   overflow: hidden;
@@ -1028,12 +1035,4 @@ const getAlertColor = (type) => {
 :deep(.el-empty__description) {
   margin-top: 8px;
 }
-
-
-/* 修改统计卡片的样式 */
-
-
-
-
-
 </style>

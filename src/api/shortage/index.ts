@@ -1,14 +1,32 @@
 import request from '@/config/axios'
 
 // ========== 专区管理 ==========
+export interface ReportTimeConfigVO {
+  dayOfWeek: number  // 周几 (1=周一, 7=周日)
+  startTime: string  // 开始时间 "12:00"
+  endTime: string    // 结束时间 "18:00"
+}
+
 export interface ReportZoneVO {
-  id?: number
+  id: number
   zoneName: string
   zoneCode: string
   noticeContent?: string  // 富文本通知内容
   status: number
   remark?: string
+  reportableOrgs?: string // 可填报的机构
+  drugCount?: number // 药品数
+  reportCount?: number // 填报次数
   createTime?: Date
+  reportTimeConfig?: ReportTimeConfigVO // 填报时间配置
+  isTimeRestricted?: boolean // 是否启用时间限制
+}
+
+export interface ReportTimeCheckRespVO {
+  isInTime: boolean
+  remainingMinutes?: number
+  timeConfig?: ReportTimeConfigVO & { isTimeRestricted: boolean }
+  message: string
 }
 
 export interface ReportZonePageReqVO {
@@ -39,12 +57,24 @@ export const ReportZoneApi = {
   delete: (id: number) => 
     request.delete({ url: `/shortage/report-zone/delete?id=${id}` }),
   
+  // 更新状态
+  updateStatus: (id: number, status: number) => 
+    request.put({ url: `/shortage/report-zone/update-status`, data: { id, status } }),
+  
   // 更新通知内容
   updateNotice: (id: number, noticeContent: string) => 
     request.put({ 
       url: `/shortage/report-zone/notice/${id}`, 
       data: { noticeContent } 
     }),
+  
+  // 更新时间配置
+  updateTimeConfig: (id: number, data: { reportTimeConfig: ReportTimeConfigVO, isTimeRestricted: boolean }) => 
+    request.put({ url: `/shortage/report-zone/time-config/${id}`, data }),
+  
+  // 检查填报时间
+  checkReportTime: (zoneId: number): Promise<ReportTimeCheckRespVO> => 
+    request.get({ url: `/shortage/report-zone/check-time/${zoneId}` }),
   
   // 导出Excel
   exportExcel: (params: ReportZonePageReqVO) =>
@@ -56,6 +86,7 @@ export interface DrugConfigVO {
   id?: number
   zoneId: number
   drugName: string
+  dosageCategory: string // 剂型分类
   dosageForm: string
   dosageUnit: string
   status: number
@@ -68,6 +99,7 @@ export interface DrugConfigPageReqVO {
   pageSize?: number
   zoneId?: number
   drugName?: string
+  dosageCategory?: string // 剂型分类
   dosageForm?: string
   status?: number
 }
@@ -76,6 +108,10 @@ export const DrugConfigApi = {
   // 获取分页
   getPage: (params: DrugConfigPageReqVO) => 
     request.get({ url: '/shortage/drug-config/page', params }),
+  
+  // 获取详情
+  get: (id: number) => 
+    request.get({ url: `/shortage/drug-config/get?id=${id}` }),
   
   // 创建
   create: (data: DrugConfigVO) => 
@@ -110,10 +146,12 @@ export interface ReportRecordVO {
   currentStockAmount: number
   supplyStatus: number
   
-  // 关联字段
-  drugName?: string
-  dosageForm?: string
-  dosageUnit?: string
+  // 关联字段 - 更新字段名以匹配后端
+  drugName?: string        // drug_name 
+  drugCategory?: string    // drug_category 药品分类
+  dosageForm?: string      // dosage_form 剂型
+  dosageCategory?: string  // dosage_category 剂型分类
+  dosageUnit?: string      // dosage_unit 最小剂型单位
 }
 
 export interface ReportStatisticsReqVO {
@@ -162,7 +200,7 @@ export interface ReportStatisticsRespVO {
 
 export const ReportRecordApi = {
   // 获取专区填报药品列表
-  getReportList: (zoneId: number) => 
+  getReportListByZoneId: (zoneId: number) => 
     request.get({ url: `/shortage/report-record/list?zoneId=${zoneId}` }),
   
   // 批量保存填报记录

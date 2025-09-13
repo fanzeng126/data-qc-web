@@ -11,23 +11,38 @@ const prefixCls = getPrefixCls('content-wrap')
 defineProps({
   title: propTypes.string.def(''),
   message: propTypes.string.def(''),
-  bodyStyle: propTypes.object.def({ padding: '10px' })
+  bodyStyle: propTypes.object.def({ padding: '20px' }),
+  // 新增属性
+  headerIcon: propTypes.string.def(''), // 标题图标
+  headerIconColor: propTypes.string.def('#409EFF'), // 图标颜色
+  headerBackground: propTypes.bool.def(true), // 是否显示标题背景
+  shadow: propTypes.string.def('never') // 卡片阴影
 })
 </script>
 
 <template>
-  <ElCard :body-style="bodyStyle" :class="[prefixCls, 'mb-20px']" shadow="never">
+  <ElCard :body-style="bodyStyle" :class="[prefixCls, 'mb-20px']" :shadow="shadow">
     <template v-if="title" #header>
-      <div class="flex items-center">
-        <span class="text-16px font-700">{{ title }}</span>
-        <ElTooltip v-if="message" effect="dark" placement="right">
-          <template #content>
-            <div class="max-w-200px">{{ message }}</div>
-          </template>
-          <Icon :size="14" class="ml-5px" icon="ep:question-filled" />
-        </ElTooltip>
-        <div class="flex flex-grow pl-20px">
-          <slot name="header"></slot>
+      <div class="header-wrapper" :class="{ 'with-background': headerBackground }">
+        <div class="flex items-center">
+          <!-- 标题图标 -->
+          <Icon
+            v-if="headerIcon"
+            :icon="headerIcon"
+            :size="20"
+            class="header-icon mr-8px"
+            :style="{ color: headerIconColor }"
+          />
+          <span class="text-16px font-700">{{ title }}</span>
+          <ElTooltip v-if="message" effect="dark" placement="right">
+            <template #content>
+              <div class="max-w-200px">{{ message }}</div>
+            </template>
+            <Icon :size="14" class="ml-5px" icon="ep:question-filled" />
+          </ElTooltip>
+          <div class="flex flex-grow pl-20px">
+            <slot name="header"></slot>
+          </div>
         </div>
       </div>
     </template>
@@ -35,39 +50,69 @@ defineProps({
   </ElCard>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .v-content-wrap {
   background: #ffffff;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   overflow: hidden;
   transition: all 0.3s ease;
 }
 
 .v-content-wrap:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
 /* 覆盖 Element Plus Card 的默认样式 */
 :deep(.el-card) {
   background: #ffffff;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   border: none;
   transition: all 0.3s ease;
 }
 
 :deep(.el-card:hover) {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
 :deep(.el-card__header) {
-  background: #ffffff;
-  border-bottom: 1px solid #e2e8f0;
-  padding: 18px 24px;
+  padding: 0;
+  border-bottom: 1px solid #ebeef5;
+}
+
+/* 标题区域样式 */
+.header-wrapper {
+  padding: 16px 20px;
+  transition: background-color 0.3s ease;
+}
+
+/* 带背景色的标题 */
+.header-wrapper.with-background {
+  background-color: #fafafa;
+}
+
+/* 标题图标样式 */
+.header-icon {
+  transition: transform 0.3s ease;
+}
+
+.v-content-wrap:hover .header-icon {
+  transform: scale(1.1);
 }
 
 :deep(.el-card__body) {
   background: #ffffff;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .header-wrapper {
+    padding: 12px 16px;
+  }
+
+  .header-icon {
+    display: none;
+  }
 }
 </style>

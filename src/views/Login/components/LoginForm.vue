@@ -248,7 +248,7 @@ const handleLogin = async (params: any) => {
     loading.value = ElLoading.service({
       lock: true,
       text: '正在加载系统中...',
-      background: 'rgba(0, 0, 0, 0.7)'
+      background: 'rgba(15, 23, 42, 0.8)',
     })
     if (loginDataLoginForm.rememberMe) {
       authUtil.setLoginForm(loginDataLoginForm)
@@ -339,6 +339,33 @@ onMounted(() => {
     max-width: 100px;
     vertical-align: middle;
     cursor: pointer;
+  }
+}
+
+@keyframes rotate {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes loading-rotate {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes loading-dash {
+  0% {
+    stroke-dasharray: 1, 150;
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-dasharray: 90, 150;
+    stroke-dashoffset: -35;
+  }
+  100% {
+    stroke-dasharray: 90, 150;
+    stroke-dashoffset: -124;
   }
 }
 </style>

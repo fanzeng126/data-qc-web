@@ -56,15 +56,12 @@
             </div>
             <div class="stage-content">
               <div class="stage-title">{{ stage.name }}</div>
-              <div class="stage-status">{{ stage.statusDescription || stage.message || getStageStatusText(stage.status) }}</div>
+              <div class="stage-status">{{ stage.message || getStageStatusText(stage.status) }}</div>
               <div class="stage-time" v-if="stage.endTime">
                 {{ formatTime(stage.endTime) }}
               </div>
               <div class="stage-duration" v-if="stage.duration">
                 耗时: {{ formatDurationFromMs(stage.duration) }}
-              </div>
-              <div class="stage-error" v-if="stage.errorMessage">
-                <span class="error-text">{{ stage.errorMessage }}</span>
               </div>
             </div>
             <!-- 连接线 -->
@@ -101,35 +98,48 @@
         数据统计
       </h4>
       <div class="statistics-grid">
+        <!-- 文件统计 - 增强显示 -->
         <div class="stat-card files">
           <div class="stat-header">
             <el-icon class="stat-icon"><Folder /></el-icon>
-            <span class="stat-title">文件处理</span>
+            <span class="stat-title">文件统计</span>
           </div>
           <div class="stat-content">
             <div class="stat-main">
               <span class="stat-value">{{ task.successFiles || 0 }}</span>
               <span class="stat-total">/ {{ task.totalFiles || 0 }}</span>
             </div>
-            <div class="stat-secondary" v-if="task.warningFiles && task.warningFiles > 0">
-              <span class="warning-text">警告文件: {{ task.warningFiles }}</span>
+            <div class="stat-breakdown">
+              <div class="breakdown-item">
+                <span class="breakdown-label">成功:</span>
+                <span class="breakdown-value success">{{ task.successFiles || 0 }}</span>
+              </div>
+              <div class="breakdown-item" v-if="task.warningFiles && task.warningFiles > 0">
+                <span class="breakdown-label">警告:</span>
+                <span class="breakdown-value warning">{{ task.warningFiles }}</span>
+              </div>
+              <div class="breakdown-item">
+                <span class="breakdown-label">失败:</span>
+                <span class="breakdown-value error">{{ task.failedFiles || 0 }}</span>
+              </div>
             </div>
-            <div class="stat-label">成功/总计</div>
+            <div class="stat-label">文件处理情况</div>
             <div class="stat-progress">
               <el-progress
                 :percentage="fileSuccessRate"
                 :stroke-width="4"
                 :show-text="false"
-                :status="fileSuccessRate === 100 ? 'success' : undefined"
+                :status="getFileProgressStatus(fileSuccessRate)"
               />
             </div>
           </div>
         </div>
 
+        <!-- 记录统计 - 增强显示 -->
         <div class="stat-card records">
           <div class="stat-header">
             <el-icon class="stat-icon"><DataBoard /></el-icon>
-            <span class="stat-title">记录处理</span>
+            <span class="stat-title">记录统计</span>
           </div>
           <div class="stat-content">
             <div class="stat-main">
@@ -137,16 +147,24 @@
               <span class="stat-total">/ {{ formatNumber(task.totalRecords || 0) }}</span>
             </div>
             <div class="stat-breakdown">
+              <div class="breakdown-item">
+                <span class="breakdown-label">成功:</span>
+                <span class="breakdown-value success">{{ formatNumber(task.successRecords || 0) }}</span>
+              </div>
               <div class="breakdown-item" v-if="task.warningRecords && task.warningRecords > 0">
                 <span class="breakdown-label">警告:</span>
                 <span class="breakdown-value warning">{{ formatNumber(task.warningRecords) }}</span>
               </div>
+              <div class="breakdown-item">
+                <span class="breakdown-label">失败:</span>
+                <span class="breakdown-value error">{{ formatNumber(task.failedRecords || 0) }}</span>
+              </div>
               <div class="breakdown-item" v-if="task.anomalyRecords && task.anomalyRecords > 0">
                 <span class="breakdown-label">异常:</span>
-                <span class="breakdown-value error">{{ formatNumber(task.anomalyRecords) }}</span>
+                <span class="breakdown-value anomaly">{{ formatNumber(task.anomalyRecords) }}</span>
               </div>
             </div>
-            <div class="stat-label">成功/总计</div>
+            <div class="stat-label">记录处理情况</div>
             <div class="stat-progress">
               <el-progress
                 :percentage="recordSuccessRate"
@@ -164,6 +182,7 @@
           </div>
         </div>
 
+        <!-- 规则统计 - 增强显示 -->
         <div class="stat-card rules" v-if="task.totalRules && task.totalRules > 0">
           <div class="stat-header">
             <el-icon class="stat-icon"><Checked /></el-icon>
@@ -174,21 +193,33 @@
               <span class="stat-value">{{ task.passedRules || 0 }}</span>
               <span class="stat-total">/ {{ task.totalRules || 0 }}</span>
             </div>
-            <div class="stat-secondary">
-              <span class="secondary-text">已执行: {{ task.executedRules || 0 }}</span>
+            <div class="stat-breakdown">
+              <div class="breakdown-item">
+                <span class="breakdown-label">通过:</span>
+                <span class="breakdown-value success">{{ task.passedRules || 0 }}</span>
+              </div>
+              <div class="breakdown-item">
+                <span class="breakdown-label">已执行:</span>
+                <span class="breakdown-value processing">{{ task.executedRules || 0 }}</span>
+              </div>
+              <div class="breakdown-item">
+                <span class="breakdown-label">失败:</span>
+                <span class="breakdown-value error">{{ task.failedRules || 0 }}</span>
+              </div>
             </div>
-            <div class="stat-label">通过/总计</div>
+            <div class="stat-label">规则通过情况</div>
             <div class="stat-progress">
               <el-progress
                 :percentage="rulePassRate"
                 :stroke-width="4"
                 :show-text="false"
-                :status="rulePassRate >= 90 ? 'success' : 'warning'"
+                :status="getRuleProgressStatus(rulePassRate)"
               />
             </div>
           </div>
         </div>
 
+        <!-- 性能指标 - 增强显示 -->
         <div class="stat-card performance">
           <div class="stat-header">
             <el-icon class="stat-icon"><Stopwatch /></el-icon>
@@ -200,18 +231,27 @@
                 <span class="metric-label">处理耗时:</span>
                 <span class="metric-value">{{ formatDurationFromMs(task.durationMs) || '计算中...' }}</span>
               </div>
+              <div class="metric-item">
+                <span class="metric-label">处理速度:</span>
+                <span class="metric-value">{{ processingSpeed }}</span>
+              </div>
               <div class="metric-item" v-if="task.avgRecordTime">
                 <span class="metric-label">单条记录:</span>
                 <span class="metric-value">{{ task.avgRecordTime }}ms</span>
               </div>
-              <div class="metric-item">
-                <span class="metric-label">处理速度:</span>
-                <span class="metric-value">{{ processingSpeed }}</span>
+              <div class="metric-item" v-if="task.startTime && task.endTime">
+                <span class="metric-label">实际耗时:</span>
+                <span class="metric-value">{{ getActualDuration(task.startTime, task.endTime) }}</span>
+              </div>
+              <div class="metric-item" v-if="task.totalRecords">
+                <span class="metric-label">吞吐量:</span>
+                <span class="metric-value">{{ getThroughput(task) }}</span>
               </div>
             </div>
           </div>
         </div>
 
+        <!-- 质量评分 - 增强显示 -->
         <div class="stat-card quality" v-if="task.qualityScore">
           <div class="stat-header">
             <el-icon class="stat-icon"><Medal /></el-icon>
@@ -229,6 +269,18 @@
                   <span class="breakdown-label">{{ dimension }}:</span>
                   <span class="breakdown-value">{{ score }}</span>
                 </div>
+              </div>
+            </div>
+            <!-- 质量等级指示器 -->
+            <div class="quality-indicator">
+              <div class="indicator-bar" :class="getQualityLevelClass(task.qualityScore)">
+                <div class="indicator-fill" :style="{ width: `${task.qualityScore}%` }"></div>
+              </div>
+              <div class="indicator-labels">
+                <span class="label-item" :class="{ active: task.qualityScore >= 90 }">优秀</span>
+                <span class="label-item" :class="{ active: task.qualityScore >= 70 && task.qualityScore < 90 }">良好</span>
+                <span class="label-item" :class="{ active: task.qualityScore >= 50 && task.qualityScore < 70 }">一般</span>
+                <span class="label-item" :class="{ active: task.qualityScore < 50 }">较差</span>
               </div>
             </div>
           </div>
@@ -313,7 +365,7 @@ import {
   View,
   RefreshRight,
   Download,
-  Checked ,
+  Checked,
   DocumentChecked,
   Setting
 } from '@element-plus/icons-vue'
@@ -450,10 +502,10 @@ const getProcessStages = (task: ImportTaskRespVO) => {
 
   // 如果没有 qc_stages 数据，使用默认阶段
   return [
-    { name: '文件解析', status: 0, statusDescription: '待开始' },
-    { name: '基础验证', status: 0, statusDescription: '待开始' },
-    { name: '前置质控', status: 0, statusDescription: '待开始' },
-    { name: '数据导入', status: 0, statusDescription: '待开始' }
+    { name: '文件解析', status: 0 },
+    { name: '基础验证', status: 0 },
+    { name: '前置质控', status: 0 },
+    { name: '数据导入', status: 0 }
   ]
 }
 
@@ -527,11 +579,39 @@ const getRulePassRate = (task: ImportTaskRespVO) => {
 const getProcessingSpeed = (task: ImportTaskRespVO) => {
   if (!task.startTime || !task.totalRecords || !task.durationMs) return '-'
 
-  const recordsPerSecond = task.successRecords / (task.durationMs / 1000)
+  const recordsPerSecond = (task.successRecords || 0) / (task.durationMs / 1000)
   if (recordsPerSecond < 1) {
     return `${(recordsPerSecond * 60).toFixed(1)}条/分钟`
   }
   return `${recordsPerSecond.toFixed(1)}条/秒`
+}
+
+/** 获取实际耗时 */
+const getActualDuration = (startTime: string, endTime: string) => {
+  if (!startTime || !endTime) return '-'
+  
+  try {
+    const start = new Date(startTime)
+    const end = new Date(endTime)
+    const durationMs = end.getTime() - start.getTime()
+    return formatDurationFromMs(durationMs)
+  } catch (error) {
+    return '-'
+  }
+}
+
+/** 获取文件进度状态 */
+const getFileProgressStatus = (rate: number) => {
+  if (rate === 100) return 'success'
+  if (rate >= 80) return undefined
+  return 'exception'
+}
+
+/** 获取规则进度状态 */
+const getRuleProgressStatus = (rate: number) => {
+  if (rate >= 90) return 'success'
+  if (rate >= 70) return undefined
+  return 'warning'
 }
 
 /** 获取质量评分样式类 */
@@ -736,16 +816,30 @@ const toggleSection = (section: string) => {
   expandedSections.value[section] = !expandedSections.value[section]
 }
 
-/** 刷新任务数据 */
-const refreshTask = async () => {
-  isRefreshing.value = true
-  try {
-    emit('view-details', props.task)
-  } finally {
-    setTimeout(() => {
-      isRefreshing.value = false
-    }, 1000)
+/** 获取吞吐量 */
+const getThroughput = (task: ImportTaskRespVO) => {
+  if (!task?.totalRecords || !task?.durationMs || task.durationMs === 0) return '-'
+  
+  const recordsPerSecond = task.totalRecords / (task.durationMs / 1000)
+  if (recordsPerSecond < 1) {
+    return `${(recordsPerSecond * 60).toFixed(1)}条/分钟`
   }
+  return `${recordsPerSecond.toFixed(1)}条/秒`
+}
+
+/** 获取百分比 */
+const getPercentage = (value: number | undefined, total: number | undefined) => {
+  if (!value || !total || total === 0) return 0
+  return Math.round((value / total) * 100)
+}
+
+/** 获取质量等级样式类 */
+const getQualityLevelClass = (score: number | undefined) => {
+  if (!score) return 'level-poor'
+  if (score >= 90) return 'level-excellent'
+  if (score >= 70) return 'level-good'
+  if (score >= 50) return 'level-average'
+  return 'level-poor'
 }
 </script>
 
@@ -1061,12 +1155,301 @@ const refreshTask = async () => {
   font-weight: 500;
 }
 
+.breakdown-value.success {
+  color: #67c23a;
+}
+
 .breakdown-value.warning {
   color: #e6a23c;
 }
 
 .breakdown-value.error {
   color: #f56c6c;
+}
+
+.breakdown-value.anomaly {
+  color: #909399;
+}
+
+.breakdown-value.processing {
+  color: #409eff;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #606266;
+}
+
+.stat-progress {
+  margin-top: 4px;
+}
+
+.performance-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.metric-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.metric-label {
+  color: #606266;
+}
+
+.metric-value {
+  color: #303133;
+  font-weight: 500;
+}
+
+/* 质量评分样式 */
+.quality-score {
+  text-align: center;
+}
+
+.score-value {
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.score-value.excellent {
+  color: #67c23a;
+}
+
+.score-value.good {
+  color: #409eff;
+}
+
+.score-value.average {
+  color: #e6a23c;
+}
+
+.score-value.poor {
+  color: #f56c6c;
+}
+
+.score-value.very-poor {
+  color: #f56c6c;
+}
+
+.score-label {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 4px;
+}
+
+.score-description {
+  font-size: 11px;
+  color: #606266;
+  margin-top: 4px;
+}
+
+.score-breakdown {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* 质量等级指示器 */
+.quality-indicator {
+  margin-top: 12px;
+}
+
+.indicator-bar {
+  height: 6px;
+  background: #f0f2f5;
+  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.indicator-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+  border-radius: 3px;
+}
+
+.indicator-bar.level-excellent .indicator-fill {
+  background: linear-gradient(90deg, #67c23a, #85ce61);
+}
+
+.indicator-bar.level-good .indicator-fill {
+  background: linear-gradient(90deg, #409eff, #66b1ff);
+}
+
+.indicator-bar.level-average .indicator-fill {
+  background: linear-gradient(90deg, #e6a23c, #ebb563);
+}
+
+.indicator-bar.level-poor .indicator-fill {
+  background: linear-gradient(90deg, #f56c6c, #f89898);
+}
+
+.indicator-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+}
+
+.label-item {
+  color: #c0c4cc;
+  transition: color 0.3s ease;
+}
+
+.label-item.active {
+  color: #303133;
+  font-weight: 600;
+}
+
+.chart-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+
+.chart-bar {
+  width: 20px;
+  min-height: 2px;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+.chart-item.success .chart-bar {
+  background: #67c23a;
+}
+
+.chart-item.warning .chart-bar {
+  background: #e6a23c;
+}
+
+.chart-item.error .chart-bar {
+  background: #f56c6c;
+}
+
+.chart-item.anomaly .chart-bar {
+  background: #909399;
+}
+
+.chart-label {
+  font-size: 10px;
+  color: #909399;
+}
+
+.chart-value {
+  font-size: 10px;
+  color: #303133;
+  font-weight: 600;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid #ebeef5;
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.stat-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.stat-icon {
+  font-size: 18px;
+  color: #409eff;
+}
+
+.stat-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.stat-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stat-main {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.stat-total {
+  font-size: 14px;
+  color: #909399;
+}
+
+.stat-secondary {
+  font-size: 11px;
+  color: #909399;
+}
+
+.warning-text {
+  color: #e6a23c;
+}
+
+.secondary-text {
+  color: #606266;
+}
+
+.stat-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+}
+
+.breakdown-item {
+  display: flex;
+  justify-content: space-between;
+}
+
+.breakdown-label {
+  color: #909399;
+}
+
+.breakdown-value {
+  font-weight: 500;
+}
+
+.breakdown-value.warning {
+  color: #e6a23c;
+}
+
+.breakdown-value.error {
+  color: #f56c6c;
+}
+
+.breakdown-value.anomaly {
+  color: #909399;
+}
+
+.breakdown-value.processing {
+  color: #409eff;
 }
 
 .stat-label {

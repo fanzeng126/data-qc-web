@@ -171,7 +171,7 @@
       />
       <div class="flex flex-col">
         <el-text>手机扫码预览</el-text>
-        <Qrcode :text="previewUrl" logo="@/assets/imgs/logo.webp" />
+        <Qrcode :text="previewUrl" logo="@/assets/imgs/logo.png" />
       </div>
     </div>
   </Dialog>
