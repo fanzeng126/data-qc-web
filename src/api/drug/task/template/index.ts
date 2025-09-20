@@ -8,7 +8,7 @@ export interface ImportTemplatePageReqVO {
   pageSize: number
   templateName?: string
   templateCode?: string
-  tableType?: number
+  tableType?: string
   status?: boolean
   isDefault?: boolean
   createTime?: string[]
@@ -19,7 +19,7 @@ export interface ImportTemplateSaveReqVO {
   id?: number
   templateName: string
   templateCode: string
-  tableType: number
+  tableType: string
   titleText: string
   descriptionText: string
   status: boolean
@@ -33,7 +33,7 @@ export interface ImportTemplateRespVO {
   id: number
   templateName: string
   templateCode: string
-  tableType: number
+  tableType: string
   tableTypeName: string
   titleText: string
   descriptionText: string
@@ -54,7 +54,7 @@ export interface ImportTemplateVO {
   id: number
   templateCode: string
   templateName: string
-  tableType: number
+  tableType: string
   titleText: string
   descriptionText: string
   isDefault: boolean
@@ -122,7 +122,7 @@ export interface FieldLibraryVO {
   fieldName: string
   fieldType: string
   fieldTypeName: string
-  tableType?: number
+  tableType?: string
   isCommon: boolean
   isRequired: boolean
   isUsed: boolean
@@ -139,7 +139,7 @@ export interface FieldLibraryPageReqVO {
   fieldName?: string
   fieldCode?: string
   fieldType?: string
-  tableType?: number
+  tableType?: string
   scope?: 'ALL' | 'COMMON' | 'TABLE_TYPE'
   isCommon?: boolean
   isRequired?: boolean
@@ -234,10 +234,9 @@ export const ImportTemplateApi = {
   /**
    * 根据表类型获取模板列表
    */
-  getImportTemplateListByTableType: async (tableType: number): Promise<ImportTemplateRespVO[]> => {
+  getImportTemplateListByTableType: async (): Promise<ImportTemplateRespVO[]> => {
     return await request.get({
       url: '/drug/import-template/list-by-table-type',
-      params: { tableType }
     })
   },
 
@@ -326,6 +325,15 @@ export const ImportTemplateApi = {
   },
 
   /**
+   * 下载标准模板压缩包
+   */
+  downloadStandardTemplatesZip: async () => {
+    return await request.download({
+      url: '/drug/import-template/download-standard-templates'
+    })
+  },
+
+  /**
    * 导出模板列表Excel
    */
   exportImportTemplateExcel: async (params: ImportTemplatePageReqVO) => {
@@ -401,7 +409,7 @@ export const TemplateFieldApi = {
   /**
    * 获取字段库列表
    */
-  getFieldLibrary: async (tableType?: number): Promise<FieldLibraryVO[]> => {
+  getFieldLibrary: async (tableType?: string): Promise<FieldLibraryVO[]> => {
     return await request.get({
       url: '/drug/template-field/field-library',
       params: { tableType }
@@ -493,7 +501,7 @@ export const FieldLibraryApi = {
    */
   searchFieldsByScope: async (params: {
     scope: 'ALL' | 'COMMON' | 'TABLE_TYPE'
-    tableType?: number
+    tableType?: string
     templateId?: number
     keyword?: string
     fieldType?: string
@@ -507,7 +515,7 @@ export const FieldLibraryApi = {
   /**
    * 获取常用字段列表
    */
-  getCommonFields: async (tableType?: number): Promise<FieldLibraryVO[]> => {
+  getCommonFields: async (tableType?: string): Promise<FieldLibraryVO[]> => {
     return await request.get({
       url: '/drug/template-field/common-fields',
       params: { tableType }

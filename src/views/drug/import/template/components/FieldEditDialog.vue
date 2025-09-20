@@ -214,7 +214,7 @@ defineOptions({ name: 'FieldEditDialog' })
 
 // ========================= Props =========================
 const props = defineProps<{
-  tableType?: number
+  tableType?: string
   templateId?: number
   totalFieldsCount?: number
 }>()

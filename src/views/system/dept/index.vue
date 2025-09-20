@@ -37,18 +37,16 @@
         <el-button @click="resetQuery"><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button>
         <el-button
           type="primary"
-          plain
           @click="openForm('create')"
           v-hasPermi="['system:dept:create']"
         >
           <Icon icon="ep:plus" class="mr-5px" /> 新增
         </el-button>
-        <el-button type="danger" plain @click="toggleExpandAll">
+        <el-button type="danger" @click="toggleExpandAll">
           <Icon icon="ep:sort" class="mr-5px" /> 展开/折叠
         </el-button>
         <el-button
           type="success"
-          plain
           @click="openSyncModal"
         >
           <Icon icon="ep:download" class="mr-5px" /> 从标准库同步
@@ -67,23 +65,20 @@
       v-if="refreshTable"
     >
       <el-table-column prop="name" label="机构名称" />
-      <el-table-column prop="area" label="区域"/>
-      <el-table-column prop="deptType" label="机构层级" width="100">
+      <el-table-column prop="institutionCategory" label="机构类别" width="100">
         <template #default="scope">
-          <el-tag v-if="scope.row.deptType" :type="getDeptTypeTagType(scope.row.deptType)">
-            {{ getDeptTypeLabel(scope.row.deptType) }}
+          <el-tag v-if="scope.row.institutionCategory" type="info">
+            <span v-if="scope.row.institutionCategory === 'A'">医院</span>
+            <span v-else-if="scope.row.institutionCategory === 'B1'">社区</span>
+            <span v-else-if="scope.row.institutionCategory === 'C'">乡镇</span>
+            <span v-else>{{ scope.row.institutionCategory }}</span>
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="institutionCategory" label="机构类别" width="100">
-        <template #default="scope">
-<!--          {{ getDictLabel(DICT_TYPE.INSTITUTION_CATEGORY, scope.row.institutionCategory.substring(0, 1))}}-->
-          <span v-if="scope.row.institutionCategory.startsWith('A')">医院</span>
-          <span v-if="scope.row.institutionCategory.startsWith('B1')">社区卫生服务中心</span>
-          <span v-if="scope.row.institutionCategory.startsWith('C')">乡镇卫生院</span>
-        </template>
-      </el-table-column>
-<!--      <el-table-column prop="leader" label="负责人">-->
+      <el-table-column prop="hospitalLevel" label="医院等级" width="100"/>
+      <el-table-column prop="contactPerson" label="联络员" width="100"/>
+      <el-table-column prop="contactPhone" label="联络员手机" width="120"/>
+<!--      <el-table-column prop="leader" label="负责人">-->-->
 <!--        <template #default="scope">-->
 <!--          {{ userList.find((user) => user.id === scope.row.leaderUserId)?.nickname }}-->
 <!--        </template>-->
@@ -135,7 +130,6 @@ import { DICT_TYPE, getIntDictOptions ,getDictLabel} from '@/utils/dict'
 import { dateFormatter } from '@/utils/formatTime'
 import { handleTree } from '@/utils/tree'
 import * as DeptApi from '@/api/system/dept'
-import * as DeptExtApi from '@/api/system/dept/deptext'
 import DeptForm from './DeptForm.vue'
 import InstitutionSyncModal from './InstitutionSyncModal.vue'
 import * as UserApi from '@/api/system/user'
@@ -163,56 +157,10 @@ const getList = async () => {
   loading.value = true
   try {
     const data = await DeptApi.getDeptPage(queryParams)
-    const deptTree = handleTree(data)
-    
-    // 为每个部门获取扩展信息
-    await loadDeptExtensions(deptTree)
-    
-    list.value = deptTree
+    list.value = handleTree(data)
   } finally {
     loading.value = false
   }
-}
-
-/** 递归加载部门扩展信息 */
-const loadDeptExtensions = async (depts: any[]) => {
-  for (const dept of depts) {
-    try {
-      const extData = await DeptExtApi.getDeptExtByDeptId(dept.id)
-      dept.deptExt = extData || null
-    } catch (error) {
-      dept.deptExt = null
-    }
-    
-    // 递归处理子部门
-    if (dept.children && dept.children.length > 0) {
-      await loadDeptExtensions(dept.children)
-    }
-  }
-}
-
-/** 获取部门类型标签类型 */
-const getDeptTypeTagType = (deptType: string) => {
-  const typeMap: Record<string, string> = {
-    'NORMAL': 'info',
-    'PROVINCE': 'success',
-    'CITY': 'warning',
-    'DISTRICT': 'primary',
-    'HOSPITAL': 'danger'
-  }
-  return typeMap[deptType] || 'info'
-}
-
-/** 获取部门类型标签文本 */
-const getDeptTypeLabel = (deptType: string) => {
-  const typeMap: Record<string, string> = {
-    'NORMAL': '普通',
-    'PROVINCE': '省级',
-    'CITY': '市级',
-    'DISTRICT': '区县',
-    'HOSPITAL': '医院'
-  }
-  return typeMap[deptType] || deptType
 }
 
 /** 展开/折叠操作 */

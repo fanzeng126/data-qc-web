@@ -1,8 +1,8 @@
 /**
  * 数据字典工具类
  */
-import { useDictStoreWithOut } from '@/store/modules/dict'
-import { ElementPlusInfoType } from '@/types/elementPlus'
+import {useDictStoreWithOut} from '@/store/modules/dict'
+import {ElementPlusInfoType} from '@/types/elementPlus'
 
 const dictStore = useDictStoreWithOut()
 
@@ -147,6 +147,9 @@ export enum DICT_TYPE {
   SYSTEM_SMS_SEND_STATUS = 'system_sms_send_status',
   SYSTEM_SMS_RECEIVE_STATUS = 'system_sms_receive_status',
   SYSTEM_OAUTH2_GRANT_TYPE = 'system_oauth2_grant_type',
+
+  // ========== 地区相关 ==========
+  REGION_LEVEL = 'region_level', // 地区等级
   SYSTEM_MAIL_SEND_STATUS = 'system_mail_send_status',
   SYSTEM_NOTIFY_TEMPLATE_TYPE = 'system_notify_template_type',
   SYSTEM_SOCIAL_TYPE = 'system_social_type',
@@ -205,11 +208,18 @@ export enum DICT_TYPE {
   DRUG_QC_EXECUTION_STATUS = 'drug_qc_execution_status',
   // 质控错误级别
   DRUG_QC_ERROR_LEVEL = 'drug_qc_error_level',
-  
+
   // ========== 机构标准库字典 ==========
   INSTITUTION_CATEGORY = 'institution_category', // 机构类别
   INSTITUTION_LEVEL = 'institution_level', // 机构等级
 
   // ========== 短缺药品模块 ==========
-  SUPPLY_STATUS = 'supply_status' // 供应状态
+  SUPPLY_STATUS = 'supply_status', // 供应状态
+
+  // ========== 填报模块 ==========
+  REPORT_STATUS_TYPE = 'report_status_type', // 填报任务状态
+  REPORT_PROGRESS = 'report_progress', // 上报进度
+
+  // ========== 导入模板模块 ==========
+  IMPORT_TABLE_TYPE = 'import_table_type' // 导入表类型
 }

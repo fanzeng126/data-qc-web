@@ -44,4 +44,9 @@ export const ReportRecordApi = {
   exportReportRecord: async (params) => {
     return await request.download({ url: `/shortage/report-record/export-excel`, params })
   },
+
+  // 获取填报周期列表
+  getReportWeeks: async () => {
+    return await request.get({ url: `/shortage/report-record/report-weeks` })
+  }
 }

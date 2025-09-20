@@ -29,9 +29,12 @@
                 <component :is="icon" />
               </el-icon>
               <span class="title-text">{{ title }}</span>
-              <el-tag v-if="tag" :type="tagType" size="small" class="title-tag">
-                {{ tag }}
-              </el-tag>
+              <dict-tag
+                v-if="dictTag"
+                :type="dictTag.type"
+                :value="dictTag.value"
+                class="title-dict-tag"
+              />
             </h1>
 
             <p v-if="content" class="page-description">
@@ -132,7 +135,7 @@
 <script setup lang="ts">
 import { ref, computed, useSlots } from 'vue'
 import { ArrowLeft } from '@element-plus/icons-vue'
-
+import DictTag from '@/components/DictTag/src/DictTag.vue'
 /** 组件名称定义 */
 defineOptions({ name: 'PageHeader' })
 
@@ -165,13 +168,18 @@ interface MetaItem {
   icon?: any
 }
 
+/** 字典标签接口 */
+interface DictTag {
+  type: string
+  value: string | number
+}
+
 /** 组件属性 */
 interface Props {
   title: string
   content?: string
   icon?: any
-  tag?: string
-  tagType?: 'primary' | 'success' | 'warning' | 'danger' | 'info'
+  dictTag?: DictTag
   actions?: Action[]
   tabs?: Tab[]
   defaultTab?: string
@@ -189,7 +197,6 @@ const props = withDefaults(defineProps<Props>(), {
   backButtonLoading: false,
   backButtonDisabled: false
 })
-
 /** 组件事件 */
 const emit = defineEmits<{
   'action-click': [action: Action]
@@ -245,20 +252,20 @@ const handleBackClick = () => {
 <style scoped>
 .page-header {
   background: #ffffff;
-  border-radius: 6px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-  margin-bottom: 12px;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  margin-bottom: 16px;
   overflow: hidden;
 }
 
 /* 返回按钮区域样式 */
 .back-button-section {
-  padding: 10px 16px 0 16px;
+  padding: 12px 20px 0 20px;
 }
 
 .default-back-button {
-  padding: 4px 10px;
-  font-size: 13px;
+  padding: 6px 12px;
+  font-size: 14px;
   color: #606266;
   transition: all 0.2s ease;
 }
@@ -269,8 +276,8 @@ const handleBackClick = () => {
 }
 
 .default-back-button .el-icon {
-  margin-right: 4px;
-  font-size: 14px;
+  margin-right: 5px;
+  font-size: 16px;
 }
 
 /* 主要内容区域 */
@@ -278,8 +285,8 @@ const handleBackClick = () => {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding: 12px 16px 14px 16px;
-  min-height: 60px;
+  padding: 16px 20px 18px 20px;
+  min-height: 70px;
 }
 
 .header-main {
@@ -290,27 +297,27 @@ const handleBackClick = () => {
 .title-section {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .page-title {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   margin: 0;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   color: #1a202c;
-  line-height: 1.2;
+  line-height: 1.3;
 }
 
 .title-icon {
-  font-size: 20px;
+  font-size: 24px;
   color: #4299e1;
   flex-shrink: 0;
 }
 
-/* 分离标题文本和tag，避免渐变背景影响tag显示 */
+/* 分离标题文本和dict-tag，避免渐变背景影响dict-tag显示 */
 .title-text {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   background-clip: text;
@@ -319,71 +326,37 @@ const handleBackClick = () => {
   font-weight: 600;
 }
 
-/* 确保 title-tag 文字可见，使用更强的样式权重 */
-.title-tag {
-  margin-left: 6px;
+/* dict-tag 样式调整 */
+.title-dict-tag {
+  margin-left: 8px;
   vertical-align: middle;
-  background-color: var(--el-tag-bg-color) !important;
-  color: var(--el-tag-text-color) !important;
-  border: 1px solid var(--el-tag-border-color) !important;
-}
-
-/* 针对不同类型的tag确保文字可见 */
-.title-tag.el-tag--primary {
-  background-color: #409eff !important;
-  color: #ffffff !important;
-  border-color: #409eff !important;
-}
-
-.title-tag.el-tag--success {
-  background-color: #67c23a !important;
-  color: #ffffff !important;
-  border-color: #67c23a !important;
-}
-
-.title-tag.el-tag--warning {
-  background-color: #e6a23c !important;
-  color: #ffffff !important;
-  border-color: #e6a23c !important;
-}
-
-.title-tag.el-tag--danger {
-  background-color: #f56c6c !important;
-  color: #ffffff !important;
-  border-color: #f56c6c !important;
-}
-
-.title-tag.el-tag--info {
-  background-color: #909399 !important;
-  color: #ffffff !important;
-  border-color: #909399 !important;
 }
 
 .page-description {
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
   color: #718096;
-  line-height: 1.4;
-  max-width: 600px;
+  line-height: 1.5;
+  max-width: 650px;
 }
 
 .meta-info {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 2px;
+  gap: 12px;
+  margin-top: 4px;
 }
 
 .meta-item {
   display: flex;
   align-items: center;
-  gap: 3px;
-  font-size: 12px;
+  gap: 4px;
+  font-size: 13px;
   color: #4a5568;
 }
 
 .meta-icon {
-  font-size: 13px;
+  font-size: 15px;
   color: #718096;
 }
 
@@ -398,12 +371,12 @@ const handleBackClick = () => {
 
 .header-actions {
   flex-shrink: 0;
-  margin-left: 16px;
+  margin-left: 20px;
 }
 
 .default-actions {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
 }
 
@@ -414,38 +387,38 @@ const handleBackClick = () => {
 }
 
 .page-tabs {
-  padding: 0 16px;
+  padding: 0 20px;
 }
 
 .tab-label {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
 }
 
 .tab-icon {
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .tab-badge {
-  margin-left: 3px;
+  margin-left: 4px;
 }
 
 /* 快速操作样式 */
 .quick-actions {
   background: #f8fafc;
   border-top: 1px solid #e2e8f0;
-  padding: 8px 16px;
+  padding: 10px 20px;
 }
 
 .quick-actions-content {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .quick-actions-label {
-  font-size: 12px;
+  font-size: 13px;
   color: #718096;
   font-weight: 500;
   flex-shrink: 0;
@@ -453,16 +426,16 @@ const handleBackClick = () => {
 
 .quick-actions-list {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .quick-action-btn {
   border: none;
   background: transparent;
-  padding: 3px 6px;
+  padding: 4px 8px;
   height: auto;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .quick-action-btn:hover {
@@ -472,13 +445,13 @@ const handleBackClick = () => {
 /* 响应式设计 */
 @media (max-width: 768px) {
   .back-button-section {
-    padding: 8px 12px 0 12px;
+    padding: 10px 14px 0 14px;
   }
 
   .header-main-section {
     flex-direction: column;
-    gap: 10px;
-    padding: 10px 12px 12px 12px;
+    gap: 12px;
+    padding: 12px 14px 14px 14px;
   }
 
   .header-main {
@@ -496,22 +469,22 @@ const handleBackClick = () => {
   }
 
   .page-title {
-    font-size: 16px;
+    font-size: 18px;
   }
 
   .title-icon {
-    font-size: 18px;
+    font-size: 20px;
   }
 
   .meta-info {
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
   }
 
   .quick-actions-content {
     flex-direction: column;
     align-items: flex-start;
-    gap: 6px;
+    gap: 8px;
   }
 
   .quick-actions-list {
@@ -519,11 +492,11 @@ const handleBackClick = () => {
   }
 
   .page-tabs {
-    padding: 0 12px;
+    padding: 0 14px;
   }
 
   .quick-actions {
-    padding: 8px 12px;
+    padding: 10px 14px;
   }
 }
 
@@ -540,13 +513,13 @@ const handleBackClick = () => {
 
 /* 悬浮效果 */
 .page-header:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
 }
 
 /* 自定义样式覆盖 */
 :deep(.el-tabs__header) {
   margin: 0;
-  height: 38px;
+  height: 42px;
 }
 
 :deep(.el-tabs__nav-wrap::after) {
@@ -556,14 +529,14 @@ const handleBackClick = () => {
 
 :deep(.el-tabs__active-bar) {
   background-color: #4299e1;
-  height: 2px;
+  height: 3px;
 }
 
 :deep(.el-tabs__item) {
-  height: 38px;
-  line-height: 38px;
-  font-size: 13px;
-  padding: 0 16px;
+  height: 42px;
+  line-height: 42px;
+  font-size: 14px;
+  padding: 0 18px;
 }
 
 :deep(.el-tabs__item.is-active) {
@@ -572,7 +545,7 @@ const handleBackClick = () => {
 }
 
 :deep(.el-badge__content.is-fixed) {
-  top: 6px;
-  right: 10px;
+  top: 7px;
+  right: 12px;
 }
 </style>

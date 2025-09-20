@@ -1,13 +1,67 @@
 <template>
 
-  <el-row :gutter="20">
-    <!-- 左侧部门树 -->
-    <el-col :span="4" :xs="24">
-      <ContentWrap class="h-1/1">
-        <DeptTree @node-click="handleDeptNodeClick" />
+  <div class="flex h-full">
+    <!-- 左侧地区和机构选择器 -->
+    <div
+      ref="selectorPanel"
+      class="selector-panel"
+      :style="{ width: selectorWidth + 'px' }"
+    >
+      <ContentWrap
+        class="h-full selector-card">
+        <el-row :gutter="12" class="selector-content">
+          <!-- 左侧：地区树 -->
+          <el-col :span="11">
+            <div class="section-title">地区</div>
+            <RegionTree @node-click="handleRegionNodeClick" />
+          </el-col>
+
+          <!-- 右侧：机构列表 -->
+          <el-col :span="13">
+            <div class="section-title">机构</div>
+            <div v-if="!selectedRegionId" class="empty-state">
+              <Icon icon="ep:pointer" class="empty-icon" />
+              <p>请先选择左侧地区</p>
+            </div>
+
+            <div v-else-if="orgLoading" class="loading-state">
+              <el-skeleton :rows="3" animated />
+            </div>
+
+            <div v-else-if="orgList.length === 0" class="empty-state">
+              <Icon icon="ep:document-delete" class="empty-icon" />
+              <p>该地区暂无机构</p>
+            </div>
+
+            <div v-else class="org-list">
+              <div
+                v-for="org in orgList"
+                :key="org.id"
+                class="org-item"
+                :class="{ active: selectedOrgIds.includes(org.id) }"
+                @click="handleOrgClick(org)"
+              >
+                <div class="org-info">
+                  <span class="org-name">{{ org.name }}</span>
+                  <el-tag v-if="org.orgType" size="small" type="info">
+                    {{ org.orgType }}
+                  </el-tag>
+                </div>
+              </div>
+            </div>
+          </el-col>
+        </el-row>
       </ContentWrap>
-    </el-col>
-    <el-col :span="20" :xs="24">
+    </div>
+
+    <!-- 拖拽分隔条 -->
+    <div
+      class="resize-handle"
+      @mousedown="startResize"
+    ></div>
+
+    <!-- 右侧内容区域 -->
+    <div class="flex-1 ml-5">
       <!-- 搜索 -->
       <ContentWrap>
         <el-form
@@ -183,8 +237,8 @@
           @pagination="getList"
         />
       </ContentWrap>
-    </el-col>
-  </el-row>
+    </div>
+  </div>
 
   <!-- 添加或修改用户对话框 -->
   <UserForm ref="formRef" @success="getList" />
@@ -200,10 +254,11 @@ import { dateFormatter } from '@/utils/formatTime'
 import download from '@/utils/download'
 import { CommonStatusEnum } from '@/utils/constants'
 import * as UserApi from '@/api/system/user'
+import * as AreaOrgApi from '@/api/system/areaOrg'
 import UserForm from './UserForm.vue'
 import UserImportForm from './UserImportForm.vue'
 import UserAssignRoleForm from './UserAssignRoleForm.vue'
-import DeptTree from './DeptTree.vue'
+import RegionTree from './RegionTree.vue'
 
 defineOptions({ name: 'SystemUser' })
 
@@ -219,10 +274,47 @@ const queryParams = reactive({
   username: undefined,
   mobile: undefined,
   status: undefined,
-  deptId: undefined,
+  deptIds: undefined,
   createTime: []
 })
 const queryFormRef = ref() // 搜索的表单
+const selectedRegionId = ref<number | undefined>() // 选中的地区ID
+const selectedOrgIds = ref<number[]>([]) // 选中的机构ID列表
+const orgList = ref<AreaOrgApi.OrgItem[]>([]) // 机构列表
+const orgLoading = ref(false) // 机构加载状态
+
+// 面板拖拽相关
+const selectorPanel = ref<HTMLElement>()
+const selectorWidth = ref(320) // 默认宽度
+const isResizing = ref(false)
+
+/** 开始拖拽调整大小 */
+const startResize = (e: MouseEvent) => {
+  isResizing.value = true
+  const startX = e.clientX
+  const startWidth = selectorWidth.value
+
+  const onMouseMove = (moveEvent: MouseEvent) => {
+    if (!isResizing.value) return
+    const diff = moveEvent.clientX - startX
+    const newWidth = Math.max(250, Math.min(600, startWidth + diff)) // 限制最小250px，最大600px
+    selectorWidth.value = newWidth
+  }
+
+  const onMouseUp = () => {
+    isResizing.value = false
+    document.removeEventListener('mousemove', onMouseMove)
+    document.removeEventListener('mouseup', onMouseUp)
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
+  }
+
+  document.addEventListener('mousemove', onMouseMove)
+  document.addEventListener('mouseup', onMouseUp)
+  document.body.style.cursor = 'ew-resize'
+  document.body.style.userSelect = 'none'
+  e.preventDefault()
+}
 
 /** 查询列表 */
 const getList = async () => {
@@ -245,13 +337,62 @@ const handleQuery = () => {
 /** 重置按钮操作 */
 const resetQuery = () => {
   queryFormRef.value?.resetFields()
+  // 重置地区和机构选择
+  selectedRegionId.value = undefined
+  selectedOrgIds.value = []
+  orgList.value = []
+  queryParams.deptIds = undefined
   handleQuery()
 }
 
-/** 处理部门被点击 */
-const handleDeptNodeClick = async (row) => {
-  queryParams.deptId = row.id
+/** 加载机构列表 */
+const loadOrgList = async (areaCode: string) => {
+  orgLoading.value = true
+  try {
+    const res = await AreaOrgApi.getOrgListByArea(areaCode)
+    orgList.value = res || []
+    // 重置选中的机构
+    selectedOrgIds.value = []
+    queryParams.deptIds = undefined
+  } catch (error) {
+    console.error('加载机构列表失败:', error)
+    orgList.value = []
+  } finally {
+    orgLoading.value = false
+  }
+}
+
+/** 处理地区被点击 */
+const handleRegionNodeClick = async (row) => {
+  selectedRegionId.value = row.id
+  // 加载该地区下的机构列表
+  if (row.code) {
+    await loadOrgList(row.code)
+  }
+  // 刷新用户列表
   await getList()
+}
+
+/** 处理机构被点击 */
+const handleOrgClick = (org: AreaOrgApi.OrgItem) => {
+  const index = selectedOrgIds.value.indexOf(org.id)
+  if (index > -1) {
+    // 取消选中
+    selectedOrgIds.value.splice(index, 1)
+  } else {
+    // 选中
+    selectedOrgIds.value.push(org.id)
+  }
+
+  // 更新查询参数
+  if (selectedOrgIds.value.length > 0) {
+    queryParams.deptIds = selectedOrgIds.value.join(',')
+  } else {
+    queryParams.deptIds = undefined
+  }
+
+  // 刷新用户列表
+  getList()
 }
 
 /** 添加/修改操作 */
@@ -355,3 +496,119 @@ onMounted(() => {
   getList()
 })
 </script>
+
+<style scoped lang="scss">
+.selector-panel {
+  flex-shrink: 0;
+  min-width: 250px;
+  max-width: 600px;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.selector-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.resize-handle {
+  width: 5px;
+  background: var(--el-border-color-light);
+  cursor: ew-resize;
+  flex-shrink: 0;
+  transition: background-color 0.2s;
+
+  &:hover {
+    background: var(--el-color-primary);
+  }
+}
+
+.selector-content {
+  height: 100%;
+
+  .el-col {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--el-text-color-regular);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 500;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.org-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  .org-item {
+    padding: 8px 12px;
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+
+    &:hover {
+      background-color: var(--el-fill-color-light);
+      border-color: var(--el-color-primary-light-7);
+    }
+
+    &.active {
+      background-color: var(--el-color-primary-light-9);
+      border-color: var(--el-color-primary);
+      color: var(--el-color-primary);
+    }
+
+    .org-info {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      .org-name {
+        font-weight: 500;
+        flex: 1;
+      }
+    }
+  }
+}
+
+.empty-state,
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--el-text-color-secondary);
+
+  .empty-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    color: var(--el-border-color-darker);
+  }
+
+  p {
+    margin: 0;
+    font-size: 14px;
+  }
+}
+</style>

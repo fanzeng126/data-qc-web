@@ -386,12 +386,13 @@ const getWeekNumber = (date: Date): number => {
 // 加载专区列表
 const loadZoneList = async () => {
   try {
-    const data = await ReportZoneApi.getPage({
+    const data = await ReportZoneApi.getList({
       pageNo: 1,
       pageSize: -1,
       status: 0
     })
-    zoneList.value = data.list
+    console.log(data)
+    zoneList.value = data
   } catch (error) {
     console.error('加载专区列表失败:', error)
   }

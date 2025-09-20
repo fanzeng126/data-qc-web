@@ -13,8 +13,8 @@
       <el-form-item label="药品配置ID" prop="drugConfigId">
         <el-input v-model="formData.drugConfigId" placeholder="请输入药品配置ID" />
       </el-form-item>
-      <el-form-item label="机构ID" prop="orgId">
-        <el-input v-model="formData.orgId" placeholder="请输入机构ID" />
+      <el-form-item label="机构ID" prop="deptId">
+        <el-input v-model="formData.deptId" placeholder="请输入机构ID" />
       </el-form-item>
       <el-form-item label="填报周期(YYYY-WW)" prop="reportWeek">
         <el-input v-model="formData.reportWeek" placeholder="请输入填报周期(YYYY-WW)" />
@@ -62,7 +62,7 @@ const formData = ref({
   id: undefined,
   zoneId: undefined,
   drugConfigId: undefined,
-  orgId: undefined,
+  deptId: undefined,
   reportWeek: undefined,
   reportDate: undefined,
   weekUsageAmount: undefined,

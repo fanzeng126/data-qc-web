@@ -198,9 +198,9 @@ const open = async (type: string, id?: number) => {
       // 设置已选择的部门
       if (data.reportableOrgs) {
         await nextTick()
-        const orgIds = data.reportableOrgs.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id))
-        orgIds.forEach(orgId => {
-          treeRef.value?.setChecked(orgId, true, false)
+        const deptIds = data.reportableOrgs.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id))
+        deptIds.forEach(deptId => {
+          treeRef.value?.setChecked(deptId, true, false)
         })
       }
     } finally {

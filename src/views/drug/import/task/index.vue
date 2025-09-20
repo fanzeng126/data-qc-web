@@ -122,7 +122,7 @@
 
     <!-- 列表 -->
     <ContentWrap>
-      <el-table v-loading="loading" :data="taskList" :stripe="true" :show-overflow-tooltip="true">
+      <el-table v-loading="loading" :data="taskList" :show-overflow-tooltip="true">
         <el-table-column label="任务编号" align="center" prop="taskNo" width="200"/>
         <el-table-column type="expand">
           <template #default="{ row }">

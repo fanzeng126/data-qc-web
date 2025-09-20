@@ -40,7 +40,10 @@ export const ReportZoneApi = {
   // 获取分页
   getPage: (params: ReportZonePageReqVO) => 
     request.get({ url: '/shortage/report-zone/page', params }),
-  
+  // 查询短缺药品填报专区
+  getList: async (params: any) => {
+    return request.get({ url: `/shortage/report-zone/list`, params })
+  },
   // 获取详情
   get: (id: number) => 
     request.get({ url: `/shortage/report-zone/get?id=${id}` }),

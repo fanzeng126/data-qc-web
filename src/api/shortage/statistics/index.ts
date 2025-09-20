@@ -5,9 +5,11 @@ export interface StatisticsQueryVO {
   zoneId?: number | null
   reportWeek?: string
   administrativeRegion?: string | null
-  orgId?: number | null
+  deptId?: number | null
   startDate?: string
   endDate?: string
+  areaCode?: string | null // 新增：区域编码
+  orgIds?: number[] // 新增：机构ID列表
 }
 
 // ========== 简化查询参数 ==========
@@ -27,6 +29,8 @@ export interface SimpleOverviewVO {
 // ========== 总体概况 ==========
 export interface StatisticsOverviewVO {
   reportOrgCount: number
+  totalOrgCount?: number // 新增：应填报机构数
+  completionDegree?: number // 新增：填报完成度
   reportDrugCount: number
   shortageDrugCount: number
   completionRate: number
@@ -34,7 +38,7 @@ export interface StatisticsOverviewVO {
   drugTrend?: number
   shortageTrend?: number
   completionTrend?: number
-  dosageFormCount?: number
+  drugCategoryCount?: number
   weeklyUsageTotal?: number
   currentStockTotal?: number
   stockAlertCount?: number
@@ -53,6 +57,7 @@ export interface SupplyDistributionVO {
 export interface ShortageDetailVO {
   drugId?: number
   drugName: string
+  drugCategory?: string // 新增药品分类字段
   dosageForm: string
   dosageUnit?: string
   shortageOrgCount: number
@@ -62,13 +67,55 @@ export interface ShortageDetailVO {
   riskLevelName?: string
 }
 
-// ========== 剂型统计 ==========
-export interface DosageFormChartVO {
+// ========== 药品详细信息 ==========
+export interface DrugDetailVO {
+  drugId: number
+  drugName: string
+  drugCategory: string
   dosageForm: string
+  dosageUnit?: string
+  specification?: string
+  manufacturer?: string
+  shortageOrgCount: number
+  severeShortageOrgCount: number
+  totalOrgCount: number
+  avgStockDays: number
+  totalStock: number
+  totalWeeklyUsage: number
+  riskLevel: number
+  riskLevelName: string
+  trendData: DrugTrendData[]
+  orgDistribution: OrgDistributionData[]
+}
+
+export interface DrugTrendData {
+  week: string
+  shortageCount: number
+  severeShortageCount: number
+  avgStockDays: number
+}
+
+export interface OrgDistributionData {
+  orgName: string
+  region: string
+  supplyStatus: number
+  supplyStatusName: string
+  stockAmount: number
+  weekUsage: number
+  stockDays: number
+  updateTime: string
+}
+
+// ========== 药品分类统计 ==========
+export interface DrugCategoryChartVO {
+  drugCategory: string // 修改为正确的字段名
   drugCount: number
   percentage: number
   shortageCount: number
   shortageRate: number
+  totalUsage?: number
+  totalStock?: number
+  orgCount?: number
 }
 
 // ========== 周使用量趋势 ==========
@@ -106,7 +153,7 @@ export interface StockAlert {
 // ========== 机构排名 ==========
 export interface OrgRankingVO {
   rank: number
-  orgId: number
+  deptId: number
   orgName: string
   completionRate: number
   reportDrugCount: number
@@ -199,10 +246,17 @@ export const StatisticsApi = {
       params
     }),
 
-  // 获取剂型分类统计
-  getDosageFormChart: (params: StatisticsQueryVO) =>
-    request.get<DosageFormChartVO[]>({
-      url: '/shortage/statistics/dosage-form-chart',
+  // 获取药品详细信息
+  getDrugDetail: (drugId: number, params: StatisticsQueryVO) =>
+    request.get<DrugDetailVO>({
+      url: '/shortage/statistics/drug-detail',
+      params: { ...params, drugId }
+    }),
+
+  // 获取药品分类统计
+  getDrugCategoryChart: (params: StatisticsQueryVO) =>
+    request.get<DrugCategoryChartVO[]>({
+      url: '/shortage/statistics/drug-category-chart',
       params
     }),
 
@@ -281,6 +335,20 @@ export const StatisticsApi = {
     request.download({
       url: '/shortage/statistics/export-weekly-report',
       params
+    }),
+
+  // 导出Word格式周报
+  exportWeeklyDocx: (params: StatisticsQueryVO) =>
+    request.download({
+      url: '/shortage/statistics/export-weekly-docx',
+      params
+    }),
+
+  // 导出药品清单
+  exportDrugsList: (params: StatisticsQueryVO) =>
+    request.download({
+      url: '/shortage/statistics/export-drugs-list',
+      params
     })
 }
 
@@ -325,12 +393,20 @@ export const formatPercentage = (value: number | undefined | null): string => {
 
 // 获取趋势图标
 export const getTrendIcon = (trend: number | undefined | null): string => {
-  if (trend == null || trend === 0) return 'Minus'
-  return trend > 0 ? 'TopRight' : 'BottomRight'
+  if (trend == null || trend === 0) return 'ep:minus'
+  return trend > 0 ? 'ep:top-right' : 'ep:bottom-right'
 }
 
 // 获取趋势颜色
-export const getTrendColor = (trend: number | undefined | null): string => {
+export const getTrendColor = (
+  trend: number | undefined | null,
+  reverse: boolean = false
+): string => {
   if (trend == null || trend === 0) return '#909399'
+  if (reverse) {
+    // 反向逻辑：下降是好的（如短缺率）
+    return trend > 0 ? '#f56c6c' : '#67c23a'
+  }
+  // 正常逻辑：上升是好的
   return trend > 0 ? '#67c23a' : '#f56c6c'
 }

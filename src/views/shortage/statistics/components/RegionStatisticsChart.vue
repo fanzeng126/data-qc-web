@@ -1,37 +1,39 @@
 <template>
-  <div class="region-statistics-chart">
-    <el-card shadow="never">
-      <template #header>
-        <div class="card-header">
-          <span class="title">
-            <Icon icon="ep:map-location" />
-            各地区药品使用量分布
-          </span>
-          <el-select v-model="selectedCategory" size="small" style="width: 150px">
-            <el-option label="全部药品" value="" />
-            <el-option
-              v-for="category in categories"
-              :key="category"
-              :label="category"
-              :value="category"
-            />
-          </el-select>
-        </div>
-      </template>
-      <div ref="chartRef" class="chart-container" v-loading="loading"></div>
-    </el-card>
-  </div>
+  <ContentWrap
+    title="各地区药品使用量分布"
+    message="按地区统计药品使用情况，发现地区间差异，为区域化供应管理和资源调配提供依据"
+    headerIcon="ep:map-location"
+    headerIconColor="#909399"
+    class="chart-card"
+  >
+    <template #header>
+      <el-select v-model="selectedCategory" size="small" style="width: 150px" placeholder="选择药品类别" class="ml-auto" @change="handleCategoryChange">
+        <el-option label="全部药品" value="" />
+        <el-option
+          v-for="category in categories"
+          :key="category"
+          :label="category"
+          :value="category"
+        />
+      </el-select>
+    </template>
+    <div ref="chartRef" class="chart-container" v-loading="loading"></div>
+  </ContentWrap>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, nextTick, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, nextTick, computed } from 'vue'
 import * as echarts from 'echarts'
 import type { EChartsOption } from 'echarts'
 import { StatisticsApi, type RegionStatisticsVO } from '@/api/shortage/statistics'
+import { ContentWrap } from '@/components/ContentWrap'
 
 const props = defineProps<{
   zoneId?: number | null
   reportWeek?: string
+  areaCode?: string | null
+  orgIds?: number[]
+  drugCategories?: string[]
 }>()
 
 const emit = defineEmits<{
@@ -45,35 +47,53 @@ const rawData = ref<RegionStatisticsVO[]>([])
 let chartInstance: echarts.ECharts | null = null
 
 const categories = computed(() => {
+  // 优先使用父组件传递的分类数据
+  if (props.drugCategories && props.drugCategories.length > 0) {
+    return props.drugCategories
+  }
+  // 回退到从区域统计数据中提取分类
   return [...new Set(rawData.value.map(item => item.drugCategory))]
 })
 
-const filteredData = computed(() => {
-  if (!selectedCategory.value) {
-    // 聚合所有药品的数据
-    const aggregated = new Map<string, RegionStatisticsVO>()
-    rawData.value.forEach(item => {
-      const existing = aggregated.get(item.regionName)
-      if (existing) {
-        existing.usageAmount += item.usageAmount
-        existing.stockAmount += item.stockAmount
-      } else {
-        aggregated.set(item.regionName, { ...item })
-      }
-    })
-    return Array.from(aggregated.values())
-  } else {
-    return rawData.value.filter(item => item.drugCategory === selectedCategory.value)
-  }
-})
+// 由于现在直接从后端获取对应分类的数据，不再需要前端过滤
+// const filteredData = computed(() => {
+//   if (!selectedCategory.value) {
+//     // 聚合所有药品的数据
+//     const aggregated = new Map<string, RegionStatisticsVO>()
+//     rawData.value.forEach(item => {
+//       const existing = aggregated.get(item.regionName)
+//       if (existing) {
+//         existing.usageAmount += item.usageAmount
+//         existing.stockAmount += item.stockAmount
+//       } else {
+//         aggregated.set(item.regionName, { ...item })
+//       }
+//     })
+//     return Array.from(aggregated.values())
+//   } else {
+//     return rawData.value.filter(item => item.drugCategory === selectedCategory.value)
+//   }
+// })
 
 const fetchData = async () => {
+  // 如果必要参数为空，不执行请求
+  if (!props.reportWeek) {
+    console.log('等待报告周期参数')
+    return
+  }
+
   loading.value = true
   try {
-    const data = await StatisticsApi.getRegionStatistics({
+    const params = {
       zoneId: props.zoneId,
-      reportWeek: props.reportWeek
-    })
+      reportWeek: props.reportWeek,
+      areaCode: props.areaCode,
+      orgIds: props.orgIds,
+      // 如果选择了特定分类，传递给后端
+      drugCategory: selectedCategory.value || undefined
+    }
+
+    const data = await StatisticsApi.getRegionStatistics(params)
 
     rawData.value = data
     await nextTick()
@@ -86,6 +106,11 @@ const fetchData = async () => {
   }
 }
 
+const handleCategoryChange = () => {
+  // 分类选择变化时重新获取数据
+  fetchData()
+}
+
 const renderChart = () => {
   if (!chartRef.value) return
 
@@ -93,7 +118,7 @@ const renderChart = () => {
     chartInstance = echarts.init(chartRef.value)
   }
 
-  const data = filteredData.value
+  const data = rawData.value
   const regions = [...new Set(data.map(item => item.regionName))]
 
   // 按地区聚合数据
@@ -190,16 +215,18 @@ const renderChart = () => {
   })
 }
 
-watch([selectedCategory, filteredData], () => {
-  renderChart()
-})
+// 移除对 selectedCategory 和 filteredData 的监听，改为在选择变化时直接重新获取数据
+// watch([selectedCategory, filteredData], () => {
+//   renderChart()
+// })
 
-watch(() => [props.zoneId, props.reportWeek], () => {
+watch(() => [props.zoneId, props.reportWeek, props.areaCode, props.orgIds], () => {
   fetchData()
 })
 
 onMounted(() => {
-  fetchData()
+  // RegionStatisticsChart 组件初始化时不自动加载数据
+  // 等待父组件传递完整参数后由 watch 触发加载
 })
 
 onBeforeUnmount(() => {
@@ -209,24 +236,14 @@ onBeforeUnmount(() => {
 </script>
 
 <style lang="scss" scoped>
-.region-statistics-chart {
-  .card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    .title {
-      font-size: 16px;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
+.chart-card {
+  :deep(.el-card__body) {
+    padding: 16px !important;
   }
+}
 
-  .chart-container {
-    height: 400px;
-    width: 100%;
-  }
+.chart-container {
+  height: 400px;
+  width: 100%;
 }
 </style>

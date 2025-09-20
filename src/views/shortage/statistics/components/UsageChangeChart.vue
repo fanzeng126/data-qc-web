@@ -1,31 +1,32 @@
 <template>
-  <div class="usage-change-chart">
-    <el-card shadow="never">
-      <template #header>
-        <div class="card-header">
-          <span class="title">
-            <Icon icon="ep:trend-charts" />
-            药品使用量环比情况
-          </span>
-          <el-tag type="info" size="small">
-            对比上周: {{ lastWeek }}
-          </el-tag>
-        </div>
-      </template>
-      <div ref="chartRef" class="chart-container" v-loading="loading"></div>
-    </el-card>
-  </div>
+  <ContentWrap
+    title="药品使用量环比情况"
+    message="对比各类药品本期与上期的使用量变化，识别用药需求的增减趋势，支持动态调整采购策略"
+    headerIcon="ep:sort"
+    headerIconColor="#e6a23c"
+    class="chart-card"
+  >
+    <template #header>
+      <el-tag type="info" size="small" class="ml-auto">
+        对比上周: {{ lastWeek }}
+      </el-tag>
+    </template>
+    <div ref="chartRef" class="chart-container" v-loading="loading"></div>
+  </ContentWrap>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, nextTick, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, nextTick, computed } from 'vue'
 import * as echarts from 'echarts'
 import type { EChartsOption } from 'echarts'
 import { StatisticsApi, type UsageChangeVO } from '@/api/shortage/statistics'
+import { ContentWrap } from '@/components/ContentWrap'
 
 const props = defineProps<{
   zoneId?: number | null
   reportWeek?: string
+  areaCode?: string | null
+  orgIds?: number[]
 }>()
 
 const emit = defineEmits<{
@@ -48,11 +49,19 @@ const lastWeek = computed(() => {
 })
 
 const fetchData = async () => {
+  // 如果必要参数为空，不执行请求
+  if (!props.reportWeek) {
+    console.log('等待报告周期参数')
+    return
+  }
+
   loading.value = true
   try {
     const data = await StatisticsApi.getUsageChange({
       zoneId: props.zoneId,
-      reportWeek: props.reportWeek
+      reportWeek: props.reportWeek,
+      areaCode: props.areaCode,
+      orgIds: props.orgIds
     })
 
     await nextTick()
@@ -70,6 +79,60 @@ const renderChart = (data: UsageChangeVO[]) => {
 
   if (!chartInstance) {
     chartInstance = echarts.init(chartRef.value)
+  }
+
+  // 如果没有数据，显示空状态
+  if (!data || data.length === 0) {
+    const option: EChartsOption = {
+      graphic: {
+        type: 'text',
+        left: 'center',
+        top: 'middle',
+        style: {
+          text: '暂无数据',
+          fontSize: 14,
+          fill: '#999'
+        }
+      },
+      grid: {
+        left: '3%',
+        right: '10%',
+        top: '10%',
+        bottom: '15%',
+        containLabel: true
+      },
+      xAxis: {
+        type: 'category',
+        data: []
+      },
+      yAxis: [
+        {
+          type: 'value',
+          name: '使用量(万)',
+          position: 'left'
+        },
+        {
+          type: 'value',
+          name: '变化率(%)',
+          position: 'right'
+        }
+      ],
+      series: [
+        {
+          name: '本周使用量',
+          type: 'bar',
+          data: []
+        },
+        {
+          name: '环比变化率',
+          type: 'line',
+          yAxisIndex: 1,
+          data: []
+        }
+      ]
+    }
+    chartInstance.setOption(option, true)
+    return
   }
 
   // 按变化率排序
@@ -188,7 +251,7 @@ const renderChart = (data: UsageChangeVO[]) => {
     ]
   }
 
-  chartInstance.setOption(option)
+  chartInstance.setOption(option, true)
 
   // 响应式调整
   window.addEventListener('resize', () => {
@@ -196,12 +259,13 @@ const renderChart = (data: UsageChangeVO[]) => {
   })
 }
 
-watch(() => [props.zoneId, props.reportWeek], () => {
+watch(() => [props.zoneId, props.reportWeek, props.areaCode, props.orgIds], () => {
   fetchData()
 })
 
 onMounted(() => {
-  fetchData()
+  // UsageChangeChart 组件初始化时不自动加载数据
+  // 等待父组件传递完整参数后由 watch 触发加载
 })
 
 onBeforeUnmount(() => {
@@ -211,24 +275,14 @@ onBeforeUnmount(() => {
 </script>
 
 <style lang="scss" scoped>
-.usage-change-chart {
-  .card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    .title {
-      font-size: 16px;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
+.chart-card {
+  :deep(.el-card__body) {
+    padding: 16px !important;
   }
+}
 
-  .chart-container {
-    height: 350px;
-    width: 100%;
-  }
+.chart-container {
+  height: 400px;
+  width: 100%;
 }
 </style>

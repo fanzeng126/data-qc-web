@@ -63,7 +63,7 @@
         </el-button>
         <el-button
           v-hasPermi="['system:dict:create']"
-          plain
+          
           type="primary"
           @click="openForm('create')"
         >
@@ -73,7 +73,7 @@
         <el-button
           v-hasPermi="['system:dict:export']"
           :loading="exportLoading"
-          plain
+          
           type="success"
           @click="handleExport"
         >

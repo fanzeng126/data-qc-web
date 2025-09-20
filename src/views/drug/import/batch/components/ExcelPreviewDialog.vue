@@ -1,0 +1,441 @@
+<template>
+  <el-dialog
+    v-model="dialogVisible"
+    :title="dialogTitle"
+    width="90%"
+    :close-on-click-modal="false"
+    :close-on-press-escape="true"
+    class="excel-preview-dialog"
+  >
+    <div v-loading="loading" class="preview-container">
+      <div v-if="!loading && templateInfo" class="excel-content">
+        <!-- Excel预览 -->
+        <div class="excel-preview-section">
+          <el-card shadow="never">
+            <template #header>
+              <div class="preview-header">
+                <div class="header-left">
+                  <Icon icon="ep:view" class="header-icon" />
+                  <span class="header-title">Excel预览</span>
+                </div>
+                <div class="header-actions">
+                  <el-button size="small" @click="toggleExampleData">
+                    <Icon icon="ep:view" class="mr-5px" />
+                    {{ showExampleData ? '隐藏' : '显示' }}示例数据
+                  </el-button>
+                  <el-button size="small" type="primary" @click="downloadTemplate">
+                    <Icon icon="ep:download" class="mr-5px" />
+                    下载模板
+                  </el-button>
+                </div>
+              </div>
+            </template>
+
+            <div class="excel-container">
+              <div class="excel-wrapper">
+                <table class="excel-table">
+                  <tbody>
+                    <!-- 第1行：标题 -->
+                    <tr class="title-row">
+                      <td :colspan="fieldList.length || 1" class="title-cell">
+                        {{ previewData?.titleRow || '模板标题' }}
+                      </td>
+                    </tr>
+
+                    <!-- 第2行：说明 -->
+                    <tr class="description-row">
+                      <td :colspan="fieldList.length || 1" class="description-cell">
+                        {{ previewData?.descriptionRow || '模板说明文本' }}
+                      </td>
+                    </tr>
+
+                    <!-- 第3行：表头 -->
+                    <tr class="header-row">
+                      <td
+                        v-for="field in fieldList"
+                        :key="field.fieldCode"
+                        class="header-cell"
+                        :class="{ required: field.isRequired }"
+                      >
+                        {{ field.fieldName }}
+                      </td>
+                      <td v-if="!fieldList.length" class="placeholder-cell"> 暂无字段配置 </td>
+                    </tr>
+
+                    <!-- 第4行及以后：示例数据 -->
+                    <template v-if="showExampleData">
+                      <tr v-for="(row, rowIndex) in exampleRows" :key="rowIndex" class="example-row">
+                        <td v-for="(value, colIndex) in row" :key="colIndex" class="example-cell">
+                          {{ value }}
+                        </td>
+                        <td v-if="!fieldList.length" class="placeholder-cell"> 示例数据 </td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </el-card>
+        </div>
+      </div>
+
+      <el-empty v-else-if="!loading" description="暂无预览数据" />
+    </div>
+
+    <template #footer>
+      <div class="dialog-footer">
+        <el-button @click="dialogVisible = false">关闭</el-button>
+        <el-button type="primary" @click="downloadTemplate">
+          <Icon icon="ep:download" class="mr-5px" />
+          下载模板
+        </el-button>
+      </div>
+    </template>
+  </el-dialog>
+</template>
+
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+import { ElMessage } from 'element-plus'
+import {
+  ImportTemplateApi,
+  ImportTemplateRespVO,
+  TemplateFieldRespVO,
+  FIELD_TYPE_NAMES,
+  FIELD_TYPE,
+  TABLE_TYPE_NAMES
+} from '@/api/drug/task/template'
+import download from '@/utils/download'
+
+defineOptions({ name: 'ExcelPreviewDialog' })
+
+// ========================= 响应式数据 =========================
+const dialogVisible = ref(false)
+const loading = ref(false)
+const showExampleData = ref(true)
+const currentTemplateId = ref<number>()
+
+const templateInfo = ref<ImportTemplateRespVO>()
+const previewData = ref<any>()
+const fieldList = ref<TemplateFieldRespVO[]>([])
+
+// ========================= 计算属性 =========================
+const dialogTitle = computed(() => {
+  return templateInfo.value
+    ? `Excel 预览 - ${templateInfo.value.templateName}`
+    : 'Excel 预览'
+})
+
+const exampleRows = computed(() => {
+  if (!previewData.value?.exampleRows) {
+    // 生成默认示例数据
+    return Array.from({ length: 3 }, (_, rowIndex) =>
+      fieldList.value.map(
+        (field, colIndex) => field.exampleValue || `示例${rowIndex + 1}-${colIndex + 1}`
+      )
+    )
+  }
+  return previewData.value.exampleRows
+})
+
+// ========================= 方法 =========================
+
+/** 打开弹框 */
+const open = async (templateId: number) => {
+  dialogVisible.value = true
+  currentTemplateId.value = templateId
+  await loadPreviewData()
+}
+
+/** 加载预览数据 */
+const loadPreviewData = async () => {
+  if (!currentTemplateId.value) return
+
+  loading.value = true
+  try {
+    const response = await ImportTemplateApi.previewImportTemplate(currentTemplateId.value)
+
+    // 修复数据结构映射
+    templateInfo.value = {
+      ...response.template,
+      tableTypeName: getTableTypeName(response.template.tableType), // 添加表类型名称
+      statusText: response.template.status ? '启用' : '禁用'
+    }
+
+    // 修复 previewData 结构
+    previewData.value = {
+      titleRow: response.previewData[0]?.[0] || '模板标题',
+      descriptionRow: response.previewData[1]?.[0] || '模板说明文本',
+      headerRow: response.previewData[2] || [],
+      exampleRows: response.previewData.slice(3) || []
+    }
+
+    // 修复字段列表映射，并转换字段类型
+    fieldList.value = (response.fields || []).map((field) => ({
+      ...field,
+      fieldType: convertFieldType(field.fieldType), // 转换字段类型
+      isRequired: field.isRequired || false
+    }))
+  } catch (error) {
+    console.error('加载预览数据失败:', error)
+    ElMessage.error('加载预览数据失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 添加字段类型转换函数
+const convertFieldType = (apiFieldType: string) => {
+  const typeMapping = {
+    STRING: FIELD_TYPE.TEXT,
+    INTEGER: FIELD_TYPE.NUMBER,
+    DECIMAL: FIELD_TYPE.DECIMAL,
+    DATE: FIELD_TYPE.DATE,
+    DATETIME: FIELD_TYPE.DATE,
+    BOOLEAN: FIELD_TYPE.BOOLEAN
+  }
+  return typeMapping[apiFieldType] || FIELD_TYPE.TEXT
+}
+
+// 添加获取表类型名称的函数
+const getTableTypeName = (tableType: number): string => {
+  return TABLE_TYPE_NAMES[tableType] || '未知类型'
+}
+
+/** 切换示例数据显示 */
+const toggleExampleData = () => {
+  showExampleData.value = !showExampleData.value
+}
+
+/** 下载模板 */
+const downloadTemplate = async () => {
+  if (!currentTemplateId.value) return
+
+  try {
+    // 使用默认参数直接下载模板
+    const data = await ImportTemplateApi.downloadImportTemplateBlob(
+      currentTemplateId.value,
+      true,  // includeExampleData - 默认包含示例数据
+      3,     // exampleRows - 默认3行
+      'xlsx', // fileFormat - 默认xlsx格式
+      true,  // includeValidation - 默认包含验证规则
+      true,  // freezeHeader - 默认冻结表头
+      true,  // autoColumnWidth - 默认自动调整列宽
+      false  // includeDropdown - 默认不包含下拉选项
+    )
+
+    // 获取文件名
+    const fileName = templateInfo.value
+      ? `${templateInfo.value.templateName}_导入模板.xlsx`
+      : '导入模板.xlsx'
+
+    // 触发下载
+    download.excel(data, fileName)
+
+    ElMessage.success('模板下载成功')
+  } catch (error) {
+    console.error('下载失败:', error)
+    ElMessage.error('下载失败，请重试')
+  }
+}
+
+// ========================= 暴露方法 =========================
+defineExpose({
+  open
+})
+</script>
+
+<style scoped>
+.excel-preview-dialog {
+  --dialog-width: 90%;
+}
+
+.preview-container {
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+/* 各个区块 */
+.excel-preview-section {
+  margin-bottom: 20px;
+}
+
+.excel-preview-section:last-child {
+  margin-bottom: 0;
+}
+
+/* 头部样式 */
+.preview-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preview-header {
+  justify-content: space-between;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-icon {
+  font-size: 16px;
+  color: #409eff;
+}
+
+.header-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* 模板信息已移除 */
+
+/* Excel预览 */
+.excel-container {
+  border: 1px solid #e4e7ed;
+  border-radius: 6px;
+  overflow: hidden;
+  background: white;
+}
+
+.excel-wrapper {
+  overflow-x: auto;
+}
+
+.excel-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  min-width: 600px;
+}
+
+.excel-table td {
+  border: 1px solid #d0d7de;
+  padding: 8px 12px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.title-row .title-cell {
+  background: #f6f8fa;
+  font-weight: 700;
+  font-size: 14px;
+  color: #24292f;
+  text-align: center;
+}
+
+.description-row .description-cell {
+  background: #ffffff;
+  color: #656d76;
+  text-align: left;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  padding: 12px 16px;
+}
+
+.header-row .header-cell {
+  background: #f5f7fa;
+  color: #303133;
+  font-weight: 600;
+  text-align: center;
+  position: relative;
+  white-space: nowrap;
+  min-width: 100px;
+}
+
+.header-row .header-cell.required {
+  color: #f56c6c;
+}
+
+.example-row .example-cell {
+  background: #f6f8fa;
+  color: #656d76;
+  font-style: italic;
+}
+
+.placeholder-cell {
+  background: #fafbfc;
+  color: #8b949e;
+  font-style: italic;
+}
+
+/* 弹窗底部 */
+.dialog-footer {
+  display: flex;
+  justify-content: end;
+  gap: 12px;
+}
+
+.mr-5px {
+  margin-right: 5px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .excel-preview-dialog {
+    --dialog-width: 95vw;
+  }
+
+  .preview-container {
+    max-height: 70vh;
+  }
+
+  .preview-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .excel-table {
+    min-width: 400px;
+  }
+
+  .dialog-footer {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+}
+
+/* 卡片样式优化 */
+:deep(.el-card) {
+  border: none;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+}
+
+:deep(.el-card__header) {
+  background: #fafbfc;
+  border-bottom: 1px solid #e1e4e8;
+  padding: 16px 20px;
+}
+
+:deep(.el-card__body) {
+  padding: 20px;
+}
+
+/* 标签样式 */
+:deep(.el-tag) {
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+/* 按钮样式 */
+:deep(.el-button) {
+  border-radius: 6px;
+  font-weight: 500;
+}
+</style>

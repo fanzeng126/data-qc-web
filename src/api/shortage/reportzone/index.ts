@@ -15,9 +15,9 @@ export interface ReportZoneVO {
 
 // 短缺药品填报专区 API
 export const ReportZoneApi = {
-  // 查询短缺药品填报专区分页
-  getPage: async (params: any) => {
-    return await request.get({ url: `/shortage/report-zone/page`, params })
+  // 查询短缺药品填报专区
+  getList: async (params: any) => {
+    return await request.get({ url: `/shortage/report-zone/list`, params })
   },
 
   // 查询短缺药品填报专区详情

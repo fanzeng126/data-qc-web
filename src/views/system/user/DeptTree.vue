@@ -28,13 +28,21 @@ import { defaultProps, handleTree } from '@/utils/tree'
 
 defineOptions({ name: 'SystemUserDeptTree' })
 
+interface Props {
+  regionId?: number
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  regionId: undefined
+})
+
 const deptName = ref('')
 const deptList = ref<Tree[]>([]) // 树形结构
 const treeRef = ref<InstanceType<typeof ElTree>>()
 
 /** 获得部门树 */
 const getTree = async () => {
-  const res = await DeptApi.getSimpleDeptList()
+  const res = await DeptApi.getSimpleDeptList(props.regionId)
   deptList.value = []
   deptList.value.push(...handleTree(res))
 }
@@ -55,6 +63,11 @@ const emits = defineEmits(['node-click'])
 watch(deptName, (val) => {
   treeRef.value!.filter(val)
 })
+
+/** 监听regionId变化，重新获取部门树 */
+watch(() => props.regionId, async () => {
+  await getTree()
+}, { immediate: false })
 
 /** 初始化 */
 onMounted(async () => {

@@ -21,6 +21,10 @@ const download = {
   word: (data: Blob, fileName: string) => {
     download0(data, fileName, 'application/msword')
   },
+  // 下载 Word docx 方法
+  docx: (data: Blob, fileName: string) => {
+    download0(data, fileName, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
+  },
   // 下载 Zip 方法
   zip: (data: Blob, fileName: string) => {
     download0(data, fileName, 'application/zip')

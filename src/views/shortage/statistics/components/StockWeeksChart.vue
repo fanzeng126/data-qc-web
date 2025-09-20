@@ -1,29 +1,32 @@
 <template>
-  <div class="stock-weeks-chart">
-    <el-card shadow="never">
-      <template #header>
-        <div class="card-header">
-          <span class="title">
-            <Icon icon="ep:data-analysis" />
-            药品库存可用周数
-          </span>
-          <span class="subtitle">{{ reportWeek }}</span>
-        </div>
-      </template>
-      <div ref="chartRef" class="chart-container" v-loading="loading"></div>
-    </el-card>
-  </div>
+  <ContentWrap
+    title="药品库存可用周数"
+    message="分析各类药品的库存可用周数，结合医院库存和企业库存，评估药品供应保障能力"
+    headerIcon="ep:calendar"
+    headerIconColor="#409eff"
+    class="chart-card"
+  >
+    <template #header>
+      <el-tag size="small" class="ml-auto">
+        {{ reportWeek }}
+      </el-tag>
+    </template>
+    <div ref="chartRef" class="chart-container" v-loading="loading"></div>
+  </ContentWrap>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import type { EChartsOption } from 'echarts'
 import { StatisticsApi, type StockWeeksStatisticsVO } from '@/api/shortage/statistics'
+import { ContentWrap } from '@/components/ContentWrap'
 
 const props = defineProps<{
   zoneId?: number | null
   reportWeek?: string
+  areaCode?: string | null
+  orgIds?: number[]
 }>()
 
 const emit = defineEmits<{
@@ -35,11 +38,19 @@ const loading = ref(false)
 let chartInstance: echarts.ECharts | null = null
 
 const fetchData = async () => {
+  // 如果必要参数为空，不执行请求
+  if (!props.reportWeek) {
+    console.log('等待报告周期参数')
+    return
+  }
+
   loading.value = true
   try {
     const data = await StatisticsApi.getStockWeeks({
       zoneId: props.zoneId,
-      reportWeek: props.reportWeek
+      reportWeek: props.reportWeek,
+      areaCode: props.areaCode,
+      orgIds: props.orgIds
     })
 
     await nextTick()
@@ -171,12 +182,13 @@ const renderChart = (data: StockWeeksStatisticsVO[]) => {
   })
 }
 
-watch(() => [props.zoneId, props.reportWeek], () => {
+watch(() => [props.zoneId, props.reportWeek, props.areaCode, props.orgIds], () => {
   fetchData()
 })
 
 onMounted(() => {
-  fetchData()
+  // StockWeeksChart 组件初始化时不自动加载数据
+  // 等待父组件传递完整参数后由 watch 触发加载
 })
 
 onBeforeUnmount(() => {
@@ -186,29 +198,14 @@ onBeforeUnmount(() => {
 </script>
 
 <style lang="scss" scoped>
-.stock-weeks-chart {
-  .card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    .title {
-      font-size: 16px;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .subtitle {
-      color: var(--el-text-color-secondary);
-      font-size: 14px;
-    }
+.chart-card {
+  :deep(.el-card__body) {
+    padding: 16px !important;
   }
+}
 
-  .chart-container {
-    height: 350px;
-    width: 100%;
-  }
+.chart-container {
+  height: 400px;
+  width: 100%;
 }
 </style>

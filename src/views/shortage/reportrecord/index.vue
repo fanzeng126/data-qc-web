@@ -26,9 +26,9 @@
           class="!w-240px"
         />
       </el-form-item>
-      <el-form-item label="机构ID" prop="orgId">
+      <el-form-item label="机构ID" prop="deptId">
         <el-input
-          v-model="queryParams.orgId"
+          v-model="queryParams.deptId"
           placeholder="请输入机构ID"
           clearable
           @keyup.enter="handleQuery"
@@ -124,7 +124,7 @@
       <el-table-column label="编码" align="center" prop="id" />
       <el-table-column label="专区ID" align="center" prop="zoneId" />
       <el-table-column label="药品配置ID" align="center" prop="drugConfigId" />
-      <el-table-column label="机构ID" align="center" prop="orgId" />
+      <el-table-column label="机构ID" align="center" prop="deptId" />
       <el-table-column label="填报周期(YYYY-WW)" align="center" prop="reportWeek" />
       <el-table-column label="填报日期" align="center" prop="reportDate" />
       <el-table-column label="本周累计使用量" align="center" prop="weekUsageAmount" />
@@ -191,7 +191,7 @@ const queryParams = reactive({
   pageSize: 10,
   zoneId: undefined,
   drugConfigId: undefined,
-  orgId: undefined,
+  deptId: undefined,
   reportWeek: undefined,
   reportDate: [],
   weekUsageAmount: undefined,

@@ -136,7 +136,7 @@
           </el-form-item>
         </el-form>
 
-        <!-- 文件要求说明 - 优化为居中展示 -->
+        <!-- 文件要求说明 -->
         <div class="requirements-section">
           <el-alert title="导入文件要求" type="info" :closable="false" class="requirements-alert">
             <template #default>
@@ -160,8 +160,9 @@
                         <div class="file-card-title">{{ table.fileName }}</div>
                       </div>
                       <div class="file-card-content">
-                        <div class="file-card-name">{{ table.name }}</div>
-                        <div class="file-card-desc">{{ table.description }}</div>
+                        <div class="file-card-name">
+                          <dict-tag :type="DICT_TYPE.IMPORT_TABLE_TYPE" :value="table.type" />
+                        </div>
                         <div class="file-card-stats">
                           <span class="field-count">{{ table.fieldCount }} 个字段</span>
                           <span class="required-fields"
@@ -520,8 +521,8 @@
       </el-button>
     </div>
 
-    <!-- 模板预览弹窗 -->
-    <TemplatePreviewDialog ref="templatePreviewRef" />
+    <!-- Excel预览弹窗 -->
+    <ExcelPreviewDialog ref="excelPreviewRef" />
   </div>
 </template>
 
@@ -543,10 +544,12 @@ import {
 import type { FormInstance, FormRules, UploadFile } from 'element-plus'
 import { DrugBatchImportApi } from '@/api/drug/task'
 import { ImportTemplateApi } from '@/api/drug/task/template'
+import download from '@/utils/download'
 
 // 导入优化后的PageHeader组件
 import PageHeader from '@/components/PageHeader/index.vue'
-import TemplatePreviewDialog from '@/views/drug/import/template/components/TemplatePreviewDialog.vue'
+import ExcelPreviewDialog from './components/ExcelPreviewDialog.vue'
+import DictTag from '@/components/DictTag/src/DictTag.vue'
 import { getDictLabel, DICT_TYPE, getDictOptions } from '@/utils/dict'
 
 /** 组件名称定义 */
@@ -565,7 +568,7 @@ const importing = ref(false)
 
 const uploadFormRef = ref<FormInstance>()
 const uploadRef = ref()
-const templatePreviewRef = ref()
+const excelPreviewRef = ref()
 
 /** 上传表单数据 */
 const uploadForm = reactive({
@@ -613,7 +616,7 @@ const loadTemplateDefinitions = async () => {
     loadingTemplates.value = true
 
     // 获取TABLE_TYPE=1（前置质控）的模板列表
-    const templates = await ImportTemplateApi.getImportTemplateListByTableType(1)
+    const templates = await ImportTemplateApi.getImportTemplateListByTableType()
 
     // 为每个模板获取字段统计信息
     const templatePromises = templates.map(async (template: any) => {
@@ -627,9 +630,8 @@ const loadTemplateDefinitions = async () => {
 
         return {
           id: template.id,
-          name: template.templateName,
-          fileName: template.templateName + '_导入模板.xlsx',
-          description: template.titleText || '数据导入模板',
+          fileName: template.templateName + '.xlsx',
+          type: template.tableType,
           fieldCount: template.fieldCount || fields.length,
           downloadCount: template.downloadCount || 0,
           requiredFieldsCount: requiredFields.length,
@@ -683,7 +685,7 @@ const loadTemplateDefinitions = async () => {
 
 /** 预览模板 */
 const previewTemplate = (templateId: number) => {
-  templatePreviewRef.value?.open(templateId)
+  excelPreviewRef.value?.open(templateId)
 }
 
 /** 处理文件改变 */
@@ -813,18 +815,20 @@ const startImport = async () => {
 
 /** 下载模板 */
 const downloadTemplate = async () => {
-  const downloadUrl = 'http://cdn.fangliyun.com/drug-data-guard-suite/药品数据导入模板_2024.zip'
+  try {
+    // ElMessage.loading('正在生成标准模板压缩包...')
 
-  // 创建隐藏的 a 标签进行下载
-  const link = document.createElement('a')
-  link.href = downloadUrl
-  link.download = '药品数据导入模板_2024.zip' // 指定下载文件名
-  link.style.display = 'none'
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
+    // 调用后端接口下载标准模板压缩包
+    const data = await ImportTemplateApi.downloadStandardTemplatesZip()
 
-  ElMessage.success('模板开始下载')
+    // 使用download工具下载ZIP文件
+    download.zip(data, '标准导入模板.zip')
+
+    ElMessage.success('标准模板压缩包下载成功')
+  } catch (error) {
+    console.error('下载失败:', error)
+    ElMessage.error('下载失败，请重试')
+  }
 }
 
 /** 返回上一页 */
@@ -1068,7 +1072,7 @@ const getDataQualityText = (quality: string): string => {
   border: 1px solid #e4e7ed;
   border-radius: 8px;
   padding: 20px;
-  width: 280px; /* 固定宽度以支持横向滚动 */
+  width: 240px; /* 缩短卡片宽度 */
   flex-shrink: 0; /* 防止卡片被压缩 */
   transition: all 0.3s ease;
   cursor: pointer;
@@ -1379,7 +1383,7 @@ const getDataQualityText = (quality: string): string => {
   }
 
   .file-card {
-    width: 260px; /* 小屏幕下稍微减小卡片宽度 */
+    width: 220px; /* 小屏幕下适当减小卡片宽度 */
   }
 
   .template-download-section {
@@ -1397,7 +1401,7 @@ const getDataQualityText = (quality: string): string => {
 
 @media (min-width: 1200px) {
   .file-card {
-    width: 300px; /* 大屏幕下增大卡片宽度 */
+    width: 260px; /* 大屏幕下增大卡片宽度 */
   }
 }
 

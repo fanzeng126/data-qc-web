@@ -381,6 +381,18 @@ const remainingRouter: AppRouteRecordRaw[] = [
         }
       },
       {
+        path: 'report-submission',
+        name: 'DrugReportSubmission',
+        component: () => import('@/views/drug/report/submission/index.vue'),
+        meta: {
+          title: '数据上报',
+          icon: 'ep:upload',
+          noCache: false,
+          canTo: true,
+          hidden: false
+        }
+      },
+      {
         path: 'monitor/:id',
         name: 'DrugImportMonitor',
         component: () => import('@/views/drug/import/monitor/index.vue'),

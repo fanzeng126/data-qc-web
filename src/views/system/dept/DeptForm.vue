@@ -51,22 +51,38 @@
         </el-select>
       </el-form-item>
       
-      <!-- 机构扩展信息 -->
-      <el-form-item label="行政区域">
-        <el-input v-model="formData.deptExt.areaCode" placeholder="请输入行政区域代码" />
+      <!-- 区域信息 -->
+      <el-form-item label="区域ID">
+        <el-input-number v-model="formData.regionId" placeholder="请输入区域ID" />
+      </el-form-item>
+      <el-form-item label="区域编码">
+        <el-input v-model="formData.regionCode" placeholder="请输入区域编码" />
+      </el-form-item>
+      <el-form-item label="区域路径">
+        <el-input v-model="formData.regionPath" placeholder="请输入区域路径" />
+      </el-form-item>
+
+      <!-- 机构信息 -->
+      <el-form-item label="医疗机构ID">
+        <el-input v-model="formData.institutionId" placeholder="请输入医疗机构ID" />
       </el-form-item>
       <el-form-item label="机构类别">
-        <el-select v-model="formData.deptExt.institutionCategory" clearable placeholder="请选择机构类别">
+        <el-select v-model="formData.institutionCategory" clearable placeholder="请选择机构类别">
           <el-option label="医院(A)" value="A" />
           <el-option label="社区卫生服务中心(B1)" value="B1" />
           <el-option label="乡镇卫生院(C)" value="C" />
         </el-select>
       </el-form-item>
-      <el-form-item label="信用代码">
-        <el-input v-model="formData.deptExt.socialCreditCode" placeholder="请输入统一社会信用代码" />
-      </el-form-item>
       <el-form-item label="医院等级">
-        <el-input v-model="formData.deptExt.hospitalLevel" placeholder="请输入医院等级" />
+        <el-input v-model="formData.hospitalLevel" placeholder="请输入医院等级" />
+      </el-form-item>
+
+      <!-- 联络员信息 -->
+      <el-form-item label="联络员">
+        <el-input v-model="formData.contactPerson" placeholder="请输入联络员姓名" />
+      </el-form-item>
+      <el-form-item label="联络员手机">
+        <el-input v-model="formData.contactPhone" maxlength="11" placeholder="请输入联络员手机号" />
       </el-form-item>
     </el-form>
     <template #footer>
@@ -79,7 +95,6 @@
 import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
 import { defaultProps, handleTree } from '@/utils/tree'
 import * as DeptApi from '@/api/system/dept'
-import * as DeptExtApi from '@/api/system/dept/deptext'
 import * as UserApi from '@/api/system/user'
 import { CommonStatusEnum } from '@/utils/constants'
 import { FormRules } from 'element-plus'
@@ -103,17 +118,15 @@ const formData = ref({
   phone: undefined,
   email: undefined,
   status: CommonStatusEnum.ENABLE,
-  // 机构扩展数据
-  deptExt: {
-    id: undefined,
-    deptId: undefined,
-    deptType: undefined,
-    areaCode: undefined,
-    institutionId: undefined,
-    institutionCategory: undefined,
-    socialCreditCode: undefined,
-    hospitalLevel: undefined
-  }
+  // 新增字段
+  regionId: undefined,
+  regionCode: undefined,
+  regionPath: undefined,
+  institutionId: undefined,
+  institutionCategory: undefined,
+  hospitalLevel: undefined,
+  contactPerson: undefined,
+  contactPhone: undefined
 })
 const formRules = reactive<FormRules>({
   parentId: [{ required: true, message: '上级机构不能为空', trigger: 'blur' }],
@@ -142,28 +155,7 @@ const open = async (type: string, id?: number) => {
       // 获取部门基本信息
       const deptData = await DeptApi.getDept(id)
       formData.value = {
-        ...deptData,
-        deptExt: {
-          id: undefined,
-          deptId: undefined,
-          deptType: undefined,
-          areaCode: undefined,
-          institutionId: undefined,
-          institutionCategory: undefined,
-          socialCreditCode: undefined,
-          hospitalLevel: undefined
-        }
-      }
-      
-      // 获取部门扩展信息
-      try {
-        const extData = await DeptExtApi.getDeptExtByDeptId(id)
-        if (extData) {
-          formData.value.deptExt = extData
-        }
-      } catch (error) {
-        // 如果没有扩展信息，保持默认值
-        console.log('该部门暂无扩展信息')
+        ...deptData
       }
     } finally {
       formLoading.value = false
@@ -198,25 +190,8 @@ const submitForm = async () => {
       message.success(t('common.updateSuccess'))
     }
     
-    // 处理扩展数据
-    if (formData.value.deptExt && (
-      formData.value.deptExt.deptType || 
-      formData.value.deptExt.institutionId || 
-      formData.value.deptExt.areaCode ||
-      formData.value.deptExt.institutionCategory
-    )) {
-      const extData = { ...formData.value.deptExt }
-      extData.deptId = deptId
-      
-      if (extData.id) {
-        // 更新扩展信息
-        await DeptExtApi.updateDeptExt(extData)
-      } else {
-        // 创建扩展信息
-        await DeptExtApi.createDeptExt(extData)
-      }
-    }
-    
+    // 处理扩展数据 - 现在直接使用部门主表数据
+
     dialogVisible.value = false
     // 发送操作成功的事件
     emit('success')
@@ -237,17 +212,14 @@ const resetForm = () => {
     phone: undefined,
     email: undefined,
     status: CommonStatusEnum.ENABLE,
-    // 机构扩展数据
-    deptExt: {
-      id: undefined,
-      deptId: undefined,
-      deptType: undefined,
-      areaCode: undefined,
-      institutionId: undefined,
-      institutionCategory: undefined,
-      socialCreditCode: undefined,
-      hospitalLevel: undefined
-    }
+    regionId: undefined,
+    regionCode: undefined,
+    regionPath: undefined,
+    institutionId: undefined,
+    institutionCategory: undefined,
+    hospitalLevel: undefined,
+    contactPerson: undefined,
+    contactPhone: undefined
   }
   formRef.value?.resetFields()
 }

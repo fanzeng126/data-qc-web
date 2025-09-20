@@ -72,10 +72,10 @@
           >
             <el-option label="全部" value="" />
             <el-option
-              v-for="(name, type) in TABLE_TYPE_NAMES"
-              :key="type"
-              :label="name"
-              :value="Number(type)"
+              v-for="dict in getStrDictOptions(DICT_TYPE.IMPORT_TABLE_TYPE)"
+              :key="dict.value"
+              :label="dict.label"
+              :value="dict.value"
             />
           </el-select>
         </el-form-item>
@@ -92,14 +92,21 @@
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button @click="handleQuery"><Icon icon="ep:search" class="mr-5px" /> 搜索</el-button>
-          <el-button @click="resetQuery"><Icon icon="ep:refresh" class="mr-5px" /> 重置</el-button>
+          <el-button @click="handleQuery">
+            <Icon icon="ep:search" class="mr-5px" />
+            搜索
+          </el-button>
+          <el-button @click="resetQuery">
+            <Icon icon="ep:refresh" class="mr-5px" />
+            重置
+          </el-button>
           <el-button
             type="primary"
             @click="openForm('create')"
             v-hasPermi="['drug:import-template:create']"
           >
-            <Icon icon="ep:plus" class="mr-5px" /> 新增
+            <Icon icon="ep:plus" class="mr-5px" />
+            新增
           </el-button>
           <el-button
             type="success"
@@ -107,7 +114,8 @@
             :loading="exportLoading"
             v-hasPermi="['drug:import-template:export']"
           >
-            <Icon icon="ep:download" class="mr-5px" /> 导出
+            <Icon icon="ep:download" class="mr-5px" />
+            导出
           </el-button>
         </el-form-item>
       </el-form>
@@ -131,8 +139,8 @@
           </template>
         </el-table-column>
         <el-table-column label="表类型" align="center" prop="tableType" min-width="120px">
-          <template #default="{ row }">
-            <el-tag effect="plain" type="info">{{ getTableTypeName(row.tableType) }}</el-tag>
+          <template #default="scope">
+            <dict-tag :type="DICT_TYPE.IMPORT_TABLE_TYPE" :value="scope.row.tableType" />
           </template>
         </el-table-column>
         <el-table-column label="字段数量" align="center" prop="fieldCount">
@@ -240,11 +248,11 @@
 import { onMounted, reactive, ref } from 'vue'
 import { dateFormatter } from '@/utils/formatTime'
 import download from '@/utils/download'
+import {DICT_TYPE, getIntDictOptions, getDictLabel, getStrDictOptions} from '@/utils/dict'
 import {
   ImportTemplateApi,
   ImportTemplatePageReqVO,
   ImportTemplateRespVO,
-  TABLE_TYPE_NAMES,
   TemplateStatisticsVO
 } from '@/api/drug/task/template'
 // 导入组件
@@ -253,6 +261,7 @@ import StatCard from '@/components/StatCard/index.vue'
 import ImportTemplateForm from './ImportTemplateForm.vue'
 import TemplatePreviewDialog from './components/TemplatePreviewDialog.vue'
 import TemplateDownloadDialog from './components/TemplateDownloadDialog.vue'
+import DictTag from '../../../../components/DictTag/src/DictTag.vue'
 
 defineOptions({ name: 'ImportTemplate' })
 
@@ -432,11 +441,6 @@ const formatNumber = (num: number | undefined): string => {
     return (num / 10000).toFixed(1) + 'w'
   }
   return num.toLocaleString()
-}
-
-/** 获取表类型名称 */
-const getTableTypeName = (tableType: number): string => {
-  return TABLE_TYPE_NAMES[tableType] || '未知'
 }
 </script>
 

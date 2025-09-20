@@ -51,10 +51,10 @@
                   style="width: 100%"
                 >
                   <el-option
-                    v-for="(name, type) in TABLE_TYPE_NAMES"
-                    :key="type"
-                    :label="name"
-                    :value="Number(type)"
+                    v-for="dict in getStrDictOptions(DICT_TYPE.IMPORT_TABLE_TYPE)"
+                    :key="dict.value"
+                    :label="dict.label"
+                    :value="dict.value"
                   />
                 </el-select>
               </el-form-item>
@@ -315,12 +315,12 @@
 import { computed, nextTick, reactive, ref } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import draggable from 'vuedraggable'
+import {DICT_TYPE, getIntDictOptions, getStrDictOptions} from '@/utils/dict'
 import {
   FIELD_TYPE,
   FIELD_TYPE_NAMES,
   ImportTemplateApi,
   ImportTemplateSaveReqVO,
-  TABLE_TYPE_NAMES,
   TemplateFieldApi,
   TemplateFieldSaveReqVO
 } from '@/api/drug/task/template'
@@ -343,7 +343,7 @@ const selectedFields = ref<(number | string)[]>([])
 const formData = ref<ImportTemplateSaveReqVO>({
   templateName: '',
   templateCode: '',
-  tableType: 1,
+  tableType: '',
   titleText: '',
   descriptionText: '',
   status: true,
@@ -484,7 +484,7 @@ const resetForm = () => {
   formData.value = {
     templateName: '',
     templateCode: '',
-    tableType: 1,
+    tableType: '',
     titleText: '',
     descriptionText: '',
     status: true,
@@ -538,12 +538,12 @@ const handleFieldEdit = (field: TemplateFieldSaveReqVO, index?: number) => {
     const currentField = formData.value.fields![index]
     const oldSortOrder = currentField.sortOrder
     const newSortOrder = field.sortOrder
-    
+
     // 如果排序序号发生变化，需要调整其他字段的序号
     if (oldSortOrder !== newSortOrder) {
       // 更新当前字段信息
       formData.value.fields![index] = { ...field }
-      
+
       // 调整其他字段的序号
       formData.value.fields!.forEach((f, i) => {
         if (i !== index) {
@@ -560,7 +560,7 @@ const handleFieldEdit = (field: TemplateFieldSaveReqVO, index?: number) => {
           }
         }
       })
-      
+
       // 重新排序字段
       reorderFieldsBySortOrder()
     } else {
@@ -572,16 +572,16 @@ const handleFieldEdit = (field: TemplateFieldSaveReqVO, index?: number) => {
     if (!formData.value.fields) {
       formData.value.fields = []
     }
-    
+
     const newSortOrder = field.sortOrder
-    
+
     // 调整现有字段的序号
     formData.value.fields.forEach((f) => {
       if (f.sortOrder >= newSortOrder) {
         f.sortOrder += 1
       }
     })
-    
+
     formData.value.fields.push({ ...field })
     // 重新排序字段
     reorderFieldsBySortOrder()
@@ -593,7 +593,7 @@ const reorderFieldsBySortOrder = () => {
   if (!formData.value.fields || formData.value.fields.length === 0) {
     return
   }
-  
+
   // 直接按 sortOrder 排序，保持用户输入的序号
   formData.value.fields.sort((a, b) => a.sortOrder - b.sortOrder)
 }
