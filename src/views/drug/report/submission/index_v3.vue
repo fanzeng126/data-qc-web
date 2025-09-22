@@ -33,7 +33,7 @@
       <template #header>
         <el-button
           v-if="currentStep === 5 && currentTask.status === 3"
-          type="success"
+          type="notifySuccess"
           size="small"
           @click="downloadReports"
         >
@@ -107,77 +107,92 @@
       <div v-if="currentStep === 0" class="step-content">
         <!-- 文件要求说明 -->
         <div class="requirements-section">
-          <div class="requirements-content">
-            <div class="requirements-header">
-              <h3 class="requirements-title">压缩包必须包含以下5个Excel文件</h3>
-              <p class="requirements-subtitle">请确保文件名称和内容格式完全符合要求</p>
-            </div>
-            <div class="file-list-container">
-              <div class="file-grid">
-                <div
-                  v-for="(table, key) in tableDefinitions"
-                  :key="key"
-                  class="file-card"
-                  @click="previewTemplate(table.id)"
-                >
-                  <div class="file-card-header">
-                    <el-icon class="file-card-icon" :style="{ color: table.color }">
-                      <Files />
-                    </el-icon>
-                    <div class="file-card-title">{{ table.fileName }}</div>
-                  </div>
-                  <div class="file-card-content">
-                    <div class="file-card-name">
-                      <dict-tag :type="DICT_TYPE.IMPORT_TABLE_TYPE" :value="table.type" />
-                    </div>
-                    <div class="file-card-stats">
-                      <span class="field-count">{{ table.fieldCount }} 个字段</span>
-                      <span class="required-fields"
-                        >{{ table.requiredFieldsCount || 0 }} 个必填</span
-                      >
-                      <span class="download-count">{{ table.downloadCount || 0 }} 次下载</span>
+          <el-alert title="导入文件要求" type="info" :closable="false" class="requirements-alert">
+            <template #default>
+              <div class="requirements-content">
+                <div class="requirements-header">
+                  <h3 class="requirements-title">压缩包必须包含以下5个Excel文件</h3>
+
+                  <p class="requirements-subtitle">请确保文件名称和内容格式完全符合要求</p>
+                </div>
+                <div class="file-list-container">
+                  <div class="file-grid">
+                    <div
+                      v-for="(table, key) in tableDefinitions"
+                      :key="key"
+                      class="file-card"
+                      @click="previewTemplate(table.id)"
+                    >
+                      <div class="file-card-header">
+                        <el-icon class="file-card-icon" :style="{ color: table.color }">
+                          <Files />
+                        </el-icon>
+                        <div class="file-card-title">{{ table.fileName }}</div>
+                      </div>
+                      <div class="file-card-content">
+                        <div class="file-card-name">
+                          <dict-tag :type="DICT_TYPE.IMPORT_TABLE_TYPE" :value="table.type" />
+                        </div>
+                        <div class="file-card-stats">
+                          <span class="field-count">{{ table.fieldCount }} 个字段</span>
+                          <span class="required-fields"
+                            >{{ table.requiredFieldsCount || 0 }} 个必填</span
+                          >
+                          <span class="download-count">{{ table.downloadCount || 0 }} 次下载</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            <div class="requirements-tips">
-              <div class="tip-item">
-                <el-icon class="tip-icon success">
-                  <CircleCheck />
-                </el-icon>
-                <span>文件格式：Excel (.xlsx) 文件，UTF-8编码</span>
-              </div>
-              <div class="tip-item">
-                <el-icon class="tip-icon warning">
-                  <Warning />
-                </el-icon>
-                <span>字段要求：必填字段不能为空，可选字段可为空</span>
-              </div>
-              <div class="tip-item">
-                <el-icon class="tip-icon info">
-                  <InfoFilled />
-                </el-icon>
-                <span>数据质量：建议数据完整性超过90%以获得最佳导入效果</span>
-              </div>
-            </div>
+                <div class="requirements-tips">
+                  <div class="tip-item">
+                    <el-icon class="tip-icon notifySuccess">
+                      <CircleCheck />
+                    </el-icon>
+                    <span>文件格式：Excel (.xlsx) 文件，UTF-8编码</span>
+                  </div>
+                  <div class="tip-item">
+                    <el-icon class="tip-icon warning">
+                      <Warning />
+                    </el-icon>
+                    <span>字段要求：必填字段不能为空，可选字段可为空</span>
+                  </div>
+                  <div class="tip-item">
+                    <el-icon class="tip-icon info">
+                      <InfoFilled />
+                    </el-icon>
+                    <span>数据质量：建议数据完整性超过90%以获得最佳导入效果</span>
+                  </div>
+                </div>
 
-            <div class="prepare-actions">
-              <el-button @click="downloadTemplate">
-                <el-icon>
-                  <Download />
-                </el-icon>
-                下载标准模板压缩包
-              </el-button>
-              <el-button type="primary" @click="startUpload">
-                <el-icon>
-                  <Upload />
-                </el-icon>
-                开始上传文件
-              </el-button>
-            </div>
-          </div>
+                <div class="prepare-actions">
+                  <el-button @click="downloadTemplate">
+                    <el-icon>
+                      <Download />
+                    </el-icon>
+                    下载标准模板压缩包
+                  </el-button>
+                  <el-button type="primary" @click="startUpload">
+                    <el-icon>
+                      <Upload />
+                    </el-icon>
+                    开始上传文件
+                  </el-button>
+                </div>
+
+                <!-- 演示用的下一步按钮 -->
+                <div class="demo-next-step">
+                  <el-button type="notifySuccess" @click="demoNextStep(1)">
+                    <el-icon>
+                      <Right />
+                    </el-icon>
+                    上传文件
+                  </el-button>
+                </div>
+              </div>
+            </template>
+          </el-alert>
         </div>
       </div>
 
@@ -221,7 +236,7 @@
               <el-table-column prop="status" label="状态" width="120">
                 <template #default="{ row }">
                   <div class="file-status">
-                    <el-icon v-if="row.status === 'uploaded'" class="status-icon success">
+                    <el-icon v-if="row.status === 'uploaded'" class="status-icon notifySuccess">
                       <CircleCheck />
                     </el-icon>
                     <el-icon v-else-if="row.status === 'failed'" class="status-icon error">
@@ -277,6 +292,16 @@
                 开始前置质控
               </el-button>
             </div>
+
+            <!-- 演示用的下一步按钮 -->
+            <div class="demo-next-step">
+              <el-button type="notifySuccess" @click="demoNextStep(2)">
+                <el-icon>
+                  <Right />
+                </el-icon>
+                前置质控
+              </el-button>
+            </div>
           </div>
         </div>
       </div>
@@ -286,7 +311,7 @@
         <div class="qc-section">
           <div class="qc-header">
             <h4>前置质控结果</h4>
-            <el-tag :type="preQCResult.passed ? 'success' : 'danger'">
+            <el-tag :type="preQCResult.passed ? 'notifySuccess' : 'danger'">
               {{ preQCResult.passed ? '质控通过' : '质控未通过' }}
             </el-tag>
           </div>
@@ -297,7 +322,7 @@
             <el-table-column prop="checkItem" label="检查项" width="200" />
             <el-table-column prop="result" label="检查结果" width="100">
               <template #default="{ row }">
-                <el-tag :type="row.passed ? 'success' : 'danger'" size="small">
+                <el-tag :type="row.passed ? 'notifySuccess' : 'danger'" size="small">
                   {{ row.passed ? '通过' : '失败' }}
                 </el-tag>
               </template>
@@ -346,6 +371,16 @@
               提交上报
             </el-button>
           </div>
+
+          <!-- 演示用的下一步按钮 -->
+          <div class="demo-next-step">
+            <el-button type="notifySuccess" @click="demoNextStep(3)">
+              <el-icon>
+                <Right />
+              </el-icon>
+              提交上报
+            </el-button>
+          </div>
         </div>
       </div>
 
@@ -378,6 +413,16 @@
                   刷新状态
                 </el-button>
                 <el-button @click="viewSubmitLog">查看提交日志</el-button>
+              </div>
+
+              <!-- 演示用的下一步按钮 -->
+              <div class="demo-next-step">
+                <el-button type="notifySuccess" @click="demoNextStep(4)">
+                  <el-icon>
+                    <Right />
+                  </el-icon>
+                  后置质控
+                </el-button>
               </div>
             </template>
           </el-result>
@@ -456,6 +501,16 @@
               </template>
             </el-result>
           </div>
+
+          <!-- 演示用的下一步按钮 -->
+          <div class="demo-next-step">
+            <el-button type="notifySuccess" @click="demoNextStep(5)">
+              <el-icon>
+                <Right />
+              </el-icon>
+              上报完成
+            </el-button>
+          </div>
         </div>
       </div>
 
@@ -463,7 +518,7 @@
       <div v-if="currentStep === 5" class="step-content">
         <div class="complete-section">
           <el-result
-            icon="success"
+            icon="notifySuccess"
             title="数据上报完成"
             sub-title="您的数据已成功上报并通过所有质控检查"
           >
@@ -589,7 +644,8 @@ import {
   Calendar,
   Timer,
   OfficeBuilding as Hospital,
-  Files
+  Files,
+  Right
 } from '@element-plus/icons-vue'
 import PageHeader from '@/components/PageHeader/index.vue'
 import {ContentWrap} from '@/components/ContentWrap'
@@ -644,11 +700,6 @@ const currentTask = ref<any>({
 
 // 文件列表
 const fileList = ref([
-  {id: 1, name: '医疗机构基本情况.xlsx', type: 'hospital', status: 'pending', size: 0, recordCount: 0},
-  {id: 2, name: '医疗机构药品目录.xlsx', type: 'catalog', status: 'pending', size: 0, recordCount: 0},
-  {id: 3, name: '医疗机构入库情况.xlsx', type: 'inbound', status: 'pending', size: 0, recordCount: 0},
-  {id: 4, name: '医疗机构出库情况.xlsx', type: 'outbound', status: 'pending', size: 0, recordCount: 0},
-  {id: 5, name: '医疗机构使用情况.xlsx', type: 'usage', status: 'pending', size: 0, recordCount: 0}
 ])
 
 // 前置质控结果
@@ -719,7 +770,7 @@ const allFilesUploaded = computed(() => {
 // 获取步骤状态
 const getProcessStatus = () => {
   if (postQCResult.value.status === 'rejected') return 'error'
-  if (currentStep.value === 5) return 'success'
+  if (currentStep.value === 5) return 'notifySuccess'
   return 'process'
 }
 
@@ -879,15 +930,15 @@ const startUpload = async () => {
     loading.value = true
 
     // 如果已有任务ID，直接进入上传步骤
-/*    if (currentTask.value.id) {
+    if (currentTask.value.id) {
       currentTask.value.currentStep = 1
       await updateReportProgress(1)
       message.notifySuccess('继续当前上报任务')
       return
-    }*/
+    }
 
     message.notify('正在创建上报任务...')
-/*
+
     // 创建上报任务的参数
     const createTaskData: any = {
       taskName: currentTask.value.taskName || '药品数据上报',
@@ -903,13 +954,13 @@ const startUpload = async () => {
     const taskId = await ReportDataApi.createReportTask(createTaskData)
 
     // 更新当前任务ID
-    currentTask.value.taskId = taskId*/
+    currentTask.value.taskId = taskId
 
     // 切换到上传文件步骤
     currentTask.value.currentStep = 1
 
     // 更新上报进度为1-上传文件阶段
-    // await updateReportProgress(1)
+    await updateReportProgress(1)
 
     message.notifySuccess('上报任务创建成功，现在可以上传文件')
 
@@ -1105,16 +1156,16 @@ const updateReportProgress = async (progress: number) => {
 
 // 开始前置质控
 const startPreQC = async () => {
-/*  if (!currentTask.value.id) {
+  if (!currentTask.value.id) {
     message.notifyError('任务ID不存在')
     return
-  }*/
+  }
 
   loading.value = true
   message.notify('正在进行前置质控...')
 
   try {
-/*    const result = await ReportDataApi.executePreQC(currentTask.value.id)
+    const result = await ReportDataApi.executePreQC(currentTask.value.id)
     preQCResult.value = result
     currentTask.value.currentStep = 2
 
@@ -1126,9 +1177,7 @@ const startPreQC = async () => {
       message.notifyWarning('前置质控发现问题，请查看质控报告并修正错误')
     } else {
       message.notifySuccess('前置质控通过，所有检查项均已通过，可以提交上报')
-    }*/
-    currentTask.value.currentStep = 2
-    message.notifySuccess('前置质控通过，所有检查项均已通过，可以提交上报')
+    }
   } catch (error) {
     console.error('前置质控失败:', error)
     message.notifyError('前置质控失败，请重试')
@@ -1165,7 +1214,7 @@ const backToUpload = async () => {
   currentTask.value.currentStep = 1
 
   // 更新上报进度为1-上传文件阶段
-  // await updateReportProgress(1)
+  await updateReportProgress(1)
 }
 
 // 下载质控报告
@@ -1191,11 +1240,11 @@ const submitReport = async () => {
     )
 
     loading.value = true
-    // await ReportDataApi.submitReport(currentTask.value.id)
+    await ReportDataApi.submitReport(currentTask.value.id)
     currentTask.value.currentStep = 3
 
     // 更新上报进度为3-提交上报阶段
-    // await updateReportProgress(3)
+    await updateReportProgress(3)
 
     message.notifySuccess('数据已成功提交上报')
 
@@ -1255,7 +1304,7 @@ const viewSubmitLog = () => {
 const getPostQCStatusType = () => {
   const map: Record<string, string> = {
     processing: 'info',
-    passed: 'success',
+    passed: 'notifySuccess',
     rejected: 'danger'
   }
   return map[postQCResult.value.status] || 'info'
@@ -1505,6 +1554,164 @@ const loadFileList = async (taskId: number) => {
       statusTimer = null
     }
   }
+
+// ==================== 演示功能 ====================
+
+// 演示用的下一步方法
+const demoNextStep = (nextStep: number) => {
+  // 直接跳转到下一步并设置演示数据
+  currentTask.value.currentStep = nextStep
+
+  // 根据步骤设置不同的演示数据
+  switch (nextStep) {
+    case 1:
+      // 模拟文件列表
+      fileList.value = [
+        {
+          name: '医院信息.xlsx',
+          type: 'hospital',
+          status: 'pending',
+          size: 0,
+          recordCount: 0,
+          required: true,
+          description: '医疗机构基本信息'
+        },
+        {
+          name: '药品目录.xlsx',
+          type: 'catalog',
+          status: 'pending',
+          size: 0,
+          recordCount: 0,
+          required: true,
+          description: '药品基本信息目录'
+        },
+        {
+          name: '入库记录.xlsx',
+          type: 'inbound',
+          status: 'pending',
+          size: 0,
+          recordCount: 0,
+          required: true,
+          description: '药品采购入库数据'
+        },
+        {
+          name: '出库记录.xlsx',
+          type: 'outbound',
+          status: 'pending',
+          size: 0,
+          recordCount: 0,
+          required: true,
+          description: '药品发放出库数据'
+        },
+        {
+          name: '用药记录.xlsx',
+          type: 'usage',
+          status: 'pending',
+          size: 0,
+          recordCount: 0,
+          required: true,
+          description: '临床用药详细记录'
+        }
+      ]
+      message.notifySuccess('进入上传文件步骤')
+      break
+
+    case 2:
+      // 模拟已上传的文件
+      fileList.value.forEach(file => {
+        file.status = 'uploaded'
+        file.size = Math.floor(Math.random() * 5000000) + 1000000 // 1-5MB
+        file.recordCount = Math.floor(Math.random() * 10000) + 1000 // 1000-10000条
+      })
+      message.notifySuccess('文件已上传，进入前置质控步骤')
+      break
+
+    case 3:
+      // 模拟前置质控结果
+      preQCResult.value = {
+        passed: true,
+        details: [
+          {
+            tableName: '医院信息',
+            checkName: '必填字段检查',
+            passed: true,
+            errorCount: 0,
+            totalCount: 1,
+            passRate: 100
+          },
+          {
+            tableName: '药品目录',
+            checkName: '数据格式检查',
+            passed: true,
+            errorCount: 3,
+            totalCount: 1250,
+            passRate: 99.76
+          },
+          {
+            tableName: '入库记录',
+            checkName: '关联性检查',
+            passed: true,
+            errorCount: 0,
+            totalCount: 3200,
+            passRate: 100
+          },
+          {
+            tableName: '出库记录',
+            checkName: '逻辑一致性检查',
+            passed: true,
+            errorCount: 5,
+            totalCount: 2800,
+            passRate: 99.82
+          },
+          {
+            tableName: '用药记录',
+            checkName: '完整性检查',
+            passed: true,
+            errorCount: 2,
+            totalCount: 5330,
+            passRate: 99.96
+          }
+        ]
+      }
+      message.notifySuccess('前置质控通过，进入提交上报步骤')
+      break
+
+    case 4:
+      // 模拟提交信息
+      submitInfo.value = {
+        submitTime: new Date(),
+        submitter: '演示用户',
+        totalRecords: 12580
+      }
+
+      // 模拟后置质控状态
+      postQCResult.value = {
+        status: 'processing',
+        progress: 75,
+        estimatedTime: '约10分钟',
+        rejectReason: '',
+        rejectTime: '',
+        reviewer: '',
+        errorTables: []
+      }
+      message.notifySuccess('数据已提交，进入后置质控步骤')
+      break
+
+    case 5:
+      // 模拟完成状态
+      postQCResult.value.status = 'passed'
+      postQCResult.value.progress = 100
+
+      completeInfo.value = {
+        completeTime: new Date(),
+        batchNo: 'DEMO-BATCH-2024-001',
+        qualityScore: 4.8,
+        reviewComment: '数据质量优秀，完全符合上报标准要求'
+      }
+      message.notifySuccess('后置质控通过，上报流程完成！')
+      break
+  }
+}
 </script>
 
 <style scoped>
@@ -1545,7 +1752,18 @@ const loadFileList = async (taskId: number) => {
 
 /* ============ 文件要求区域优化样式 ============ */
 .requirements-section {
+  margin-top: 20px;
   width: 100%;
+  display: flex;
+  justify-content: center; /* 让alert容器居中 */
+}
+
+.requirements-alert {
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  overflow: hidden;
 }
 
 .requirements-content {
@@ -1698,7 +1916,7 @@ const loadFileList = async (taskId: number) => {
   flex-shrink: 0;
 }
 
-.tip-icon.success {
+.tip-icon.notifySuccess {
   color: #67c23a;
 }
 
@@ -1752,7 +1970,7 @@ const loadFileList = async (taskId: number) => {
   font-size: 16px;
 }
 
-.status-icon.success {
+.status-icon.notifySuccess {
   color: #67c23a;
 }
 
@@ -1890,13 +2108,35 @@ const loadFileList = async (taskId: number) => {
   justify-content: center;
 }
 
+/* 演示功能样式 */
+.demo-next-step {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 2px dashed #e4e7ed;
+  text-align: center;
+}
+
+.demo-next-step .el-button {
+  background: linear-gradient(135deg, #67c23a 0%, #85ce61 100%);
+  border: none;
+  box-shadow: 0 4px 12px rgba(103, 194, 58, 0.3);
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.demo-next-step .el-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(103, 194, 58, 0.4);
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   .prepare-actions,
   .submit-actions,
   .qc-actions,
   .rejection-actions,
-  .complete-actions {
+  .complete-actions,
+  .demo-next-step {
     flex-direction: column;
   }
 
