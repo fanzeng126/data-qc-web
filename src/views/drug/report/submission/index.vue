@@ -30,19 +30,6 @@
 
     <!-- 上报进度步骤条 -->
     <ContentWrap class="progress-card">
-      <template #header>
-        <el-button
-          v-if="currentStep === 5 && currentTask.status === 3"
-          type="success"
-          size="small"
-          @click="downloadReports"
-        >
-          <el-icon>
-            <Download />
-          </el-icon>
-          下载质控报告
-        </el-button>
-      </template>
       <el-steps :active="currentStep" align-center :process-status="getProcessStatus()">
         <el-step title="准备">
           <template #icon>
@@ -76,24 +63,6 @@
             <el-tooltip content="提交至管理端" placement="top">
               <el-icon>
                 <Promotion />
-              </el-icon>
-            </el-tooltip>
-          </template>
-        </el-step>
-        <el-step title="后置质控">
-          <template #icon>
-            <el-tooltip content="管理端审核" placement="top">
-              <el-icon>
-                <Stamp />
-              </el-icon>
-            </el-tooltip>
-          </template>
-        </el-step>
-        <el-step title="上报完成">
-          <template #icon>
-            <el-tooltip content="上报成功" placement="top">
-              <el-icon>
-                <Finished />
               </el-icon>
             </el-tooltip>
           </template>
@@ -133,7 +102,7 @@
                     <div class="file-card-stats">
                       <span class="field-count">{{ table.fieldCount }} 个字段</span>
                       <span class="required-fields"
-                        >{{ table.requiredFieldsCount || 0 }} 个必填</span
+                      >{{ table.requiredFieldsCount || 0 }} 个必填</span
                       >
                       <span class="download-count">{{ table.downloadCount || 0 }} 次下载</span>
                     </div>
@@ -182,7 +151,7 @@
       </div>
 
       <!-- 步骤1: 上传文件 -->
-      <div v-if="currentStep === 0" class="step-content">
+      <div v-if="currentStep === 1" class="step-content">
         <div class="upload-section">
           <!-- 批量上传区域 -->
           <div class="batch-upload">
@@ -282,7 +251,7 @@
       </div>
 
       <!-- 步骤2: 前置质控 -->
-      <div v-if="currentStep === 1" class="step-content">
+      <div v-if="currentStep === 2" class="step-content">
         <div class="qc-section">
           <div class="qc-header">
             <h4>前置质控结果</h4>
@@ -352,7 +321,7 @@
       <!-- 步骤3: 提交上报 -->
       <div v-if="currentStep === 3" class="step-content">
         <div class="submit-section">
-          <el-result icon="info" title="数据已提交上报" sub-title="正在等待管理端进行后置质控审核">
+          <el-result icon="success" title="数据上报完成" sub-title="您的数据已成功提交并通过前置质控检查">
             <template #extra>
               <div class="submit-info">
                 <el-descriptions :column="2" border>
@@ -365,133 +334,13 @@
                   <el-descriptions-item label="数据条数">
                     {{ submitInfo.totalRecords }}
                   </el-descriptions-item>
-                  <el-descriptions-item label="审核状态">
-                    <el-tag type="warning">待审核</el-tag>
+                  <el-descriptions-item label="上报状态">
+                    <el-tag type="success">已完成</el-tag>
                   </el-descriptions-item>
                 </el-descriptions>
               </div>
               <div class="submit-actions">
-                <el-button @click="refreshStatus">
-                  <el-icon>
-                    <Refresh />
-                  </el-icon>
-                  刷新状态
-                </el-button>
-                <el-button @click="viewSubmitLog">查看提交日志</el-button>
-              </div>
-            </template>
-          </el-result>
-        </div>
-      </div>
-
-      <!-- 步骤4: 后置质控 -->
-      <div v-if="currentStep === 4" class="step-content">
-        <div class="post-qc-section">
-          <div class="qc-header">
-            <h4>后置质控结果</h4>
-            <el-tag :type="getPostQCStatusType()">
-              {{ getPostQCStatusText() }}
-            </el-tag>
-          </div>
-
-          <!-- 后置质控结果 -->
-          <div v-if="postQCResult.status === 'rejected'" class="rejection-info">
-            <el-alert title="数据被退回，请修正后重新上报" type="error" :closable="false" show-icon>
-              <template #default>
-                <div class="rejection-details">
-                  <p><strong>退回原因：</strong>{{ postQCResult.rejectReason }}</p>
-                  <p><strong>退回时间：</strong>{{ formatDateTime(postQCResult.rejectTime) }}</p>
-                  <p><strong>审核人：</strong>{{ postQCResult.reviewer }}</p>
-                </div>
-              </template>
-            </el-alert>
-
-            <!-- 需要修正的表格列表 -->
-            <div class="fix-tables">
-              <h5>需要修正的数据表：</h5>
-              <el-table :data="postQCResult.errorTables" stripe>
-                <el-table-column prop="tableName" label="数据表" width="180" />
-                <el-table-column prop="errorType" label="错误类型" width="150" />
-                <el-table-column prop="errorCount" label="错误数量" width="120" />
-                <el-table-column prop="description" label="错误说明" min-width="300" />
-                <el-table-column label="操作" width="180" fixed="right">
-                  <template #default="{ row }">
-                    <el-button link type="primary" size="small" @click="downloadErrorData(row)">
-                      下载错误数据
-                    </el-button>
-                    <el-button link type="warning" size="small" @click="reuploadTable(row)">
-                      重新上传
-                    </el-button>
-                  </template>
-                </el-table-column>
-              </el-table>
-            </div>
-
-            <div class="rejection-actions">
-              <el-button @click="downloadQCReport('post')">
-                <el-icon>
-                  <Download />
-                </el-icon>
-                下载质控报告
-              </el-button>
-              <el-button type="primary" @click="restartProcess"> 重新开始上报流程 </el-button>
-            </div>
-          </div>
-
-          <div v-else-if="postQCResult.status === 'processing'" class="processing-info">
-            <el-result
-              icon="info"
-              title="后置质控进行中"
-              sub-title="管理端正在对所有机构的数据进行综合质控"
-            >
-              <template #extra>
-                <div class="processing-progress">
-                  <el-progress
-                    :percentage="postQCResult.progress"
-                    :stroke-width="20"
-                    :text-inside="true"
-                  />
-                  <p class="progress-hint">预计完成时间：{{ postQCResult.estimatedTime }}</p>
-                </div>
-              </template>
-            </el-result>
-          </div>
-        </div>
-      </div>
-
-      <!-- 步骤5: 上报完成 -->
-      <div v-if="currentStep === 5" class="step-content">
-        <div class="complete-section">
-          <el-result
-            icon="success"
-            title="数据上报完成"
-            sub-title="您的数据已成功上报并通过所有质控检查"
-          >
-            <template #extra>
-              <div class="complete-info">
-                <el-descriptions :column="2" border>
-                  <el-descriptions-item label="完成时间">
-                    {{ formatDateTime(completeInfo.completeTime) }}
-                  </el-descriptions-item>
-                  <el-descriptions-item label="上报批次">
-                    {{ completeInfo.batchNo }}
-                  </el-descriptions-item>
-                  <el-descriptions-item label="数据质量评分">
-                    <el-rate
-                      v-model="completeInfo.qualityScore"
-                      disabled
-                      show-score
-                      text-color="#ff9900"
-                    />
-                  </el-descriptions-item>
-                  <el-descriptions-item label="审核意见">
-                    {{ completeInfo.reviewComment || '无' }}
-                  </el-descriptions-item>
-                </el-descriptions>
-              </div>
-
-              <div class="complete-actions">
-                <el-button type="primary" @click="downloadReports">
+                <el-button type="primary" @click="downloadQCReport('pre')">
                   <el-icon>
                     <Download />
                   </el-icon>
@@ -584,8 +433,6 @@ import {
   InfoFilled,
   Document,
   Promotion,
-  Stamp,
-  Finished,
   Calendar,
   Timer,
   OfficeBuilding as Hospital,
@@ -600,8 +447,7 @@ import {
   type ReportTaskVO,
   type ReportTaskCreateVO,
   type FileUploadVO,
-  type QCResultVO,
-  type PostQCResultVO
+  type QCResultVO
 } from '@/api/drug/reportdata'
 import {ImportTemplateApi} from '@/api/drug/task/template'
 import {TemplateFieldApi} from '@/api/drug/task/template'
@@ -657,30 +503,11 @@ const preQCResult = ref({
   details: []
 })
 
-// 后置质控结果
-const postQCResult = ref({
-  status: 'processing', // processing, passed, rejected
-  progress: 60,
-  estimatedTime: '约15分钟',
-  rejectReason: '',
-  rejectTime: '',
-  reviewer: '',
-  errorTables: []
-})
-
 // 提交信息
 const submitInfo = ref({
   submitTime: new Date(),
   submitter: '张三',
   totalRecords: 12580
-})
-
-// 完成信息
-const completeInfo = ref({
-  completeTime: new Date(),
-  batchNo: 'BATCH-2024-001',
-  qualityScore: 4.5,
-  reviewComment: '数据质量良好，符合上报要求'
 })
 
 // 数据查看对话框
@@ -718,8 +545,7 @@ const allFilesUploaded = computed(() => {
 
 // 获取步骤状态
 const getProcessStatus = () => {
-  if (postQCResult.value.status === 'rejected') return 'error'
-  if (currentStep.value === 5) return 'success'
+  if (currentStep.value === 3) return 'success'
   return 'process'
 }
 
@@ -878,32 +704,7 @@ const startUpload = async () => {
   try {
     loading.value = true
 
-    // 如果已有任务ID，直接进入上传步骤
-/*    if (currentTask.value.id) {
-      currentTask.value.currentStep = 1
-      await updateReportProgress(1)
-      message.notifySuccess('继续当前上报任务')
-      return
-    }*/
-
     message.notify('正在创建上报任务...')
-/*
-    // 创建上报任务的参数
-    const createTaskData: any = {
-      taskName: currentTask.value.taskName || '药品数据上报',
-      hospitalId: currentTask.value.hospitalId,
-      hospitalName: currentTask.value.hospitalName,
-      description: currentTask.value.description || '药品数据上报任务',
-      startDate: currentTask.value.startDate,
-      endDate: currentTask.value.endDate,
-      reportProgress: 0 // 初始进度为0-准备阶段
-    }
-
-    // 调用API创建上报任务
-    const taskId = await ReportDataApi.createReportTask(createTaskData)
-
-    // 更新当前任务ID
-    currentTask.value.taskId = taskId*/
 
     // 切换到上传文件步骤
     currentTask.value.currentStep = 1
@@ -1105,28 +906,10 @@ const updateReportProgress = async (progress: number) => {
 
 // 开始前置质控
 const startPreQC = async () => {
-/*  if (!currentTask.value.id) {
-    message.notifyError('任务ID不存在')
-    return
-  }*/
-
   loading.value = true
   message.notify('正在进行前置质控...')
 
   try {
-/*    const result = await ReportDataApi.executePreQC(currentTask.value.id)
-    preQCResult.value = result
-    currentTask.value.currentStep = 2
-
-    // 更新上报进度为2-前置质控阶段
-    await updateReportProgress(2)
-
-    const hasErrors = result.details.some(d => !d.passed)
-    if (hasErrors) {
-      message.notifyWarning('前置质控发现问题，请查看质控报告并修正错误')
-    } else {
-      message.notifySuccess('前置质控通过，所有检查项均已通过，可以提交上报')
-    }*/
     currentTask.value.currentStep = 2
     message.notifySuccess('前置质控通过，所有检查项均已通过，可以提交上报')
   } catch (error) {
@@ -1187,7 +970,7 @@ const submitReport = async () => {
 
   try {
     await message.confirm(
-      '确认提交上报？提交后将进入管理端审核流程'
+      '确认提交上报？提交后将完成上报流程'
     )
 
     loading.value = true
@@ -1199,8 +982,6 @@ const submitReport = async () => {
 
     message.notifySuccess('数据已成功提交上报')
 
-    // 启动状态轮询
-    startStatusPolling()
   } catch (error: any) {
     if (error !== 'cancel') {
       console.error('提交上报失败:', error)
@@ -1208,129 +989,6 @@ const submitReport = async () => {
     }
   } finally {
     loading.value = false
-  }
-}
-
-// 刷新状态
-const refreshStatus = async () => {
-  if (!currentTask.value.id) return
-
-  try {
-    const result = await ReportDataApi.refreshStatus(currentTask.value.id)
-
-    // 更新任务状态
-    if (result) {
-      currentTask.value = result
-
-      // 根据状态更新步骤
-      if (result.currentStep !== currentStep.value) {
-        currentTask.value.currentStep = result.currentStep
-
-        // 加载对应步骤的数据
-        await loadQCResults(result.id)
-
-        // 如果完成或被拒绝，停止轮询
-        if (result.status === 3 || result.status === 4) {
-          stopStatusPolling()
-
-          if (result.status === 3) {
-            message.notifySuccess('上报完成，您的数据已通过所有质控检查')
-          } else {
-            message.notifyError('数据被退回，请根据审核意见修正后重新上报')
-          }
-        }
-      }
-    }
-  } catch (error) {
-    console.error('刷新状态失败:', error)
-  }
-}
-
-// 查看提交日志
-const viewSubmitLog = () => {
-  message.notify('查看提交日志功能开发中')
-}
-
-// 获取后置质控状态类型
-const getPostQCStatusType = () => {
-  const map: Record<string, string> = {
-    processing: 'info',
-    passed: 'success',
-    rejected: 'danger'
-  }
-  return map[postQCResult.value.status] || 'info'
-}
-
-// 获取后置质控状态文本
-const getPostQCStatusText = () => {
-  const map: Record<string, string> = {
-    processing: '审核中',
-    passed: '审核通过',
-    rejected: '已退回'
-  }
-  return map[postQCResult.value.status] || '未知'
-}
-
-// 下载错误数据
-const downloadErrorData = async (row: any) => {
-  if (!currentTask.value.id) return
-
-  try {
-    await ReportDataApi.downloadErrorData(currentTask.value.id, row.tableName)
-    message.notifySuccess(`${row.tableName} 错误数据下载成功`)
-  } catch (error) {
-    console.error('下载错误数据失败:', error)
-    message.notifyError('下载错误数据失败')
-  }
-}
-
-// 重新上传表格
-const reuploadTable = (row: any) => {
-  message.notify(`重新上传 ${row.tableName}`)
-  currentTask.value.currentStep = 1
-}
-
-// 重新开始流程
-const restartProcess = () => {
-  message.confirm(
-    '确认重新开始上报流程？之前的数据将被清空'
-  ).then(() => {
-    currentTask.value.currentStep = 0
-    fileList.value.forEach(f => {
-      f.status = 'pending'
-      f.size = 0
-      f.recordCount = 0
-    })
-    preQCResult.value = {passed: false, details: []}
-    postQCResult.value = {
-      status: 'processing',
-      progress: 0,
-      estimatedTime: '',
-      rejectReason: '',
-      rejectTime: '',
-      reviewer: '',
-      errorTables: []
-    }
-    currentTask.value.status = 2
-    message.notifySuccess('已重新开始上报流程')
-  }).catch(() => {
-  })
-}
-
-// 下载报告
-const downloadReports = async () => {
-  if (!currentTask.value.id) return
-
-  try {
-    // 下载前置和后置质控报告
-    await Promise.all([
-      ReportDataApi.downloadQCReport(currentTask.value.id, 'pre'),
-      ReportDataApi.downloadQCReport(currentTask.value.id, 'post')
-    ])
-    message.notifySuccess('质控报告下载成功')
-  } catch (error) {
-    console.error('下载质控报告失败:', error)
-    message.notifyError('下载质控报告失败')
   }
 }
 
@@ -1367,26 +1025,16 @@ const exportErrors = async () => {
 
 // ==================== 生命周期 ====================
 
-let statusTimer: any = null
-
 onMounted(async () => {
   // 加载模板定义数据
   await loadTemplateDefinitions()
 
   // 加载当前任务信息
   await loadCurrentTask()
-
-  // 启动状态轮询（如果任务在进行中）
-  if (currentTask.value.status === 2 && currentStep.value >= 3) {
-    startStatusPolling()
-  }
 })
 
 onUnmounted(() => {
-  // 清理定时器
-  if (statusTimer) {
-    clearInterval(statusTimer)
-  }
+  // 清理定时器（如果有的话）
 })
 
 // ==================== 数据加载方法 ====================
@@ -1424,16 +1072,6 @@ const loadCurrentTask = async () => {
             totalRecords: 0 // 从文件统计
           }
         }
-
-        // 加载完成信息
-        if (currentStep.value === 5) {
-          completeInfo.value = {
-            completeTime: task.completeTime || new Date(),
-            batchNo: `BATCH-${task.id}`,
-            qualityScore: 4.5,
-            reviewComment: ''
-          }
-        }
       }
     } else {
       // 如果没有激活的任务，显示提示
@@ -1450,61 +1088,38 @@ const loadCurrentTask = async () => {
 // 加载文件列表
 const loadFileList = async (taskId: number) => {
   try {
-      // 使用旧API
-      const files = await ReportDataApi.getFileList(taskId)
-      // 更新本地文件列表状态
-      fileList.value = fileList.value.map(localFile => {
-        const serverFile = files.find((f: any) => f.fileType === localFile.type)
-        if (serverFile) {
-          return {
-            ...localFile,
-            status: serverFile.status,
-            size: serverFile.size,
-            recordCount: serverFile.recordCount
-          }
+    // 使用旧API
+    const files = await ReportDataApi.getFileList(taskId)
+    // 更新本地文件列表状态
+    fileList.value = fileList.value.map(localFile => {
+      const serverFile = files.find((f: any) => f.fileType === localFile.type)
+      if (serverFile) {
+        return {
+          ...localFile,
+          status: serverFile.status,
+          size: serverFile.size,
+          recordCount: serverFile.recordCount
         }
-        return localFile
-      })
-    } catch (error) {
-      console.error('加载文件列表失败:', error)
-    }
+      }
+      return localFile
+    })
+  } catch (error) {
+    console.error('加载文件列表失败:', error)
   }
+}
 
 // 加载质控结果
-  const loadQCResults = async (taskId: number) => {
-    try {
-      // 加载前置质控结果
-      if (currentStep.value >= 2) {
-        const preQC = await ReportDataApi.getPreQCResult(taskId)
-        preQCResult.value = preQC
-      }
-
-      // 加载后置质控结果
-      if (currentStep.value >= 4) {
-        const postQC = await ReportDataApi.getPostQCResult(taskId)
-        postQCResult.value = postQC
-      }
-    } catch (error) {
-      console.error('加载质控结果失败:', error)
+const loadQCResults = async (taskId: number) => {
+  try {
+    // 加载前置质控结果
+    if (currentStep.value >= 2) {
+      const preQC = await ReportDataApi.getPreQCResult(taskId)
+      preQCResult.value = preQC
     }
+  } catch (error) {
+    console.error('加载质控结果失败:', error)
   }
-
-// 启动状态轮询
-  const startStatusPolling = () => {
-    statusTimer = setInterval(async () => {
-      if (currentTask.value.id) {
-        await refreshStatus()
-      }
-    }, 5000) // 每5秒刷新一次
-  }
-
-// 停止状态轮询
-  const stopStatusPolling = () => {
-    if (statusTimer) {
-      clearInterval(statusTimer)
-      statusTimer = null
-    }
-  }
+}
 </script>
 
 <style scoped>
@@ -1820,83 +1435,11 @@ const loadFileList = async (taskId: number) => {
   justify-content: center;
 }
 
-/* 后置质控样式 */
-.post-qc-section {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.rejection-info {
-  margin-top: 20px;
-}
-
-.rejection-details {
-  line-height: 1.8;
-}
-
-.rejection-details p {
-  margin: 8px 0;
-}
-
-.fix-tables {
-  margin-top: 20px;
-}
-
-.fix-tables h5 {
-  margin: 0 0 12px 0;
-  font-size: 14px;
-  font-weight: 500;
-  color: #303133;
-}
-
-.rejection-actions {
-  margin-top: 20px;
-  text-align: center;
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-}
-
-.processing-info {
-  padding: 40px 0;
-}
-
-.processing-progress {
-  margin-top: 20px;
-}
-
-.progress-hint {
-  margin-top: 12px;
-  text-align: center;
-  color: #909399;
-  font-size: 14px;
-}
-
-/* 完成区域样式 */
-.complete-section {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px 0;
-}
-
-.complete-info {
-  margin: 20px 0;
-}
-
-.complete-actions {
-  margin-top: 20px;
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-}
-
 /* 响应式设计 */
 @media (max-width: 768px) {
   .prepare-actions,
   .submit-actions,
-  .qc-actions,
-  .rejection-actions,
-  .complete-actions {
+  .qc-actions {
     flex-direction: column;
   }
 
